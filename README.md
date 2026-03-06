@@ -1,300 +1,167 @@
-# Generative Search QA System based on MS MARCO
+# MS MARCO Generative Question Answering System
 
-Research Project  
-Information Retrieval | Question Answering | MS MARCO
+This project implements a **retrieval-based question answering pipeline** using the **MS MARCO dataset**.
 
-This project explores how to build a **Generative Search Question Answering (QA) system** using the **MS MARCO dataset**.
+The system follows a **retrieve-then-generate architecture**, where relevant passages are first retrieved from a large corpus before generating answers.
 
-The goal is to combine **information retrieval** techniques with **natural language generation** to answer user queries effectively.
+The project progressively builds a full QA system through multiple stages:
 
-The overall system will follow a **retrieval-augmented pipeline**:
-
-Query  
-↓  
-Passage Retrieval  
-↓  
-Context Selection  
-↓  
-Answer Generation
+1. Dataset exploration
+2. Lexical retrieval (BM25)
+3. Dense retrieval (Sentence-BERT)
+4. Retrieval-Augmented Generation (RAG)
 
 ---
 
-# Project Status
+# Project Overview
 
-Current progress:
+The system architecture follows a typical **open-domain QA pipeline**.
 
-Week 1 — Dataset Exploration ✅ Completed  
-Week 2 — Retrieval System 🚧 In Progress  
+```mermaid
+flowchart LR
 
-Future stages will include dense retrieval and generative QA.
+A[User Query] --> B[Retriever]
+B --> C[Top-K Passages]
+C --> D[Reader / Generator]
+D --> E[Final Answer]
+```
 
 ---
 
-# Project Objectives
+# Repository Structure
 
-The objectives of this project include:
-
-- Understanding the MS MARCO dataset
-- Performing exploratory data analysis (EDA)
-- Implementing classical retrieval algorithms
-- Building a passage retrieval pipeline
-- Extending the system to retrieval-augmented generation (RAG)
-
-This project aims to simulate the architecture of modern **search engines and QA systems**.
+```
+msmarco-genqa
+│
+├── notebooks
+│   ├── week01_eda.ipynb
+│   └── week02_retrieval.ipynb
+│
+├── src
+│   └── bm25_retriever.py
+│
+├── reports
+│   ├── week01_dataset_analysis.md
+│   └── week02_retrieval_report.md
+│
+└── README.md
+```
 
 ---
 
 # Dataset
 
-This project uses the **MS MARCO v2.1 dataset**, released by Microsoft for machine reading comprehension and information retrieval research.
+The project uses the **MS MARCO v2.1 dataset**, a large-scale dataset introduced by Microsoft for machine reading comprehension and information retrieval research.
 
-The dataset is constructed from **real anonymized Bing search queries**.
+The dataset consists of real anonymized Bing search queries.
 
 Each example contains:
 
-- **query** — user search query
-- **answers** — human-generated answers
-- **passages** — candidate passages retrieved from web pages
-- **query_type**
-- **urls**
+* query
+* answers
+* candidate passages
+* relevance labels
 
-Dataset splits:
+Dataset statistics:
 
-| Split | Number of Queries |
-|------|------|
-| Train | 808,731 |
-| Validation | 101,093 |
-| Test | 101,092 |
-
-Official dataset page:
-
-https://microsoft.github.io/msmarco/
+| Split      | Queries |
+| ---------- | ------- |
+| Train      | ~808k   |
+| Validation | ~101k   |
+| Test       | ~101k   |
 
 ---
 
-# MS MARCO Tasks
+# Week 1: Dataset Exploration
 
-The MS MARCO dataset supports several research tasks.
-
-### Passage Retrieval
-
-Passage retrieval aims to identify **relevant passages** that contain information useful for answering a query.
-
-Typical workflow:
-
-Query → Retrieve passages → Use passages as answer context
-
-Common models include:
-
-- BM25
-- Dense Passage Retrieval (DPR)
-- BERT-based retrievers
-
----
-
-### Document Retrieval
-
-Document retrieval operates at the **document level**.
-
-Instead of returning passages, the system retrieves entire documents related to a query.
-
-| Task | Retrieval Unit |
-|----|----|
-| Passage Retrieval | Passages |
-| Document Retrieval | Full documents |
-
-Document retrieval is widely used in traditional search engines.
-
----
-
-### Question Answering Generation
-
-In QA generation tasks, the system must produce a **natural language answer**.
-
-Typical pipeline:
-
-Query  
-↓  
-Retrieve relevant passages  
-↓  
-Generate final answer
-
-Modern QA systems often combine retrieval and generation in **Retrieval-Augmented Generation (RAG)** frameworks.
-
----
-
-# Project Structure
-
-```
-
-msmarco-genqa
-│
-├── notebooks
-│   └── week01_eda.ipynb
-│
-├── reports
-│   └── week01_dataset_analysis.md
-│
-├── src
-│
-├── data
-│
-└── README.md
-
-```
-
-The repository is organized to separate:
-
-- experiments (`notebooks`)
-- analysis reports (`reports`)
-- implementation code (`src`)
-- datasets (`data`)
-
----
-
-# Week 1 — Dataset Exploration
-
-Week 1 focused on understanding the **MS MARCO dataset**.
+During Week 1, we performed **exploratory data analysis (EDA)** on the MS MARCO dataset.
 
 Tasks completed:
 
-- Loaded MS MARCO using HuggingFace datasets
-- Explored dataset structure
-- Performed exploratory data analysis
-- Analyzed query length distribution
-- Analyzed passage length distribution
-- Analyzed answer types
-- Generated visualizations
-- Wrote a detailed analysis report
+* Dataset loading
+* Query length analysis
+* Passage length distribution
+* Dataset statistics exploration
 
-Key insights:
+Example insights:
 
-- Most queries contain **3–6 words**
-- Query distribution is **right-skewed**
-- Passages typically contain **40–80 words**
-- Many answers are **short factual responses**
+| Statistic              | Observation  |
+| ---------------------- | ------------ |
+| Average query length   | ~5 words     |
+| Typical passage length | 40–80 words  |
+| Query distribution     | Right-skewed |
 
-Notebook:
+These observations help guide retrieval model design.
 
-```
+---
 
-notebooks/week01_eda.ipynb
+# Week 2: BM25 Retrieval Baseline
 
-```
+In Week 2, we implemented a **BM25 retrieval model** to establish a baseline retrieval system.
 
-Report:
+Pipeline:
 
-```
+1. Construct passage corpus
+2. Tokenize passages
+3. Build BM25 index
+4. Retrieve top-k passages
+5. Evaluate retrieval performance
 
-reports/week01_dataset_analysis.md
+Retrieval workflow:
 
+```mermaid
+flowchart TD
+
+Q[Query] --> T[Tokenization]
+T --> S[BM25 Score Computation]
+S --> R[Ranking]
+R --> K[Top-K Passages]
 ```
 
 ---
 
-# Week 2 — Retrieval System (In Progress)
+# Retrieval Results
 
-The objective of Week 2 is to build a **passage retrieval system**.
+The BM25 baseline was evaluated using **MRR@10 (Mean Reciprocal Rank)**.
 
-Planned tasks:
+| Model         | MRR@10     |
+| ------------- | ---------- |
+| BM25 Baseline | **0.2716** |
 
-- Construct a passage corpus from MS MARCO
-- Implement a **BM25 retrieval model**
-- Retrieve top-k relevant passages for a query
-- Inspect retrieval quality
-- Document the retrieval pipeline
-
-Planned outputs:
-
-```
-
-notebooks/week02_retrieval.ipynb
-src/bm25_retriever.py
-reports/week02_retrieval_report.md
-
-```
-
----
-
-# Retrieval Pipeline (Planned)
-
-The retrieval system will follow this pipeline:
-
-Query  
-↓  
-Tokenization  
-↓  
-BM25 Scoring  
-↓  
-Top-k Passage Retrieval
-
-The retrieved passages will later be used as context for answer generation.
-
----
-
-# How to Run
-
-## Install dependencies
-
-```
-
-pip install datasets
-pip install rank-bm25
-pip install torch
-pip install jupyter
-
-```
-
----
-
-## Launch Jupyter
-
-```
-
-jupyter notebook
-
-```
-
-Open the notebook:
-
-```
-
-notebooks/week01_eda.ipynb
-
-```
+This result is consistent with typical lexical retrieval baselines on MS MARCO.
 
 ---
 
 # Future Work
 
-Future extensions of this project include:
+The project will be extended with neural retrieval models and generative QA.
 
-- Dense retrieval using **BERT embeddings**
-- Vector search with **FAISS**
-- Retrieval-Augmented Generation (RAG)
-- Generative QA models such as **T5** or **GPT**
+### Week 3 – Dense Retrieval
 
-Future pipeline:
+* Sentence-BERT embeddings
+* Vector similarity search
+* Semantic retrieval
 
-Query  
-↓  
-Dense Retriever  
-↓  
-Top-k Passages  
-↓  
-Generative Model  
-↓  
-Final Answer
+### Week 4 – Retrieval-Augmented Generation
+
+* Retrieve relevant passages
+* Use retrieved context for answer generation
+* Integrate with LLMs
 
 ---
 
-# References
+# Technologies
 
-MS MARCO Dataset  
-https://microsoft.github.io/msmarco/
+The project uses the following technologies:
 
-HuggingFace Datasets  
-https://huggingface.co/datasets
+* Python
+* PyTorch
+* HuggingFace Datasets
+* Rank-BM25
+* NumPy
 
-BM25 Retrieval Model  
-https://en.wikipedia.org/wiki/Okapi_BM25
+---
+
+# Author
+
+Gioia Zheng
