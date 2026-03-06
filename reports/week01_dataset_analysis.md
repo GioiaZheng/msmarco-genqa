@@ -56,24 +56,22 @@ Each training example contains a query and multiple candidate passages. Among th
 
 Example structure:
 
-```
-
+```text
 {
-query: "what was the immediate impact of the success of the manhattan project?",
-answers: [...],
-passages:
-passage_text: [...]
-is_selected: [...]
-url: [...]
+  query: "what was the immediate impact of the success of the manhattan project?",
+  answers: [...],
+  passages:
+      passage_text: [...]
+      is_selected: [...]
+  url: [...]
 }
-
-```
+````
 
 Important observations:
 
-- Each query is associated with **multiple passages**
-- Only some passages are **relevant answers**
-- Passages are extracted from **web documents**
+* Each query is associated with **multiple passages**
+* Only some passages are **relevant answers**
+* Passages are extracted from **web documents**
 
 This structure is suitable for **retrieval-based systems**, where the model retrieves relevant passages before generating answers.
 
@@ -87,17 +85,15 @@ The number of words in each query was computed using a sample of **5,000 queries
 
 ### Query Length Histogram
 
-<p align="center">
-<img src="https://raw.githubusercontent.com/GioiaZheng/msmarco-genqa/main/reports/query_length_distribution.png?v=1" width="600">
-</p>
+![Query Length Distribution](https://github.com/GioiaZheng/msmarco-genqa/blob/main/reports/query_length_distribution.png?raw=1)
 
 ### Observations
 
 From the histogram we observe that:
 
-- Most queries contain **3 to 6 words**
-- The distribution is **right-skewed**
-- Very long queries are rare
+* Most queries contain **3 to 6 words**
+* The distribution is **right-skewed**
+* Very long queries are rare
 
 This reflects real-world search engine behavior where users typically submit **short keyword-based queries** rather than full sentences.
 
@@ -105,9 +101,9 @@ This reflects real-world search engine behavior where users typically submit **s
 
 Short queries create challenges for retrieval systems because:
 
-- Queries are often **ambiguous**
-- Important context may be missing
-- Retrieval models must rely heavily on **semantic matching**
+* Queries are often **ambiguous**
+* Important context may be missing
+* Retrieval models must rely heavily on **semantic matching**
 
 ---
 
@@ -119,17 +115,15 @@ Using a sample of **2,000 training examples**, all candidate passages were extra
 
 ### Passage Length Histogram
 
-<p align="center">
-<img src="https://raw.githubusercontent.com/GioiaZheng/msmarco-genqa/main/reports/passage_length_distribution.png?v=1" width="600">
-</p>
+![Passage Length Distribution](https://github.com/GioiaZheng/msmarco-genqa/blob/main/reports/passage_length_distribution.png?raw=1)
 
 ### Observations
 
 The distribution shows that:
 
-- Most passages contain **40 to 80 words**
-- Some passages extend to **over 150 words**
-- The distribution is moderately right-skewed
+* Most passages contain **40 to 80 words**
+* Some passages extend to **over 150 words**
+* The distribution is moderately right-skewed
 
 This indicates that passages contain **sufficient context for answering queries**, but they are still relatively short compared to full documents.
 
@@ -137,9 +131,9 @@ This indicates that passages contain **sufficient context for answering queries*
 
 For retrieval and QA models:
 
-- Passage length is manageable for transformer-based models
-- Retrieval models must rank passages effectively
-- Only a small subset of passages is actually relevant
+* Passage length is manageable for transformer-based models
+* Retrieval models must rank passages effectively
+* Only a small subset of passages is actually relevant
 
 ---
 
@@ -152,23 +146,23 @@ Using **5,000 queries**, we computed the top 20 most common tokens.
 ### Most Frequent Query Words
 
 | Word | Frequency |
-|----|----|
-| what | 1847 |
-| is | 1455 |
-| a | 914 |
-| how | 723 |
-| in | 722 |
-| of | 702 |
-| the | 648 |
-| to | 584 |
+| ---- | --------- |
+| what | 1847      |
+| is   | 1455      |
+| a    | 914       |
+| how  | 723       |
+| in   | 722       |
+| of   | 702       |
+| the  | 648       |
+| to   | 584       |
 
 ### Observations
 
 Common query terms include:
 
-- **interrogative words**: what, how
-- **prepositions**: in, of, to
-- **articles**: a, the
+* **interrogative words**: what, how
+* **prepositions**: in, of, to
+* **articles**: a, the
 
 This confirms that most queries are **question-based search queries**.
 
@@ -176,9 +170,9 @@ This confirms that most queries are **question-based search queries**.
 
 Retrieval systems must handle:
 
-- Question-style queries
-- Informational search intents
-- Natural language questions
+* Question-style queries
+* Informational search intents
+* Natural language questions
 
 ---
 
@@ -188,25 +182,25 @@ We also analyzed the structure of answers provided in the dataset.
 
 Answers were categorized into three types:
 
-- **Short answers** (≤ 3 words)
-- **Sentence-level answers**
-- **Numeric answers**
+* **Short answers** (≤ 3 words)
+* **Sentence-level answers**
+* **Numeric answers**
 
 Using a sample of **5,000 examples**, the distribution was:
 
-| Answer Type | Count |
-|------|------|
-| Short answers | 2462 |
-| Sentence answers | 1669 |
-| Numeric answers | 869 |
+| Answer Type      | Count |
+| ---------------- | ----- |
+| Short answers    | 2462  |
+| Sentence answers | 1669  |
+| Numeric answers  | 869   |
 
 ### Observations
 
 Short answers are the most common form of response. These typically correspond to:
 
-- named entities
-- definitions
-- short factual information
+* named entities
+* definitions
+* short factual information
 
 Sentence answers provide **explanatory information**, while numeric answers correspond to **dates, measurements, and quantities**.
 
@@ -214,9 +208,9 @@ Sentence answers provide **explanatory information**, while numeric answers corr
 
 A QA system trained on this dataset must be able to:
 
-- extract entities
-- generate concise answers
-- handle numerical responses
+* extract entities
+* generate concise answers
+* handle numerical responses
 
 ---
 
@@ -252,10 +246,10 @@ This retrieval stage will form the foundation for a **retrieval-augmented genera
 
 In Week 1, we successfully:
 
-- Set up the development environment
-- Loaded and explored the MS MARCO dataset
-- Analyzed query and passage characteristics
-- Identified important patterns in search queries and answers
+* Set up the development environment
+* Loaded and explored the MS MARCO dataset
+* Analyzed query and passage characteristics
+* Identified important patterns in search queries and answers
 
 These insights provide a strong foundation for developing a **retrieval-based question answering system**.
 
