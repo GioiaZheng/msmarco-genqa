@@ -1,143 +1,64 @@
-# Week 1 Report
+# Week 1 Report: MS MARCO Dataset Exploration and Analysis
 
-# MS MARCO Dataset Exploration and Analysis
+---
 
-## 1. Introduction
+# 1 Introduction
 
 In this project, we aim to develop a **generative search question answering system** based on the **MS MARCO dataset**. The goal of the system is to retrieve relevant passages from a large corpus and generate accurate answers to user queries.
 
-During **Week 1**, the primary objective was to:
+During **Week 1**, the primary objective was to explore the MS MARCO dataset and understand its structure and statistical properties.
 
-- Set up the development environment
-- Explore the MS MARCO dataset
-- Understand the structure of the data
-- Perform exploratory data analysis (EDA)
-- Analyze query and passage characteristics
+The key goals of this stage were:
 
-Understanding the dataset distribution is critical for designing an effective retrieval and generation pipeline.
+* Set up the development environment
+* Load and explore the MS MARCO dataset
+* Analyze dataset structure and components
+* Perform exploratory data analysis (EDA)
+* Investigate query and passage characteristics
 
----
-
-# 2. Dataset Overview
-
-The **MS MARCO (Microsoft Machine Reading Comprehension)** dataset is a large-scale dataset introduced by Microsoft for machine reading comprehension, information retrieval, and question answering tasks.
-
-The dataset is constructed from **real anonymized Bing search queries**, paired with relevant passages and answers.
-
-Each sample in the dataset contains:
-
-- **query** – the user search query
-- **answers** – human-generated answers
-- **passages** – candidate passages retrieved from web documents
-- **query_type** – type of query
-- **urls** – source web pages
-
-### Dataset Size
-
-| Split | Number of Queries |
-|------|------|
-| Train | 808,731 |
-| Validation | 101,093 |
-| Test | 101,092 |
-
-In total, the dataset contains **over one million search queries** and associated passages.
-
-This large scale makes MS MARCO one of the most widely used datasets for:
-
-- Information Retrieval (IR)
-- Question Answering (QA)
-- Retrieval-Augmented Generation (RAG)
+Understanding the dataset distribution is essential for designing effective **retrieval and generation pipelines** in open-domain question answering systems.
 
 ---
 
-# 3. MS MARCO Tasks
+# 2 Dataset
 
-The MS MARCO dataset supports several important research tasks in information retrieval and question answering. Understanding these tasks is essential for designing an effective generative search system.
+This project uses the **MS MARCO (Microsoft MAchine Reading COmprehension) dataset** [1], a large-scale dataset designed for machine reading comprehension, information retrieval, and question answering tasks.
 
-The three main tasks associated with MS MARCO are **Passage Retrieval**, **Document Retrieval**, and **Question Answering Generation**.
+The dataset was constructed using **real anonymized Bing search queries**, paired with passages extracted from web documents.
 
----
+Each dataset sample contains the following fields:
 
-## 3.1 Passage Retrieval
+* **query** – the user search query
+* **answers** – human-generated answers
+* **passages** – candidate passages retrieved from web documents
+* **query_type** – type of query
+* **urls** – source web pages
 
-Passage Retrieval focuses on retrieving the most relevant **passages** from a large collection of short text segments.
+Dataset statistics:
 
-Given a user query, the system must identify the passages that are most likely to contain the correct answer.
+| Split      | Number of Queries |
+| ---------- | ----------------- |
+| Train      | 808,731           |
+| Validation | 101,093           |
+| Test       | 101,092           |
 
-Example workflow:
+In total, the dataset contains **over one million search queries**, making it one of the largest datasets for:
 
-Query → Retrieve top-k relevant passages → Provide context for answer generation.
-
-This task is commonly used to train and evaluate **retrieval models** such as:
-
-- BM25
-- Dense Passage Retrieval (DPR)
-- BERT-based retrievers
-
-Passage retrieval is particularly important in **retrieval-augmented generation (RAG)** systems where retrieved passages are used as input to generative models.
-
----
-
-## 3.2 Document Retrieval
-
-Document Retrieval is similar to passage retrieval but operates at the **document level** instead of smaller text segments.
-
-In this task, the system retrieves entire documents that are relevant to the query.
-
-Compared to passage retrieval:
-
-| Task | Retrieval Unit |
-|-----|-----|
-| Passage Retrieval | Short passages |
-| Document Retrieval | Full documents |
-
-Document retrieval is commonly used in traditional search engines and large-scale information retrieval systems.
-
-However, document retrieval often requires additional processing to locate the exact answer within the retrieved document.
+* Information Retrieval (IR)
+* Question Answering (QA)
+* Retrieval-Augmented Generation (RAG)
 
 ---
 
-## 3.3 Question Answering Generation
+# 3 Methodology
 
-Question Answering Generation focuses on producing a **natural language answer** to a user query.
+## 3.1 Dataset Structure
 
-Instead of only retrieving relevant text, the model must generate an answer based on the retrieved context.
+Each query in the MS MARCO dataset is associated with multiple candidate passages retrieved from web documents.
 
-Typical pipeline:
+Among these passages, some are labeled as **relevant** to the query.
 
-Query → Retrieve relevant passages → Generate final answer.
-
-This task is commonly addressed using **large language models (LLMs)** or sequence-to-sequence models such as:
-
-- T5
-- BART
-- GPT-based models
-
-In modern search systems, question answering generation is often combined with retrieval methods to form **retrieval-augmented generation (RAG)** architectures.
-
----
-
-## 3.4 Relationship Between the Tasks
-
-The three tasks are closely related and often form a unified pipeline in modern search systems:
-
-Query  
-↓  
-Passage / Document Retrieval  
-↓  
-Context Selection  
-↓  
-Answer Generation  
-
-In this project, the focus will be on building a **retrieval-based question answering system**, where relevant passages are first retrieved and then used to generate accurate answers.
-
----
-
-# 4. Data Structure
-
-Each training example contains a query and multiple candidate passages. Among these passages, some are labeled as relevant to the query.
-
-Example structure:
+Example data structure:
 
 ```text
 {
@@ -148,85 +69,132 @@ Example structure:
       is_selected: [...]
   url: [...]
 }
-````
+```
 
-Important observations:
+Important observations include:
 
 * Each query is associated with **multiple passages**
-* Only some passages are **relevant answers**
-* Passages are extracted from **web documents**
+* Only a subset of passages is labeled as **relevant**
+* Passages originate from **web documents**
 
-This structure is suitable for **retrieval-based systems**, where the model retrieves relevant passages before generating answers.
+This structure naturally supports **retrieval-based QA systems**, where relevant passages must first be retrieved before answer generation.
 
 ---
 
-# 5. Query Length Distribution
+## 3.2 Research Tasks Supported by MS MARCO
 
-To better understand user query behavior, we analyzed the **length of queries** in the dataset.
+The MS MARCO dataset supports several important tasks in information retrieval and question answering.
 
-The number of words in each query was computed using a sample of **5,000 queries from the training set**.
+### Passage Retrieval
 
-### Query Length Histogram
+Passage retrieval focuses on retrieving the most relevant **text passages** for a given query.
+
+Typical workflow:
+
+```
+Query → Retrieve Top-K Passages → Provide Context for Answer Generation
+```
+
+Common retrieval models include:
+
+* BM25
+* Dense Passage Retrieval (DPR)
+* BERT-based retrievers
+
+Passage retrieval is particularly important in **retrieval-augmented generation systems**.
+
+---
+
+### Document Retrieval
+
+Document retrieval operates at the **document level** rather than smaller text segments.
+
+| Task               | Retrieval Unit |
+| ------------------ | -------------- |
+| Passage Retrieval  | Short passages |
+| Document Retrieval | Full documents |
+
+While document retrieval is widely used in search engines, additional processing is often required to locate exact answers within retrieved documents.
+
+---
+
+### Question Answering Generation
+
+Question answering generation aims to produce **natural language answers** for user queries.
+
+Typical pipeline:
+
+```
+Query → Retrieve Relevant Passages → Generate Answer
+```
+
+This task is commonly addressed using **large language models (LLMs)** such as:
+
+* T5
+* BART
+* GPT-based models
+
+Modern QA systems often combine **retrieval and generation** to form **retrieval-augmented generation (RAG)** architectures.
+
+---
+
+# 4 Experimental Setup
+
+To understand the characteristics of the dataset, we performed **exploratory data analysis (EDA)** on sampled subsets of the training data.
+
+Sampling configuration:
+
+| Parameter       | Value                                                        |
+| --------------- | ------------------------------------------------------------ |
+| Query samples   | 5,000                                                        |
+| Passage samples | 2,000 queries                                                |
+| Analysis tasks  | Query length, passage length, keyword frequency, answer type |
+
+These analyses provide insights into query behavior and passage characteristics, which are important for designing effective retrieval models.
+
+---
+
+# 5 Results
+
+## 5.1 Query Length Distribution
+
+To analyze user search behavior, we measured the number of words in each query.
+
+Query length distribution:
 
 ![Query Length Distribution](https://github.com/GioiaZheng/msmarco-genqa/blob/main/reports/query_length_distribution.png?raw=1)
 
 ### Observations
 
-From the histogram we observe that:
-
-* Most queries contain **3 to 6 words**
+* Most queries contain **3–6 words**
 * The distribution is **right-skewed**
 * Very long queries are rare
 
-This reflects real-world search engine behavior where users typically submit **short keyword-based queries** rather than full sentences.
-
-### Implications
-
-Short queries create challenges for retrieval systems because:
-
-* Queries are often **ambiguous**
-* Important context may be missing
-* Retrieval models must rely heavily on **semantic matching**
+This reflects typical **search engine behavior**, where users submit short keyword-style queries rather than long sentences.
 
 ---
 
-# 6. Passage Length Distribution
+## 5.2 Passage Length Distribution
 
-We also analyzed the length distribution of passages retrieved for each query.
+We also analyzed the length distribution of candidate passages.
 
-Using a sample of **2,000 training examples**, all candidate passages were extracted and their word counts were computed.
-
-### Passage Length Histogram
+Passage length distribution:
 
 ![Passage Length Distribution](https://github.com/GioiaZheng/msmarco-genqa/blob/main/reports/passage_length_distribution.png?raw=1)
 
 ### Observations
 
-The distribution shows that:
+* Most passages contain **40–80 words**
+* Some passages exceed **150 words**
+* Passage length distribution is moderately right-skewed
 
-* Most passages contain **40 to 80 words**
-* Some passages extend to **over 150 words**
-* The distribution is moderately right-skewed
-
-This indicates that passages contain **sufficient context for answering queries**, but they are still relatively short compared to full documents.
-
-### Implications
-
-For retrieval and QA models:
-
-* Passage length is manageable for transformer-based models
-* Retrieval models must rank passages effectively
-* Only a small subset of passages is actually relevant
+These lengths are suitable for transformer-based models that operate on relatively short context windows.
 
 ---
 
-# 7. Query Keyword Analysis
+## 5.3 Query Keyword Analysis
 
-To better understand the linguistic patterns in search queries, we analyzed the **most frequent words** appearing in queries.
-
-Using **5,000 queries**, we computed the top 20 most common tokens.
-
-### Most Frequent Query Words
+To better understand linguistic patterns in queries, we computed the most frequent words.
 
 | Word | Frequency |
 | ---- | --------- |
@@ -241,35 +209,21 @@ Using **5,000 queries**, we computed the top 20 most common tokens.
 
 ### Observations
 
-Common query terms include:
+Frequent query tokens include:
 
-* **interrogative words**: what, how
-* **prepositions**: in, of, to
-* **articles**: a, the
+* **interrogative words** (what, how)
+* **prepositions** (in, of, to)
+* **articles** (a, the)
 
-This confirms that most queries are **question-based search queries**.
-
-### Implications
-
-Retrieval systems must handle:
-
-* Question-style queries
-* Informational search intents
-* Natural language questions
+This confirms that many queries follow **question-style patterns**.
 
 ---
 
-# 8. Answer Type Analysis
+## 5.4 Answer Type Analysis
 
-We also analyzed the structure of answers provided in the dataset.
+Answers in MS MARCO can vary in length and format.
 
-Answers were categorized into three types:
-
-* **Short answers** (≤ 3 words)
-* **Sentence-level answers**
-* **Numeric answers**
-
-Using a sample of **5,000 examples**, the distribution was:
+We categorized answers into three types:
 
 | Answer Type      | Count |
 | ---------------- | ----- |
@@ -279,61 +233,72 @@ Using a sample of **5,000 examples**, the distribution was:
 
 ### Observations
 
-Short answers are the most common form of response. These typically correspond to:
+Short answers are the most common and typically correspond to:
 
 * named entities
 * definitions
-* short factual information
+* factual information
 
-Sentence answers provide **explanatory information**, while numeric answers correspond to **dates, measurements, and quantities**.
-
-### Implications
-
-A QA system trained on this dataset must be able to:
-
-* extract entities
-* generate concise answers
-* handle numerical responses
+Sentence-level answers provide explanatory responses, while numeric answers represent **dates, quantities, or measurements**.
 
 ---
 
-# 9. Key Insights
+# 6 Discussion
 
-From the exploratory analysis, several important characteristics of the MS MARCO dataset emerge:
+The exploratory analysis reveals several important characteristics of the MS MARCO dataset.
 
-1. Queries are generally **short and ambiguous**
-2. Each query is associated with **multiple candidate passages**
-3. Only a subset of passages contains relevant answers
-4. Answers are typically **short factual responses**
+### Dataset Characteristics
 
-These characteristics highlight the importance of **effective retrieval mechanisms** before answer generation.
+* Queries are typically **short and ambiguous**
+* Each query is associated with **multiple candidate passages**
+* Only a small subset of passages is **relevant**
+* Answers are often **short factual responses**
 
----
+These properties highlight the importance of effective **retrieval mechanisms** in open-domain QA systems.
 
-# 10. Next Steps
+### Implications for Retrieval Models
 
-Based on the findings from Week 1, the next phase of the project will focus on building a **retrieval system**.
+Because queries are short and ambiguous:
 
-The following steps are planned:
-
-1. Implement a **BM25 retrieval model**
-2. Retrieve the **top-k relevant passages**
-3. Evaluate retrieval quality
-4. Integrate retrieval with **generative models**
-
-This retrieval stage will form the foundation for a **retrieval-augmented generative QA system**.
+* lexical matching alone may be insufficient
+* semantic retrieval models may be required
+* ranking algorithms must effectively prioritize relevant passages
 
 ---
 
-# 11. Conclusion
+### Future Work
 
-In Week 1, we successfully:
+Based on these insights, the next stage of the project will focus on building a **retrieval system**.
 
-* Set up the development environment
-* Loaded and explored the MS MARCO dataset
-* Analyzed query and passage characteristics
-* Identified important patterns in search queries and answers
+Planned tasks for Week 2 include:
+
+* Implementing a **BM25 retrieval baseline**
+* Retrieving **top-k passages**
+* Evaluating retrieval quality using **MRR**
+* Preparing for integration with generative models
+
+---
+
+# 7 Conclusion
+
+In Week 1, we conducted an exploratory analysis of the **MS MARCO dataset**.
+
+The analysis included:
+
+* dataset structure exploration
+* query length distribution analysis
+* passage length distribution analysis
+* query keyword frequency analysis
+* answer type classification
 
 These insights provide a strong foundation for developing a **retrieval-based question answering system**.
 
-Future work will focus on implementing and evaluating **information retrieval models** that can effectively retrieve relevant passages for user queries.
+The findings from this stage guide the design of the retrieval model implemented in **Week 2**.
+
+---
+
+# References
+
+[1] Nguyen, Tri, et al.
+**MS MARCO: A Human Generated MAchine Reading COmprehension Dataset.**
+CoRR abs/1611.09268 (2016).
