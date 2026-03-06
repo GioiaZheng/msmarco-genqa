@@ -1,6 +1,4 @@
-# Week 2 Report
-
-# BM25 Retrieval Baseline for MS MARCO
+# Week 2 Report: BM25 Retrieval Baseline for MS MARCO
 
 ---
 
@@ -21,30 +19,9 @@ This baseline retrieval system will later be compared with **dense neural retrie
 
 ---
 
-# 2 System Overview
+# 2 Dataset
 
-The retrieval system follows a classical **information retrieval pipeline** consisting of corpus construction, indexing, retrieval, and evaluation.
-
-```mermaid
-flowchart LR
-
-A[MS MARCO Dataset] --> B[Passage Extraction]
-B --> C[Corpus Construction]
-C --> D[Text Tokenization]
-D --> E[BM25 Index]
-E --> F[Query Input]
-F --> G[BM25 Scoring]
-G --> H[Top-K Passage Retrieval]
-H --> I[Evaluation MRR@10]
-```
-
-This pipeline represents a typical **lexical retrieval architecture**, where document ranking is based on term matching and statistical weighting.
-
----
-
-# 3 Dataset
-
-This project uses the **MS MARCO v2.1 dataset**, a large-scale dataset introduced by Microsoft for machine reading comprehension and information retrieval tasks.
+This project uses the **MS MARCO v2.1 dataset** [1], a large-scale dataset introduced by Microsoft for machine reading comprehension and information retrieval tasks.
 
 The dataset contains real anonymized search queries collected from the Bing search engine.
 
@@ -65,7 +42,7 @@ Dataset statistics:
 
 Because the full dataset is extremely large, this experiment uses a **subset of 2000 training queries** for constructing the retrieval corpus.
 
-After flattening all candidate passages, the resulting corpus contains:
+After flattening all candidate passages associated with the sampled queries, the resulting corpus contains:
 
 ```
 19,955 passages
@@ -73,9 +50,9 @@ After flattening all candidate passages, the resulting corpus contains:
 
 ---
 
-# 4 Methodology
+# 3 Methodology
 
-## 4.1 Corpus Construction
+## 3.1 Corpus Construction
 
 Each query in MS MARCO is associated with multiple candidate passages. These passages were extracted and flattened into a single corpus.
 
@@ -103,7 +80,7 @@ The final corpus serves as the document collection for retrieval.
 
 ---
 
-## 4.2 Text Preprocessing
+## 3.2 Text Preprocessing
 
 To prepare the corpus for BM25 indexing, a simple preprocessing pipeline was applied:
 
@@ -113,12 +90,12 @@ To prepare the corpus for BM25 indexing, a simple preprocessing pipeline was app
 
 Example:
 
-```
+```text
 "The Manhattan Project was a research program"
 
-→
+↓
 
-["the","manhattan","project","was","a","research","program"]
+["the", "manhattan", "project", "was", "a", "research", "program"]
 ```
 
 Tokenization implementation:
@@ -129,23 +106,23 @@ tokenized_corpus = [doc.lower().split() for doc in corpus]
 
 ---
 
-## 4.3 BM25 Ranking Model
+## 3.3 BM25 Ranking Model
 
 BM25 is a probabilistic retrieval model that ranks documents based on term frequency, inverse document frequency, and document length normalization.
 
 The BM25 scoring function is defined as:
 
-[
+$$
 score(D,Q)=\sum_{t \in Q} IDF(t) \cdot
 \frac{f(t,D)(k_1+1)}{f(t,D)+k_1(1-b+b\frac{|D|}{avgdl})}
-]
+$$
 
 Where:
 
 * ( f(t,D) ) = term frequency
 * ( |D| ) = document length
 * ( avgdl ) = average document length
-* ( k_1 ), ( b ) = hyperparameters
+* ( k_1, b ) = hyperparameters
 
 In this project, BM25 was implemented using the **rank-bm25** Python library.
 
@@ -155,18 +132,21 @@ Index construction:
 bm25 = BM25Okapi(tokenized_corpus)
 ```
 
+BM25 retrieval requires scoring each document in the corpus for a given query.
+Therefore, the retrieval complexity is approximately **O(N) per query**, where **N** is the number of passages in the corpus.
+
 ---
 
-## 4.4 Query Retrieval
+## 3.4 Query Retrieval
 
 Given a query, the retrieval process follows these steps:
 
-1. Tokenize query
+1. Tokenize the query
 2. Compute BM25 scores for all passages
 3. Rank passages by score
 4. Return top-k passages
 
-Retrieval example:
+Example retrieval implementation:
 
 ```python
 scores = bm25.get_scores(tokenized_query)
@@ -175,9 +155,9 @@ top_k = np.argsort(scores)[::-1][:k]
 
 ---
 
-## 4.5 Retriever Module
+## 3.5 Retriever Module
 
-To improve modularity and reusability, the retrieval logic was encapsulated into a reusable class.
+To improve modularity and reusability, the retrieval logic was encapsulated into a reusable class:
 
 ```
 src/bm25_retriever.py
@@ -194,38 +174,38 @@ This design allows the retrieval module to be easily integrated into future pipe
 
 ---
 
-# 5 Retrieval Pipeline
+## 3.6 Retrieval Architecture
 
-The overall retrieval workflow can be summarized as follows:
+The retrieval system follows a classical **information retrieval pipeline** consisting of corpus construction, indexing, retrieval, and evaluation.
 
 ```mermaid
-flowchart TD
+flowchart LR
 
-Q[User Query]
-T[Tokenization]
-S[BM25 Score Computation]
-R[Ranking]
-K[Top-K Passages]
-
-Q --> T
-T --> S
-S --> R
-R --> K
+A[MS MARCO Dataset] --> B[Passage Extraction]
+B --> C[Corpus Construction]
+C --> D[Text Tokenization]
+D --> E[BM25 Index]
+E --> F[Query Input]
+F --> G[BM25 Scoring]
+G --> H[Top-K Passage Retrieval]
+H --> I[Evaluation MRR@10]
 ```
 
-This pipeline represents a **lexical retrieval model**, where ranking is driven by word overlap between queries and passages.
+This pipeline represents a **lexical retrieval architecture**, where document ranking is based on term matching and statistical weighting.
 
 ---
 
-# 6 Evaluation Metric
+# 4 Experimental Setup
+
+## 4.1 Evaluation Metric
 
 Retrieval performance was evaluated using **MRR@10 (Mean Reciprocal Rank at 10)**.
 
 The reciprocal rank is defined as:
 
-[
+$$
 RR = \frac{1}{rank}
-]
+$$
 
 If the first relevant document appears at rank *r*, the reciprocal rank is:
 
@@ -242,11 +222,11 @@ If no relevant document appears within the top 10 retrieved passages:
 RR = 0
 ```
 
-The final MRR score is the mean of reciprocal ranks across all queries.
+The final MRR score is the **mean of reciprocal ranks across all queries**.
 
 ---
 
-# 7 Experimental Setup
+## 4.2 Experimental Configuration
 
 The experiment configuration is summarized below:
 
@@ -262,19 +242,19 @@ Evaluation procedure:
 
 1. Compute BM25 scores for all passages
 2. Retrieve top-10 passages
-3. Identify first relevant passage
+3. Identify the first relevant passage
 4. Compute reciprocal rank
 5. Average across all queries
 
 ---
 
-# 8 Results
+# 5 Results
 
 The BM25 baseline achieved the following performance:
 
-| Metric | Score      |
-| ------ | ---------- |
-| MRR@10 | **0.2716** |
+| Model         | MRR@10     |
+| ------------- | ---------- |
+| BM25 Baseline | **0.2716** |
 
 Typical BM25 performance on MS MARCO is reported between:
 
@@ -282,11 +262,36 @@ Typical BM25 performance on MS MARCO is reported between:
 MRR@10 ≈ 0.18 – 0.28
 ```
 
-Therefore, the obtained result falls within the expected range for lexical retrieval baselines.
+The obtained result (**MRR@10 = 0.2716**) falls within the expected performance range for BM25 on MS MARCO, indicating that the implementation successfully reproduces a standard lexical retrieval baseline.
+
+### Retrieval Evaluation Summary
+
+```
+Corpus size: 19,955 passages
+Evaluation queries: 200
+Retrieval depth: Top 10
+MRR@10: 0.2716
+```
+
+### Example Retrieval
+
+**Query**
+
+```
+what was the immediate impact of the success of the manhattan project
+```
+
+**Top Retrieved Passage**
+
+```
+The presence of communication amid scientific minds was equally important to the success of the Manhattan Project...
+```
+
+This example demonstrates that BM25 effectively retrieves passages containing strong lexical overlap with the query.
 
 ---
 
-# 9 Discussion
+# 6 Discussion
 
 The BM25 retrieval model demonstrates strong baseline performance due to its ability to capture lexical overlap between queries and passages.
 
@@ -308,31 +313,25 @@ Challenges include:
 
 These limitations motivate the use of **dense neural retrieval models**, which encode semantic relationships using deep learning.
 
----
+### Future Work
 
-# 10 Future Work
+Future work will focus on improving retrieval performance using neural approaches:
 
-The next stage of this project will focus on improving retrieval performance through neural methods.
-
-Planned improvements include:
-
-### Week 3 – Dense Retrieval
+**Week 3 – Dense Retrieval**
 
 * Implement Sentence-BERT embeddings
-* Encode queries and passages as vectors
-* Use cosine similarity for retrieval
+* Encode queries and passages as dense vectors
+* Use cosine similarity for semantic retrieval
 
-### Week 4 – Retrieval-Augmented Generation (RAG)
+**Week 4 – Retrieval-Augmented Generation (RAG)**
 
 * Retrieve relevant passages
 * Feed retrieved context into a generative model
 * Generate answers conditioned on retrieved documents
 
-These steps will transform the system from a lexical search engine into a **neural retrieval-based QA system**.
-
 ---
 
-# 11 Conclusion
+# 7 Conclusion
 
 In Week 2, we successfully implemented a **BM25-based retrieval system** on the MS MARCO dataset.
 
@@ -342,8 +341,16 @@ The system includes:
 * text preprocessing and tokenization
 * BM25 index creation
 * top-k passage retrieval
-* evaluation using MRR@10
+* evaluation using **MRR@10**
 
 The retrieval model achieved an **MRR@10 score of 0.2716**, demonstrating strong baseline performance.
 
-This retrieval pipeline provides the foundation for future work involving **dense retrieval models and retrieval-augmented generation**.
+This retrieval pipeline provides a strong lexical baseline and establishes the foundation for future experiments involving **dense retrieval models and retrieval-augmented generation systems**.
+
+---
+
+# References
+
+[1] Nguyen, Tri, et al.
+**MS MARCO: A Human Generated MAchine Reading COmprehension Dataset.**
+CoRR abs/1611.09268 (2016).
