@@ -50,7 +50,90 @@ This large scale makes MS MARCO one of the most widely used datasets for:
 
 ---
 
-# 3. Data Structure
+# 3. MS MARCO Tasks
+
+The MS MARCO dataset supports several important research tasks in information retrieval and question answering. Understanding these tasks is essential for designing an effective generative search system.
+
+The three main tasks associated with MS MARCO are **Passage Retrieval**, **Document Retrieval**, and **Question Answering Generation**.
+
+---
+
+## 3.1 Passage Retrieval
+
+Passage Retrieval focuses on retrieving the most relevant **passages** from a large collection of short text segments.
+
+Given a user query, the system must identify the passages that are most likely to contain the correct answer.
+
+Example workflow:
+
+Query → Retrieve top-k relevant passages → Provide context for answer generation.
+
+This task is commonly used to train and evaluate **retrieval models** such as:
+
+- BM25
+- Dense Passage Retrieval (DPR)
+- BERT-based retrievers
+
+Passage retrieval is particularly important in **retrieval-augmented generation (RAG)** systems where retrieved passages are used as input to generative models.
+
+---
+
+## 3.2 Document Retrieval
+
+Document Retrieval is similar to passage retrieval but operates at the **document level** instead of smaller text segments.
+
+In this task, the system retrieves entire documents that are relevant to the query.
+
+Compared to passage retrieval:
+
+| Task | Retrieval Unit |
+|-----|-----|
+| Passage Retrieval | Short passages |
+| Document Retrieval | Full documents |
+
+Document retrieval is commonly used in traditional search engines and large-scale information retrieval systems.
+
+However, document retrieval often requires additional processing to locate the exact answer within the retrieved document.
+
+---
+
+## 3.3 Question Answering Generation
+
+Question Answering Generation focuses on producing a **natural language answer** to a user query.
+
+Instead of only retrieving relevant text, the model must generate an answer based on the retrieved context.
+
+Typical pipeline:
+
+Query → Retrieve relevant passages → Generate final answer.
+
+This task is commonly addressed using **large language models (LLMs)** or sequence-to-sequence models such as:
+
+- T5
+- BART
+- GPT-based models
+
+In modern search systems, question answering generation is often combined with retrieval methods to form **retrieval-augmented generation (RAG)** architectures.
+
+---
+
+## 3.4 Relationship Between the Tasks
+
+The three tasks are closely related and often form a unified pipeline in modern search systems:
+
+Query  
+↓  
+Passage / Document Retrieval  
+↓  
+Context Selection  
+↓  
+Answer Generation  
+
+In this project, the focus will be on building a **retrieval-based question answering system**, where relevant passages are first retrieved and then used to generate accurate answers.
+
+---
+
+# 4. Data Structure
 
 Each training example contains a query and multiple candidate passages. Among these passages, some are labeled as relevant to the query.
 
@@ -77,7 +160,7 @@ This structure is suitable for **retrieval-based systems**, where the model retr
 
 ---
 
-# 4. Query Length Distribution
+# 5. Query Length Distribution
 
 To better understand user query behavior, we analyzed the **length of queries** in the dataset.
 
@@ -107,7 +190,7 @@ Short queries create challenges for retrieval systems because:
 
 ---
 
-# 5. Passage Length Distribution
+# 6. Passage Length Distribution
 
 We also analyzed the length distribution of passages retrieved for each query.
 
@@ -137,7 +220,7 @@ For retrieval and QA models:
 
 ---
 
-# 6. Query Keyword Analysis
+# 7. Query Keyword Analysis
 
 To better understand the linguistic patterns in search queries, we analyzed the **most frequent words** appearing in queries.
 
@@ -176,7 +259,7 @@ Retrieval systems must handle:
 
 ---
 
-# 7. Answer Type Analysis
+# 8. Answer Type Analysis
 
 We also analyzed the structure of answers provided in the dataset.
 
@@ -214,7 +297,7 @@ A QA system trained on this dataset must be able to:
 
 ---
 
-# 8. Key Insights
+# 9. Key Insights
 
 From the exploratory analysis, several important characteristics of the MS MARCO dataset emerge:
 
@@ -227,7 +310,7 @@ These characteristics highlight the importance of **effective retrieval mechanis
 
 ---
 
-# 9. Next Steps
+# 10. Next Steps
 
 Based on the findings from Week 1, the next phase of the project will focus on building a **retrieval system**.
 
@@ -242,7 +325,7 @@ This retrieval stage will form the foundation for a **retrieval-augmented genera
 
 ---
 
-# 10. Conclusion
+# 11. Conclusion
 
 In Week 1, we successfully:
 
