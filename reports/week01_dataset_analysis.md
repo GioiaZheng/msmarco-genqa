@@ -140,7 +140,7 @@ Modern QA systems often combine **retrieval and generation** to form **retrieval
 
 # 4 Experimental Setup
 
-To understand the characteristics of the dataset, we performed **exploratory data analysis (EDA)** on sampled subsets of the training data.
+To understand the characteristics of the dataset, we performed **exploratory data analysis (EDA)** on sampled subsets of the **training split**.
 
 Sampling configuration:
 
@@ -148,7 +148,7 @@ Sampling configuration:
 | --------------- | ------------------------------------------------------------ |
 | Query samples   | 5,000                                                        |
 | Passage samples | 2,000 queries                                                |
-| Analysis tasks  | Query length, passage length, keyword frequency, answer type |
+| Analysis tasks  | Query length, passage length, keyword frequency, answer type, query type analysis |
 
 These analyses provide insights into query behavior and passage characteristics, which are important for designing effective retrieval models.
 
@@ -243,6 +243,46 @@ Sentence-level answers provide explanatory responses, while numeric answers repr
 
 ---
 
+## 5.5 Query Type Analysis
+
+The MS MARCO dataset includes a `query_type` field that categorizes queries into several semantic types, including DESCRIPTION, NUMERIC, ENTITY, LOCATION, and PERSON. Analyzing these categories helps reveal potential structural differences across query types.
+
+### Query Type Distribution
+
+The distribution of query types in the sampled data is shown below.
+
+![Query Type Distribution](https://github.com/GioiaZheng/msmarco-genqa/blob/main/reports/query_type_distribution.png?raw=1)
+
+DESCRIPTION queries constitute the majority of the dataset, followed by NUMERIC queries. ENTITY, LOCATION, and PERSON queries appear less frequently.
+
+### Query Length by Query Type
+
+We further examined whether different query types exhibit different query length characteristics.
+
+![Average Query Length by Query Type](https://github.com/GioiaZheng/msmarco-genqa/blob/main/reports/query_length_by_query_type.png?raw=1)
+
+Numeric queries tend to be slightly longer than other query types, while person-related queries are generally shorter. However, the overall differences remain relatively small.
+
+### Answer Type by Query Type
+
+Different query types often correspond to different answer formats.
+
+![Answer Type Distribution by Query Type](https://github.com/GioiaZheng/msmarco-genqa/blob/main/reports/answer_type_by_query_type.png?raw=1)
+
+For example, numeric queries frequently produce numeric answers, while description queries often correspond to short or sentence-style answers.
+
+### Relevant Passages by Query Type
+
+We also analyzed the number of passages labeled as relevant for each query type.
+
+![Average Relevant Passages by Query Type](https://github.com/GioiaZheng/msmarco-genqa/blob/main/reports/relevant_passages_by_query_type.png?raw=1)
+
+Across query types, the average number of relevant passages per query remains relatively small and close to one. Location queries show slightly higher averages, which may indicate clearer supporting contexts for such queries.
+
+These findings suggest that while query types influence answer formats, the number of relevant passages per query remains relatively limited across categories.
+
+---
+
 # 6 Discussion
 
 The exploratory analysis reveals several important characteristics of the MS MARCO dataset.
@@ -285,11 +325,12 @@ In Week 1, we conducted an exploratory analysis of the **MS MARCO dataset**.
 
 The analysis included:
 
-* dataset structure exploration
-* query length distribution analysis
-* passage length distribution analysis
-* query keyword frequency analysis
-* answer type classification
+• dataset structure exploration  
+• query length distribution analysis  
+• passage length distribution analysis  
+• query keyword frequency analysis  
+• answer type classification  
+• query type analysis across multiple query categories
 
 These insights provide a strong foundation for developing a **retrieval-based question answering system**.
 
