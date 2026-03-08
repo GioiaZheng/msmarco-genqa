@@ -4,6 +4,8 @@
 
 # 1 Introduction
 
+This report presents a classical lexical retrieval baseline using the BM25 ranking algorithm on the MS MARCO dataset.
+
 Open-domain question answering systems typically follow a **retrieve-then-read architecture**, where relevant documents or passages are first retrieved from a large corpus before answer generation is performed.
 
 During **Week 2**, the objective of this project was to implement a classical **information retrieval baseline** using the **BM25 ranking algorithm** on the **MS MARCO dataset**.
@@ -30,6 +32,9 @@ Each record includes:
 * **query** – user search query
 * **answers** – human-generated answers
 * **passages** – candidate passages retrieved from web documents
+
+Within the passages field, each passage contains:
+* **passage_text** 
 * **is_selected** – binary relevance labels
 
 Dataset statistics:
@@ -70,7 +75,7 @@ All passages were appended to a global list:
 
 ```python
 corpus = []
-for sample in train_data:
+for sample in train_subset:
     passages = sample["passages"]["passage_text"]
     for p in passages:
         corpus.append(p)
@@ -157,17 +162,12 @@ top_k = np.argsort(scores)[::-1][:k]
 
 ## 3.5 Retriever Module
 
-To improve modularity and reusability, the retrieval logic was encapsulated into a reusable class:
-
-```
-src/bm25_retriever.py
-```
+To improve modularity and readability, the retrieval logic was implemented as a reusable retrieval function.
 
 Example usage:
 
 ```python
-retriever = BM25Retriever(corpus)
-results = retriever.retrieve(query, k=5)
+results = retrieve(query, bm25, corpus, k=5)
 ```
 
 This design allows the retrieval module to be easily integrated into future pipelines such as **dense retrieval** and **RAG-based QA systems**.
@@ -254,15 +254,15 @@ The BM25 baseline achieved the following performance:
 
 | Model         | MRR@10     |
 | ------------- | ---------- |
-| BM25 Baseline | **0.2716** |
+| BM25 Baseline | **0.2327** |
 
 Typical BM25 performance on MS MARCO is reported between:
 
 ```
-MRR@10 ≈ 0.18 – 0.28
+MRR@10 ≈ 0.18 – 0.30
 ```
 
-The obtained result (**MRR@10 = 0.2716**) falls within the expected performance range for BM25 on MS MARCO, indicating that the implementation successfully reproduces a standard lexical retrieval baseline.
+The obtained result (**MRR@10 = 0.2327**) falls within the expected performance range
 
 ### Retrieval Evaluation Summary
 
@@ -270,7 +270,7 @@ The obtained result (**MRR@10 = 0.2716**) falls within the expected performance 
 Corpus size: 19,955 passages
 Evaluation queries: 200
 Retrieval depth: Top 10
-MRR@10: 0.2716
+MRR@10: 0.2327
 ```
 
 ### Example Retrieval
@@ -287,7 +287,7 @@ what was the immediate impact of the success of the manhattan project
 The presence of communication amid scientific minds was equally important to the success of the Manhattan Project...
 ```
 
-This example demonstrates that BM25 effectively retrieves passages containing strong lexical overlap with the query.
+The retrieved passage clearly contains strong lexical overlap with the query terms, demonstrating the effectiveness of BM25 in keyword-based retrieval.
 
 ---
 
@@ -343,7 +343,7 @@ The system includes:
 * top-k passage retrieval
 * evaluation using **MRR@10**
 
-The retrieval model achieved an **MRR@10 score of 0.2716**, demonstrating strong baseline performance.
+The retrieval model achieved an **MRR@10 score of 0.2327**, demonstrating strong baseline performance.
 
 This retrieval pipeline provides a strong lexical baseline and establishes the foundation for future experiments involving **dense retrieval models and retrieval-augmented generation systems**.
 
