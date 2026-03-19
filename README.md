@@ -1,14 +1,27 @@
-# MS MARCO Generative QA System
+# MS MARCO Retrieval-Augmented QA System
+![Status](https://img.shields.io/badge/status-in%20progress-yellow)
+![Task](https://img.shields.io/badge/task-Information%20Retrieval-blue)
+![Focus](https://img.shields.io/badge/focus-RAG%20System-green)
 
-A practical **retrieve-then-generate question answering system** built on the **MS MARCO dataset**.
+🚧 Work in Progress — actively developing dense retrieval, reranking, and RAG components.
 
-This project progressively builds a full QA pipeline starting from a **lexical retrieval baseline (BM25)** and moving towards **dense retrieval, reranking, and retrieval-augmented generation (RAG)**.
+An end-to-end retrieval-augmented question answering (RAG) system built on the MS MARCO dataset, combining classical information retrieval methods with neural ranking models.
 
-The repository is structured as an experimental framework for studying modern **information retrieval and open-domain question answering systems**.
+This project implements a multi-stage retrieval pipeline including:
+
+- BM25 lexical retrieval (baseline)
+- Dense retrieval (planned)
+- FAISS-based indexing
+- Transformer-based reranking
+- Retrieval-augmented generation (RAG)
+
+The goal is to explore scalable and modular architectures for modern information retrieval and open-domain QA systems.
+
 
 ---
 
 # Project Overview
+
 
 Modern QA systems typically follow a **retrieve → rerank → generate** pipeline.
 
@@ -17,41 +30,54 @@ This project implements that pipeline step by step:
 ```
 
 User Query
-↓
-Retriever (BM25 / Dense Retrieval)
-↓
-Top-K Passages
-↓
+   ↓
+Retriever (BM25 / Dense)
+   ↓
+Top-K Candidates
+   ↓
 Reranker (Cross-Encoder)
-↓
-Filtered Context
-↓
-Generative Model
-↓
+   ↓
+Ranked Context
+   ↓
+Generator (RAG / LLM)
+   ↓
 Final Answer
 
 ```
 
 The goal is to move from a strong **lexical baseline** toward a full **retrieval-augmented generation system**.
 
+## Why This Project
+
+Retrieval-augmented generation (RAG) systems are becoming a core paradigm in modern NLP and search systems.
+
+This project explores how combining classical IR techniques (BM25) with neural models can improve retrieval quality and downstream question answering performance.
+
+It serves as a foundation for building scalable and modular QA systems aligned with real-world search and AI applications.
+
 ---
 
 # Repository Status
 
-### Completed
+### Current Progress
 
-**Week 1 — Dataset Analysis**
+- Implemented BM25-based retrieval pipeline
+- Built passage corpus and indexing pipeline
+- Evaluated retrieval performance using MRR@10
+- Conducted dataset analysis and query distribution studies
 
-- MS MARCO dataset exploration
-- Query and passage distribution analysis
-- Exploratory data analysis (EDA)
+## Key Results
 
-**Week 2 — Lexical Retrieval Baseline**
+- BM25 baseline achieves **MRR@10 = 0.2327** on MS MARCO
 
-- BM25 retriever implementation
-- Passage corpus construction
-- Retrieval evaluation using **MRR@10**
-- Retrieval behavior analysis
+## Tech Stack
+
+- Python
+- PyTorch (planned)
+- FAISS (planned)
+- BM25 (rank-bm25)
+- HuggingFace Transformers (planned)
+- MS MARCO dataset
 
 ---
 
@@ -211,3 +237,4 @@ Planned improvements:
 Nguyen, Tri, et al.
 **MS MARCO: A Human Generated MAchine Reading COmprehension Dataset.**
 CoRR abs/1611.09268 (2016).
+](https://github.com/GioiaZheng/msmarco-genqa)
