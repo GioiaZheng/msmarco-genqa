@@ -1,60 +1,141 @@
 # MS MARCO GenQA
 
-## 1. Project Scope
-This repository is an iterative prototype for question answering on **MS MARCO v2.1**. The current architecture follows a standard IR pipeline:
-
-**Retrieve → (Re-rank, planned) → Generate**
-
-The immediate objective is to establish reproducible BM25 and generation baselines before adding more advanced retrieval and ranking modules.
+A lightweight research prototype for **retrieval-augmented question answering (RAG)** on the MS MARCO v2.1 dataset.
 
 ---
 
-## 2. Current Implementation Status
+## 1. Overview
 
-### 2.1 Implemented
-- Lexical retriever based on `rank-bm25` (`BM25Retriever`).
-- Week 1 exploratory data analysis (EDA) workflow and visualization outputs.
-- Week 2 BM25 retrieval experiment with MRR@10 evaluation.
-- Week 3 minimal generation baseline (BM25 + T5-small pipeline).
+This repository implements a simplified pipeline for open-domain question answering:
 
-### 2.2 Planned / Not Yet Implemented
-- Dense retrieval (dual-encoder/vector retrieval)
-- Cross-encoder reranking
-- Full end-to-end RAG evaluation framework
-- Production-style training/inference scripts and test suite
+Retrieve → (Re-rank, future) → Generate
 
-> Note: the `reports/` directory currently contains image artifacts only. Stage report markdown files were removed.
+The goal is to establish **reproducible baselines** and analyze the interaction between retrieval quality and generation performance under constrained experimental settings.
+
+This project emphasizes:
+- clarity of system design
+- interpretability of results
+- extensibility toward full-scale RAG systems
 
 ---
 
-## 3. Metric Statement and Interpretation
+## 2. Pipeline
 
-### 3.1 Observable Retrieval Result
-- The Week 2 notebook reports: **MRR@10 = 0.2775** (sampled-subset experiment).
+The current system follows a minimal retrieval-augmented generation workflow:
 
-### 3.2 Interpretation Constraints
-- This value is produced on sampled data with a local passage pool and does not represent full-corpus leaderboard performance.
-- It should be treated as a **baseline feasibility check** for method comparison, not as a final system claim.
+```
+
+Query
+↓
+BM25 Retrieval
+↓
+Top-k Passages
+↓
+T5-small Generator
+↓
+Answer
+
+````
 
 ---
 
-## 4. Repository Structure (Current)
+## 3. Quick Start
 
-```text
+### Environment
+
+Recommended Python: 3.10+
+
+```bash
+pip install datasets rank-bm25 matplotlib pandas transformers torch
+````
+
+### Run Experiments
+
+```bash
+jupyter notebook notebooks/week02_retrieval.ipynb
+```
+
+---
+
+## 4. Key Result
+
+| Component      | Metric          |
+| -------------- | --------------- |
+| BM25 Retrieval | MRR@10 = 0.2775 |
+
+Important:
+
+* Computed on a sampled subset (~50k passages)
+* Closed-set retrieval setting
+* Not directly comparable to official MS MARCO benchmarks
+
+---
+
+## 5. Experimental Setting
+
+To enable local experimentation, this project uses a **sampled passage corpus**:
+
+* Constructed by flattening passages from a subset of training queries
+* Duplicate passages removed
+* Final corpus size: ~49,000 passages
+
+This corresponds to a **closed-set retrieval setup**, where:
+
+* candidate passages are query-associated
+* retrieval difficulty is lower than real-world settings
+
+The objective is **pipeline validation**, not benchmark reproduction.
+
+---
+
+## 6. Implementation Status
+
+### Completed
+
+**Week 1 — Data Analysis**
+
+* Query and passage distribution analysis
+* Query type statistics
+* Visualization of dataset characteristics
+
+**Week 2 — Retrieval Baseline**
+
+* BM25 implementation using `rank-bm25`
+* MRR@10 evaluation
+* Retrieval behavior analysis
+
+**Week 3 — Generation Baseline**
+
+* Minimal RAG pipeline (BM25 + T5-small)
+* Qualitative inspection of generated outputs
+* Identification of failure cases
+
+---
+
+## 7. Key Observations
+
+### Retrieval
+
+* Strong performance under exact lexical overlap
+* Weak performance under semantic variation (paraphrases, synonyms)
+
+### Generation
+
+* Sensitive to retrieval quality
+* Hallucination occurs when relevant evidence is missing
+* Output quality depends heavily on top-k passage selection
+
+---
+
+## 8. Repository Structure
+
+```
 msmarco-genqa/
 ├── notebooks/
 │   ├── week01_eda.ipynb
 │   ├── week02_retrieval.ipynb
 │   └── week03_generation.ipynb
-├── reports/
-│   ├── answer_type_by_query_type.png
-│   ├── hit_rank_distribution.png
-│   ├── passage_length_distribution.png
-│   ├── query_length_by_query_type.png
-│   ├── query_length_distribution.png
-│   ├── query_type_distribution.png
-│   ├── relevant_passages_by_query_type.png
-│   └── rr_distribution.png
+├── reports/        # visualization outputs only
 ├── src/
 │   └── bm25_retriever.py
 ├── LICENSE
@@ -63,59 +144,31 @@ msmarco-genqa/
 
 ---
 
-## 5. Environment and Dependencies
+## 9. Roadmap
 
-Recommended Python: 3.10+
+Planned extensions:
 
-```bash
-pip install datasets rank-bm25 matplotlib pandas transformers torch
-```
-
-Notes:
-- Week 1/2 mainly require `datasets`, `rank-bm25`, `matplotlib`, and `pandas`.
-- Week 3 generation baseline additionally requires `transformers` and `torch`.
+* Dense retrieval (Sentence-BERT + FAISS)
+* Cross-encoder reranking
+* Standardized evaluation (ROUGE, BLEU, BERTScore)
+* End-to-end pipeline scripts and configuration
+* Full-corpus retrieval experiments
 
 ---
 
-## 6. Reproducibility Entry Points
+## 10. Positioning
 
-### 6.1 Week 1: Data Exploration
-- File: `notebooks/week01_eda.ipynb`
-- Purpose: inspect query/passage distributions, query types, and relevant-passage statistics.
+This repository should be viewed as:
 
-### 6.2 Week 2: BM25 Retrieval Baseline
-- File: `notebooks/week02_retrieval.ipynb`
-- Steps:
-  1. Build sampled passage pool
-  2. Run BM25 retrieval
-  3. Evaluate with MRR@10
-  4. Analyze RR and hit-rank distributions
+a controlled experimental environment for studying retrieval–generation interaction
 
-### 6.3 Week 3: Generation Baseline
-- File: `notebooks/week03_generation.ipynb`
-- Purpose: run a minimal retrieval-augmented generation chain (BM25 + T5-small) and inspect failure modes.
+It is not intended as:
+
+* a leaderboard submission
+* a production-ready system
 
 ---
 
-## 7. Engineering Constraints and Known Limitations
+## 11. License
 
-1. **Scale limitation**: current experiments are mostly on sampled subsets and local candidate pools, not full-corpus retrieval.
-2. **Preprocessing simplicity**: retrieval currently uses basic tokenization (lowercase + whitespace), without advanced normalization.
-3. **Incomplete evaluation**: generation-side evaluation is preliminary and lacks a formal human-evaluation protocol.
-4. **Deployment gap**: no standardized CLI, config management, automated tests, or model versioning pipeline yet.
-
----
-
-## 8. Practical Next Steps
-
-1. Add a dense retrieval baseline (e.g., DPR/Sentence-Transformer + FAISS).
-2. Add cross-encoder reranking and measure gains in MRR/NDCG.
-3. Build unified evaluation scripts with fixed splits and random seeds for reproducibility.
-4. Move notebook prototypes into `src/` and `scripts/` for batch experimentation.
-5. Run controlled side-by-side evaluation across BM25 / Dense / Rerank / RAG.
-
----
-
-## 9. License
-
-This project is licensed as specified in `LICENSE`.
+See `LICENSE`.
