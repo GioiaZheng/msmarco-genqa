@@ -1,240 +1,121 @@
-# MS MARCO Retrieval-Augmented QA System
-![Status](https://img.shields.io/badge/status-in%20progress-yellow)
-![Task](https://img.shields.io/badge/task-Information%20Retrieval-blue)
-![Focus](https://img.shields.io/badge/focus-RAG%20System-green)
+# MS MARCO GenQA
 
-🚧 Work in Progress — actively developing dense retrieval, reranking, and RAG components.
+## 1. Project Scope
+This repository is an iterative prototype for question answering on **MS MARCO v2.1**. The current architecture follows a standard IR pipeline:
 
-An end-to-end retrieval-augmented question answering (RAG) system built on the MS MARCO dataset, combining classical information retrieval methods with neural ranking models.
+**Retrieve → (Re-rank, planned) → Generate**
 
-This project implements a multi-stage retrieval pipeline including:
-
-- BM25 lexical retrieval (baseline)
-- Dense retrieval (planned)
-- FAISS-based indexing
-- Transformer-based reranking
-- Retrieval-augmented generation (RAG)
-
-The goal is to explore scalable and modular architectures for modern information retrieval and open-domain QA systems.
-
+The immediate objective is to establish reproducible BM25 and generation baselines before adding more advanced retrieval and ranking modules.
 
 ---
 
-# Project Overview
+## 2. Current Implementation Status
 
+### 2.1 Implemented
+- Lexical retriever based on `rank-bm25` (`BM25Retriever`).
+- Week 1 exploratory data analysis (EDA) workflow and visualization outputs.
+- Week 2 BM25 retrieval experiment with MRR@10 evaluation.
+- Week 3 minimal generation baseline (BM25 + T5-small pipeline).
 
-Modern QA systems typically follow a **retrieve → rerank → generate** pipeline.
+### 2.2 Planned / Not Yet Implemented
+- Dense retrieval (dual-encoder/vector retrieval)
+- Cross-encoder reranking
+- Full end-to-end RAG evaluation framework
+- Production-style training/inference scripts and test suite
 
-This project implements that pipeline step by step:
-
-```
-
-User Query
-   ↓
-Retriever (BM25 / Dense)
-   ↓
-Top-K Candidates
-   ↓
-Reranker (Cross-Encoder)
-   ↓
-Ranked Context
-   ↓
-Generator (RAG / LLM)
-   ↓
-Final Answer
-
-```
-
-The goal is to move from a strong **lexical baseline** toward a full **retrieval-augmented generation system**.
-
-## Why This Project
-
-Retrieval-augmented generation (RAG) systems are becoming a core paradigm in modern NLP and search systems.
-
-This project explores how combining classical IR techniques (BM25) with neural models can improve retrieval quality and downstream question answering performance.
-
-It serves as a foundation for building scalable and modular QA systems aligned with real-world search and AI applications.
+> Note: the `reports/` directory currently contains image artifacts only. Stage report markdown files were removed.
 
 ---
 
-# Repository Status
+## 3. Metric Statement and Interpretation
 
-### Current Progress
+### 3.1 Observable Retrieval Result
+- The Week 2 notebook reports: **MRR@10 = 0.2775** (sampled-subset experiment).
 
-- Implemented BM25-based retrieval pipeline
-- Built passage corpus and indexing pipeline
-- Evaluated retrieval performance using MRR@10
-- Conducted dataset analysis and query distribution studies
-
-## Key Results
-
-- BM25 baseline achieves **MRR@10 = 0.2327** on MS MARCO
-
-## Tech Stack
-
-- Python
-- PyTorch (planned)
-- FAISS (planned)
-- BM25 (rank-bm25)
-- HuggingFace Transformers (planned)
-- MS MARCO dataset
+### 3.2 Interpretation Constraints
+- This value is produced on sampled data with a local passage pool and does not represent full-corpus leaderboard performance.
+- It should be treated as a **baseline feasibility check** for method comparison, not as a final system claim.
 
 ---
 
-# Baseline Performance
+## 4. Repository Structure (Current)
 
-| Retrieval Model | Metric | Score |
-|---|---|---|
-| BM25 | MRR@10 | **0.2327** |
-
-This score falls within the expected performance range for BM25 on MS MARCO.
-
----
-
-# Repository Structure
-
-```
-
+```text
 msmarco-genqa/
 ├── notebooks/
 │   ├── week01_eda.ipynb
-│   └── week02_retrieval.ipynb
-│
+│   ├── week02_retrieval.ipynb
+│   └── week03_generation.ipynb
 ├── reports/
-│   ├── week01_dataset_analysis.md
-│   ├── week02_retrieval_report.md
-│   ├── query_length_distribution.png
+│   ├── answer_type_by_query_type.png
+│   ├── hit_rank_distribution.png
 │   ├── passage_length_distribution.png
-│   ├── rr_distribution.png
-│   └── hit_rank_distribution.png
-│
+│   ├── query_length_by_query_type.png
+│   ├── query_length_distribution.png
+│   ├── query_type_distribution.png
+│   ├── relevant_passages_by_query_type.png
+│   └── rr_distribution.png
 ├── src/
 │   └── bm25_retriever.py
-│
 ├── LICENSE
 └── README.md
-
-````
+```
 
 ---
 
-# Installation
+## 5. Environment and Dependencies
 
-Clone the repository:
+Recommended Python: 3.10+
 
 ```bash
-git clone https://github.com/GioiaZheng/msmarco-genqa.git
-cd msmarco-genqa
-````
-
-Install dependencies:
-
-```bash
-pip install datasets
-pip install rank-bm25
-pip install matplotlib
-pip install pandas
+pip install datasets rank-bm25 matplotlib pandas transformers torch
 ```
+
+Notes:
+- Week 1/2 mainly require `datasets`, `rank-bm25`, `matplotlib`, and `pandas`.
+- Week 3 generation baseline additionally requires `transformers` and `torch`.
 
 ---
 
-# Running the Experiments
+## 6. Reproducibility Entry Points
 
-### Week 1 — Dataset Exploration
+### 6.1 Week 1: Data Exploration
+- File: `notebooks/week01_eda.ipynb`
+- Purpose: inspect query/passage distributions, query types, and relevant-passage statistics.
 
-Run the exploratory analysis notebook:
+### 6.2 Week 2: BM25 Retrieval Baseline
+- File: `notebooks/week02_retrieval.ipynb`
+- Steps:
+  1. Build sampled passage pool
+  2. Run BM25 retrieval
+  3. Evaluate with MRR@10
+  4. Analyze RR and hit-rank distributions
 
-```
-notebooks/week01_eda.ipynb
-```
-
-This notebook includes:
-
-* Query length distribution
-* Passage length distribution
-* Keyword analysis
-* Query type analysis
-
----
-
-### Week 2 — BM25 Retrieval Baseline
-
-Run:
-
-```
-notebooks/week02_retrieval.ipynb
-```
-
-This notebook implements:
-
-* Passage corpus construction
-* BM25 indexing
-* Top-k passage retrieval
-* Retrieval evaluation using **MRR@10**
-* Retrieval result analysis
+### 6.3 Week 3: Generation Baseline
+- File: `notebooks/week03_generation.ipynb`
+- Purpose: run a minimal retrieval-augmented generation chain (BM25 + T5-small) and inspect failure modes.
 
 ---
 
-# Experimental Roadmap
+## 7. Engineering Constraints and Known Limitations
 
-The project follows a 12-week research roadmap.
-
-| Week | Stage        | Task                         |
-| ---- | ------------ | ---------------------------- |
-| 1    | Onboarding   | MS MARCO dataset exploration |
-| 2    | Baseline     | BM25 lexical retrieval       |
-| 3    | Baseline     | Generation baseline          |
-| 4    | Optimization | Dense retrieval              |
-| 5    | Optimization | Reranking                    |
-| 6    | Optimization | Generation fine-tuning       |
-| 7    | Exploration  | Citation-grounded QA         |
-| 8    | Exploration  | Long-document retrieval      |
-| 9    | Engineering  | End-to-end QA pipeline       |
-| 10   | Evaluation   | System benchmarking          |
-| 11   | Reporting    | Final technical report       |
-| 12   | Presentation | Final project presentation   |
+1. **Scale limitation**: current experiments are mostly on sampled subsets and local candidate pools, not full-corpus retrieval.
+2. **Preprocessing simplicity**: retrieval currently uses basic tokenization (lowercase + whitespace), without advanced normalization.
+3. **Incomplete evaluation**: generation-side evaluation is preliminary and lacks a formal human-evaluation protocol.
+4. **Deployment gap**: no standardized CLI, config management, automated tests, or model versioning pipeline yet.
 
 ---
 
-# Planned Repository Evolution
+## 8. Practical Next Steps
 
-As the project expands, the repository will evolve into a modular research framework:
-
-```
-msmarco-genqa/
-├── configs/
-├── data/
-├── notebooks/
-├── reports/
-├── scripts/
-├── src/
-│   ├── retrieval/
-│   ├── rerank/
-│   ├── generation/
-│   ├── pipeline/
-│   └── evaluation/
-├── tests/
-└── README.md
-```
+1. Add a dense retrieval baseline (e.g., DPR/Sentence-Transformer + FAISS).
+2. Add cross-encoder reranking and measure gains in MRR/NDCG.
+3. Build unified evaluation scripts with fixed splits and random seeds for reproducibility.
+4. Move notebook prototypes into `src/` and `scripts/` for batch experimentation.
+5. Run controlled side-by-side evaluation across BM25 / Dense / Rerank / RAG.
 
 ---
 
-# Future Work
+## 9. License
 
-Next steps include implementing **dense retrieval models** to overcome the limitations of lexical matching.
-
-Planned improvements:
-
-* Dense passage retrieval (SBERT)
-* Cross-encoder reranking
-* Retrieval-Augmented Generation (RAG)
-* End-to-end QA pipeline evaluation
-
----
-
-# References
-
-Nguyen, Tri, et al.
-**MS MARCO: A Human Generated MAchine Reading COmprehension Dataset.**
-CoRR abs/1611.09268 (2016).
-](https://github.com/GioiaZheng/msmarco-genqa)
+This project is licensed as specified in `LICENSE`.
