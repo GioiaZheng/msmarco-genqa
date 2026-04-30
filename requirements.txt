@@ -1,0 +1,20 @@
+# Core scientific stack
+numpy>=1.24
+pandas>=2.0
+matplotlib>=3.7
+
+# Datasets and IO
+datasets>=2.14
+
+# Lexical retrieval (current baseline)
+rank-bm25>=0.2.2
+
+# Generation
+torch>=2.0
+transformers>=4.35
+sentencepiece>=0.1.99
+
+# Evaluation
+evaluate>=0.4
+rouge_score>=0.1.2
+sacrebleu>=2.3

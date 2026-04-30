@@ -205,3 +205,30 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# --- Project-specific ---
+
+# Data: keep the directory structure (.gitkeep) but ignore actual data
+data/raw/*
+data/processed/*
+data/cache/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/cache/.gitkeep
+
+# Local caches and intermediate artifacts (root-level only,
+# so we don't accidentally swallow data/cache/.gitkeep)
+/cache/
+/artifacts/
+
+# Experiment results (structured outputs from run_*.py scripts)
+results/
+
+# HuggingFace dataset/transformer caches if accidentally placed in repo
+.cache/
+hf_cache/
+
+# OS / editor cruft
+.DS_Store
+.idea/
+.vscode/
