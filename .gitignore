@@ -223,6 +223,15 @@ data/cache/*
 
 # Experiment results (structured outputs from run_*.py scripts)
 results/
+outputs/*
+!outputs/.gitkeep
+
+# Generated reports (markdown + PDF). Templates stay tracked.
+reports/generated/*
+!reports/generated/.gitkeep
+
+# ir_datasets local home if it lands inside the repo
+.ir_datasets/
 
 # HuggingFace dataset/transformer caches if accidentally placed in repo
 .cache/

@@ -1,102 +1,166 @@
 # MS MARCO GenQA
 
-A research project on **retrieval-augmented question answering (RAG)** built on the MS MARCO v2.1 dataset.
+A research project on **retrieval-augmented question answering (RAG)** built on the MS MARCO dataset.
 
 ## 1. Current Status
 
-**Prototype / pipeline-verification stage.**
+The project is moving from notebook-only prototype to a reproducible,
+script-based experiment pipeline.
 
-The repository currently contains a minimal end-to-end prototype:
+| Week | Goal | Status |
+|------|------|--------|
+| Week 1 | EDA on MS MARCO (queries, passages, query types) | ✅ done — see [notebooks/week01_eda.ipynb](notebooks/week01_eda.ipynb) |
+| Week 2 | **Official BM25 retrieval baseline** on the full MS MARCO Passage corpus | 🟡 pipeline implemented (`experiments/run_retrieval.py`); awaiting first end-to-end run |
+| Week 3 | **RAG generation baseline** on real Week 2 retrievals | 🟡 pipeline implemented (`experiments/run_generation_baseline.py`); awaiting first end-to-end run |
+| Weeks 4–6 | Dense retrieval, reranking, generation fine-tuning | ❌ not started |
 
-- BM25 retrieval on a *closed-set* sampled corpus (~49k passages flattened from query-associated candidates)
-- A toy 3-passage demo of T5-small generation
-- ROUGE-L / BLEU computed on a hand-written 3-question evaluation set
+The legacy notebooks (`notebooks/week02_*.ipynb`, `notebooks/week03_*.ipynb`)
+remain in the repo as **prototype / pipeline-verification artifacts only**.
+Their results — including the MRR@10 = 0.2775 number on a sampled 49k
+closed-set corpus, and the 3-passage T5-small toy demo — are *not* the
+official deliverables and should not be cited as benchmark results.
 
-This is enough to verify that the pieces connect, but it is **not** a research-grade baseline:
+The official deliverables are produced by the script pipeline below and
+written to `outputs/` and `reports/generated/`.
 
-- The retrieval evaluation is overly optimistic because the corpus is built from the same queries used for evaluation.
-- The generation pipeline has never been run end-to-end against a realistic corpus.
-- The evaluation set is too small to draw conclusions from.
-
-The next stage of the project (see Section 6) replaces this prototype with a standard IR baseline and a modular RAG pipeline.
-
-## 2. Pipeline (current)
+## 2. Repository Structure
 
 ```
-Query
-  ↓
-BM25 Retrieval     (closed-set sampled corpus)
-  ↓
-Top-k Passages
-  ↓
-T5-small Generator (no fine-tuning, naive concatenation)
-  ↓
-Answer
+msmarco-genqa/
+├── configs/
+│   └── baseline.yaml             # paths, retrieval params, eval set sizes
+├── experiments/
+│   ├── run_retrieval.py          # Week 2: build BM25 index + evaluate dev/small
+│   └── run_generation_baseline.py # Week 3: RAG generation on Week 2 retrievals
+├── src/
+│   ├── data/msmarco.py           # ir_datasets loader for the official corpus
+│   ├── retrieval/bm25.py         # bm25s wrapper with save/load
+│   ├── generation/rag_generator.py
+│   ├── evaluation/
+│   │   ├── retrieval.py          # MRR@k, Recall@k, nDCG@k
+│   │   └── generation.py         # ROUGE-L, BLEU, EM, Token-F1
+│   ├── reporting/build_report.py # markdown + PDF report generator
+│   └── bm25_retriever.py         # legacy rank_bm25 wrapper (used by week3 notebook only)
+├── reports/
+│   ├── templates/                # markdown templates with {{placeholders}}
+│   └── generated/                # filled-in markdown + PDF (gitignored)
+├── outputs/                      # experiment outputs (gitignored)
+├── data/                         # raw/processed/cache (gitignored)
+├── figures/                      # static plots from notebooks (committed)
+└── notebooks/                    # exploratory + prototype notebooks (do not cite as official)
 ```
 
-## 3. Quick Start
+Conventions:
+
+- Code runs from the project root. All scripts add the project root to
+  `sys.path` themselves; you do not need to set `PYTHONPATH`.
+- Paths in scripts come from `configs/baseline.yaml` or are derived from
+  `PROJECT_ROOT`. No hardcoded relative paths.
+- `outputs/`, `data/raw/`, `data/processed/`, `reports/generated/` are
+  gitignored. Only the directory structure (`.gitkeep` files) is committed.
+
+## 3. Setup
 
 Recommended Python: 3.10+
 
 ```bash
 pip install -r requirements.txt
-jupyter notebook notebooks/
+# optional, for PDF report generation
+brew install pandoc           # macOS
+brew install --cask basictex  # macOS LaTeX engine; alternative: `mactex`
+# Linux:
+# sudo apt-get install pandoc texlive-xetex
 ```
 
-Each notebook resolves paths from a `PROJECT_ROOT` defined in its setup cell, so they can be launched from any working directory inside the repo.
+Without pandoc the pipeline still produces the markdown report; only the
+PDF step is skipped.
 
-## 4. Repository Structure
+## 4. Running Week 2 — BM25 retrieval baseline
 
-```
-msmarco-genqa/
-├── notebooks/
-│   ├── week01_eda.ipynb         # exploratory data analysis
-│   ├── week02_retrieval.ipynb   # BM25 retrieval prototype
-│   └── week03_generation.ipynb  # T5-small generation demo
-├── src/
-│   └── bm25_retriever.py        # BM25 wrapper used by week03 (more modules to come)
-├── data/
-│   ├── raw/                     # raw downloads (gitignored)
-│   ├── processed/               # cached corpora, indices (gitignored)
-│   └── cache/                   # transient caches (gitignored)
-├── figures/                     # plots generated by the notebooks (committed)
-├── requirements.txt
-├── LICENSE
-└── README.md
+```bash
+python experiments/run_retrieval.py
+python -m src.reporting.build_report --week week02
 ```
 
-Conventions:
+What happens:
 
-- **`notebooks/`** — narrative, visualization, and experiment exposition. Notebooks `import` from `src/`; they should not contain non-trivial logic of their own.
-- **`src/`** — reusable, testable Python modules. (Currently sparse; the migration of logic out of notebooks is in progress.)
-- **`data/`** — local data, all subdirectories are gitignored. Only `.gitkeep` markers are tracked.
-- **`figures/`** — plots committed to the repo so they render in GitHub.
+1. `run_retrieval.py` downloads (first run only) the official MS MARCO
+   Passage corpus and dev/small queries via `ir_datasets`. Expect ~3 GB of
+   downloads and tens of minutes of indexing on first run; the index is
+   cached to `data/processed/bm25_index_msmarco/` for re-use.
+2. Top-1000 retrieval is run for all dev/small queries.
+3. Outputs:
+   - `outputs/week02_bm25/metrics.json` (MRR@10 / Recall@100 / Recall@1000)
+   - `outputs/week02_bm25/run.tsv` (TREC-format full top-1000 run)
+   - `outputs/week02_bm25/examples.jsonl` (qualitative samples)
+4. `build_report.py` fills `reports/templates/week02_bm25.md`, writes
+   `reports/generated/week02_bm25.md`, and (if pandoc is installed)
+   `reports/generated/week02_bm25.pdf`.
 
-## 5. Current Results
+Reference number: the published Anserini/Lucene BM25 baseline on this split
+is approximately MRR@10 ≈ 0.184. Our `bm25s`-based result should be in the
+same ballpark.
 
-| Component      | Setting                   | Metric          | Caveat                                                                 |
-| -------------- | ------------------------- | --------------- | ---------------------------------------------------------------------- |
-| BM25 Retrieval | Sampled closed-set, ~49k passages | MRR@10 = 0.2775 | Corpus and eval queries drawn from the same train subset → optimistic. |
-| T5-small RAG   | 3-passage toy corpus, 3 hand-written queries | ROUGE-L ≈ 0.05, BLEU = 0 | Demonstration only; not a benchmark result.                            |
+## 5. Running Week 3 — RAG generation baseline
 
-These numbers are kept here for honesty; they will be replaced once the standard IR baseline (Section 6) is in place.
+Requires Week 2 to have produced `outputs/week02_bm25/run.tsv`.
 
-## 6. Next Step: Standard IR Baseline + Modular RAG Pipeline
+```bash
+python experiments/run_generation_baseline.py
+python -m src.reporting.build_report --week week03
+```
 
-Planned refactor, in phases:
+What happens:
 
-1. **IR foundation.** Replace the closed-set sampling with a corpus built from *all* MS MARCO passages (open-set with respect to evaluation queries), and evaluate with **MRR@10**, **Recall@100**, **Recall@1000**, and **nDCG@10** on a fixed dev split.
-2. **Modular pipeline.** Decompose the RAG pipeline into independent stages: retrieval → reranking (cross-encoder) → redundancy filtering (MMR-style) → context construction → generation.
-3. **Better generation evaluation.** Add **BERTScore** alongside ROUGE-L / BLEU, and an optional NLI-based faithfulness check.
-4. **Ablation harness.** Compare baseline / +rerank / +filter / +rerank+filter under a shared config and emit a structured results table.
-5. *(Later)* Dense retrieval (Sentence-BERT + FAISS) and hybrid score fusion.
+1. Loads the Week 2 BM25 run from `outputs/week02_bm25/run.tsv`.
+2. Cross-references dev/small query ids with MS MARCO QA v2.1 (HuggingFace
+   `ms_marco`, validation split) to recover human-written reference
+   answers.
+3. Samples a CPU-friendly evaluation subset (200 queries by default; see
+   `generation.num_eval_queries` in `configs/baseline.yaml`).
+4. Generates answers with `t5-small` conditioned on the BM25 top-3
+   passages.
+5. Outputs:
+   - `outputs/week03_generation/predictions.jsonl`
+   - `outputs/week03_generation/metrics.json`  (ROUGE-L, BLEU, EM, Token-F1)
+   - `outputs/week03_generation/examples.jsonl`
+6. `build_report.py` fills `reports/templates/week03_generation.md` and
+   produces the corresponding markdown + PDF.
 
-Each phase keeps the same evaluation set so improvements are directly comparable.
+## 6. Configuration
 
-## 7. Positioning
+All knobs live in [configs/baseline.yaml](configs/baseline.yaml):
 
-This repository is a controlled experimental environment for studying retrieval–generation interaction. It is not intended as a leaderboard submission or a production system.
+- `retrieval.k1`, `retrieval.b` — BM25 hyperparameters
+- `retrieval.top_k` — depth of the saved run (default 1000)
+- `data.corpus_limit` — set to a small int (e.g. 200000) for a development
+  smoke test that does **not** reproduce official numbers; leave `null`
+  for the official baseline
+- `generation.model_name` — swap `t5-small` for `t5-base`,
+  `facebook/bart-base`, etc.
+- `generation.num_eval_queries` — Week 3 eval-set size
 
-## 8. License
+## 7. Notebooks vs Scripts
+
+- Notebooks are exploratory artifacts (data analysis, qualitative
+  inspection). They are **not** the source of truth for benchmark numbers.
+- Scripts in `experiments/` produce reproducible outputs and structured
+  metrics.json files. Reports under `reports/generated/` are the canonical
+  write-ups.
+
+## 8. Roadmap
+
+The next units of work are:
+
+- Week 4: Sentence-BERT bi-encoder retriever + hybrid BM25/dense fusion.
+- Week 5: cross-encoder reranker over the BM25 top-100.
+- Week 6: supervised fine-tuning of the generation model on
+  `(question, gold passage, answer)` triples.
+
+Each will reuse the same data loader, evaluation metrics, output schema, and
+report template / generator, so the comparison across weeks stays
+apples-to-apples.
+
+## 9. License
 
 See [LICENSE](LICENSE).

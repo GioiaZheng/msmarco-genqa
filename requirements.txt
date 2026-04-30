@@ -3,11 +3,16 @@ numpy>=1.24
 pandas>=2.0
 matplotlib>=3.7
 
+# Configuration
+pyyaml>=6.0
+
 # Datasets and IO
 datasets>=2.14
+ir-datasets>=0.5.5            # official MS MARCO Passage corpus + dev/small
 
-# Lexical retrieval (current baseline)
-rank-bm25>=0.2.2
+# Lexical retrieval
+rank-bm25>=0.2.2              # used by the legacy notebook prototype (week 3)
+bm25s>=0.2                    # primary backend for the official Week 2 baseline
 
 # Generation
 torch>=2.0

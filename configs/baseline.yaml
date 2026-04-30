@@ -1,0 +1,37 @@
+# Baseline configuration for the MS MARCO Passage Ranking pipeline.
+# Paths are interpreted relative to the project root.
+
+seed: 42
+
+data:
+  cache_dir: data/raw            # ir_datasets cache (will be ~3 GB after first run)
+  expected_corpus_size: "~8.8M"  # for reporting only
+  expected_dev_queries: 6980     # for reporting only
+  # Set ``corpus_limit`` to a small int (e.g. 200000) for a development smoke test.
+  # Leave null for the official baseline.
+  corpus_limit: null
+
+retrieval:
+  backend: bm25s
+  k1: 1.5
+  b: 0.75
+  stopwords: en
+  top_k: 1000
+  index_dir: data/processed/bm25_index_msmarco
+
+eval_retrieval:
+  ks_mrr: [10]
+  ks_recall: [100, 1000]
+  output_dir: outputs/week02_bm25
+  n_examples: 20                # qualitative examples dumped to examples.jsonl
+
+generation:
+  model_name: t5-small
+  max_input_length: 512
+  max_new_tokens: 64
+  top_k_passages: 3
+  num_eval_queries: 200         # subset for the W3 baseline (CPU-friendly)
+  output_dir: outputs/week03_generation
+
+eval_generation:
+  metrics: [rouge-l, bleu, exact-match, token-f1]
