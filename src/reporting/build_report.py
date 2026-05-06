@@ -258,11 +258,35 @@ def build_week03(out_dir: Path) -> str:
 # PDF
 # --------------------------------------------------------------------------- #
 
-def try_pdf(md_path: Path) -> tuple[bool, str]:
-    """Attempt to render `md_path` to PDF via pandoc.
+def _augmented_env() -> dict:
+    """Environment for the pandoc subprocess.
 
-    Returns (success, message). The function never raises — callers should
-    print the message and continue.
+    Adds the user-local Python ``bin/`` directory (where ``pip install --user``
+    drops ``weasyprint``) to ``PATH``, and sets ``DYLD_LIBRARY_PATH`` to
+    Homebrew's ``/usr/local/lib`` so weasyprint can find its native deps
+    (Pango, GLib, fontconfig, ...) on macOS.
+    """
+    import os
+    import sys
+
+    env = os.environ.copy()
+    user_bin = Path(sys.prefix).parent / "bin"  # may not exist; cheap to add
+    user_site_bin = Path.home() / "Library" / "Python" / f"{sys.version_info.major}.{sys.version_info.minor}" / "bin"
+    extra = [str(p) for p in (user_bin, user_site_bin) if p.exists()]
+    if extra:
+        env["PATH"] = ":".join([*extra, env.get("PATH", "")])
+    if sys.platform == "darwin":
+        existing = env.get("DYLD_LIBRARY_PATH", "")
+        env["DYLD_LIBRARY_PATH"] = ":".join(filter(None, ["/usr/local/lib", existing]))
+    return env
+
+
+def try_pdf(md_path: Path) -> tuple[bool, str]:
+    """Attempt to render ``md_path`` to PDF via pandoc.
+
+    Tries engines in order: ``xelatex`` → ``pdflatex`` → ``weasyprint``. Returns
+    (success, message). Never raises — callers should print the message and
+    continue.
     """
     if not shutil.which("pandoc"):
         return False, (
@@ -270,39 +294,45 @@ def try_pdf(md_path: Path) -> tuple[bool, str]:
             "  install with e.g. `brew install pandoc` (macOS) or "
             "`sudo apt-get install pandoc texlive-xetex` (Debian/Ubuntu)."
         )
+
     pdf_path = md_path.with_suffix(".pdf")
-    cmd = [
-        "pandoc",
-        str(md_path),
-        "-o",
-        str(pdf_path),
-        "--from=gfm",
-        "--pdf-engine=xelatex",
-        "-V",
-        "mainfont=Helvetica",
+    env = _augmented_env()
+
+    # Engine candidates: each is (engine_name, label, extra_args).
+    candidates: list[tuple[str, str, list[str]]] = [
+        ("xelatex", "xelatex (LaTeX)", ["-V", "mainfont=Helvetica"]),
+        ("pdflatex", "pdflatex (LaTeX)", []),
+        ("weasyprint", "weasyprint (HTML/CSS)", []),
     ]
-    try:
-        subprocess.run(cmd, check=True, capture_output=True)
-        return True, f"Wrote PDF: {pdf_path}"
-    except subprocess.CalledProcessError as exc:
-        # Retry without xelatex (in case xelatex is not installed)
-        cmd_fallback = [
+
+    last_err = ""
+    for engine, label, extra in candidates:
+        # ``shutil.which`` won't see weasyprint in --user bin unless we widen
+        # the PATH the same way we do for the subprocess.
+        if not shutil.which(engine, path=env.get("PATH")):
+            continue
+        cmd = [
             "pandoc",
             str(md_path),
             "-o",
             str(pdf_path),
             "--from=gfm",
+            f"--pdf-engine={engine}",
+            *extra,
         ]
         try:
-            subprocess.run(cmd_fallback, check=True, capture_output=True)
-            return True, f"Wrote PDF: {pdf_path} (default engine, no xelatex)"
-        except subprocess.CalledProcessError as exc2:
-            return False, (
-                "pandoc found but PDF generation failed (likely missing LaTeX engine).\n"
-                "  install xelatex with `brew install --cask basictex` (macOS) "
-                "or `sudo apt-get install texlive-xetex` (Debian/Ubuntu).\n"
-                f"  pandoc stderr: {exc2.stderr.decode().strip()[:400]}"
-            )
+            subprocess.run(cmd, check=True, capture_output=True, env=env)
+            return True, f"Wrote PDF: {pdf_path} (engine: {label})"
+        except subprocess.CalledProcessError as exc:
+            last_err = (exc.stderr or b"").decode(errors="replace").strip()[:400]
+
+    return False, (
+        "pandoc found but no working PDF engine. Install one of:\n"
+        "  - xelatex: `brew install --cask basictex` (macOS) "
+        "or `sudo apt-get install texlive-xetex` (Debian/Ubuntu)\n"
+        "  - weasyprint: `pip install --user weasyprint && brew install pango fontconfig`\n"
+        f"{('Last engine stderr: ' + last_err) if last_err else ''}"
+    )
 
 
 # --------------------------------------------------------------------------- #
