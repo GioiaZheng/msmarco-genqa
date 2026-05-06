@@ -23,3 +23,6 @@ sentencepiece>=0.1.99
 evaluate>=0.4
 rouge_score>=0.1.2
 sacrebleu>=2.3
+
+# Testing
+pytest>=7.0

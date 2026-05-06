@@ -36,6 +36,7 @@ retrieval:
 
 eval_retrieval:
   ks_mrr: [10]
+  ks_ndcg: [10]
   ks_recall: [100, 1000]
   output_dir: outputs/week02_bm25
   n_examples: 20                # qualitative examples dumped to examples.jsonl

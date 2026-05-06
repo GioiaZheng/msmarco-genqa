@@ -80,6 +80,26 @@ def _substitute(template: str, fields: dict[str, str]) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Week 01 — EDA. No metrics.json required: this is a notebook-driven report
+# that just frames the figures the W1 notebook produces.
+# --------------------------------------------------------------------------- #
+
+def build_week01(out_dir: Path) -> str:
+    """Render the W1 EDA report.
+
+    Unlike W2/W3, W1 has no ``metrics.json`` — it's an EDA notebook.
+    The template just embeds the figures that ``notebooks/week01_eda.ipynb``
+    writes to ``figures/`` and substitutes a generation timestamp.
+    ``out_dir`` is unused but kept in the signature for API symmetry.
+    """
+    template = (TEMPLATES_DIR / "week01_eda.md").read_text()
+    fields = {
+        "generated_at": dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
+    }
+    return _substitute(template, fields)
+
+
+# --------------------------------------------------------------------------- #
 # Week 02
 # --------------------------------------------------------------------------- #
 
@@ -143,8 +163,15 @@ def build_week02(out_dir: Path) -> str:
     cfg = payload.get("config", {})
     metrics = payload.get("metrics", {})
     timing = payload.get("wall_clock_seconds", {})
-    n_eval = metrics.get("n_queries", 0)
-    search = timing.get("search")
+    # Schema migration: ``n_examples`` is the new top-level field; older
+    # metrics.json files keep the count inside ``metrics["n_queries"]``.
+    n_eval = (
+        payload.get("n_examples")
+        or metrics.get("n_queries")
+        or 0
+    )
+    # Old schema used "search_this_run"; new schema uses "search".
+    search = timing.get("search") if timing.get("search") is not None else timing.get("search_this_run")
     ms_per_q = (search * 1000 / n_eval) if (search and n_eval) else None
 
     fields = {
@@ -160,6 +187,7 @@ def build_week02(out_dir: Path) -> str:
         "search_seconds": _fmt_float(search, 1),
         "search_ms_per_query": _fmt_float(ms_per_q, 1),
         "mrr_at_10": _fmt_float(metrics.get("mrr@10")),
+        "ndcg_at_10": _fmt_float(metrics.get("ndcg@10")),
         "recall_at_100": _fmt_float(metrics.get("recall@100")),
         "recall_at_1000": _fmt_float(metrics.get("recall@1000")),
         "case_studies": _format_week02_case_studies(examples),
@@ -234,6 +262,14 @@ def build_week03(out_dir: Path) -> str:
     records = _read_jsonl(predictions_path)
     cfg = payload.get("config", {})
     metrics = payload.get("metrics", {})
+    # Schema migration: prefer top-level ``n_examples`` (new), fall back to
+    # ``metrics.n_predictions`` or ``n_eval`` from older metrics.json files.
+    n_eval = (
+        payload.get("n_examples")
+        or metrics.get("n_predictions")
+        or payload.get("n_eval")
+        or 0
+    )
 
     fields = {
         "generated_at": dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -241,7 +277,7 @@ def build_week03(out_dir: Path) -> str:
         "top_k_passages": cfg.get("generation", {}).get("top_k_passages", "—"),
         "max_input_length": cfg.get("generation", {}).get("max_input_length", "—"),
         "max_new_tokens": cfg.get("generation", {}).get("max_new_tokens", "—"),
-        "n_eval": metrics.get("n_predictions", payload.get("n_eval", 0)),
+        "n_eval": n_eval,
         "rouge_l": _fmt_float(metrics.get("rouge-l")),
         "bleu": _fmt_float(metrics.get("bleu")),
         "exact_match": _fmt_float(metrics.get("exact-match")),
@@ -345,14 +381,18 @@ def main() -> None:
     parser.add_argument(
         "--week",
         required=True,
-        choices=["week02", "week03"],
+        choices=["week01", "week02", "week03"],
         help="Which week's report to build.",
     )
     args = parser.parse_args()
 
     GENERATED_DIR.mkdir(parents=True, exist_ok=True)
 
-    if args.week == "week02":
+    if args.week == "week01":
+        out_dir = OUTPUTS_DIR / "week01_eda"  # unused, notebook-driven
+        md = build_week01(out_dir)
+        out_md = GENERATED_DIR / "week01_eda.md"
+    elif args.week == "week02":
         out_dir = OUTPUTS_DIR / "week02_bm25"
         md = build_week02(out_dir)
         out_md = GENERATED_DIR / "week02_bm25.md"

@@ -23,6 +23,13 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
+class BM25IndexConfigMismatch(ValueError):
+    """Raised when a cached BM25 index was built with different parameters.
+
+    Subclasses ``ValueError`` so existing exception handlers don't break.
+    """
+
+
 class BM25Retriever:
     """Thin wrapper around ``bm25s.BM25`` with doc_id mapping and persistence."""
 
@@ -93,7 +100,19 @@ class BM25Retriever:
         path: Path | str,
         n_threads: int = 0,
         chunksize: int = 50,
+        expected_config: dict | None = None,
     ) -> "BM25Retriever":
+        """Load a saved BM25 index.
+
+        Parameters
+        ----------
+        expected_config :
+            If provided, dict with any of ``k1``, ``b``, ``stopwords``. Each
+            present key is checked against the cached index's ``config.json``;
+            mismatches raise ``BM25IndexConfigMismatch`` with instructions to
+            pass ``--rebuild-index``. This prevents the silent foot-gun of
+            reusing an index built with different BM25 parameters.
+        """
         import bm25s
 
         path = Path(path)
@@ -101,6 +120,34 @@ class BM25Retriever:
             doc_ids = json.load(f)
         with open(path / "config.json") as f:
             cfg = json.load(f)
+
+        if expected_config:
+            mismatches = []
+            for key in ("k1", "b", "stopwords"):
+                if key not in expected_config:
+                    continue
+                cached = cfg.get(key)
+                requested = expected_config[key]
+                # Normalise numeric types so 1.5 == 1.5e0 etc.
+                if isinstance(cached, (int, float)) and isinstance(requested, (int, float)):
+                    if float(cached) != float(requested):
+                        mismatches.append((key, cached, requested))
+                elif cached != requested:
+                    mismatches.append((key, cached, requested))
+            if mismatches:
+                lines = [f"  {k}: cached={c!r}, requested={r!r}" for k, c, r in mismatches]
+                raise BM25IndexConfigMismatch(
+                    "Cached BM25 index config does not match requested config:\n"
+                    + "\n".join(lines)
+                    + f"\n\nIndex location: {path}"
+                    + f"\nIndex config:   {cfg}"
+                    + f"\nRequested:      {expected_config}"
+                    + "\n\nFix one of:"
+                    + "\n  - rerun with --rebuild-index to rebuild the index"
+                    + "\n    with the new config (slow on the full MS MARCO corpus)"
+                    + "\n  - revert configs/baseline.yaml to match the cached index"
+                )
+
         retriever = cls(
             corpus_texts=None,
             doc_ids=doc_ids,

@@ -1,8 +1,20 @@
 """Generation metrics: ROUGE-L, BLEU, Exact Match, Token F1.
 
-ROUGE-L and BLEU are computed via the ``evaluate`` library against the *first*
-reference (HuggingFace's APIs do not natively support best-of-N references).
-Exact Match and Token F1 use the SQuAD-style "best of references" rule.
+All four metrics are computed in **best-of-N reference** mode:
+
+- ROUGE-L: HF ``evaluate``'s ``rouge`` accepts ``references: List[List[str]]``
+  and uses ``rouge_score.score_multi`` internally, which scores against each
+  reference and keeps the best.
+- BLEU: HF ``evaluate``'s ``bleu`` natively supports ``List[List[str]]`` —
+  the underlying NLTK BLEU uses the closest-length / max-overlap reference
+  per prediction.
+- Exact Match: SQuAD-style normalisation, ``any`` over references.
+- Token F1: SQuAD-style token overlap, ``max`` over references.
+
+This is the standard MS MARCO QA / SQuAD evaluation convention. Earlier
+versions of this file scored ROUGE/BLEU against only the first reference,
+which systematically under-rated paraphrases that match a non-first
+human-written answer.
 """
 
 from __future__ import annotations
@@ -78,15 +90,25 @@ def evaluate_generation(
     rouge = evaluate.load("rouge")
     bleu = evaluate.load("bleu")
 
-    primary_refs = [(refs[0] if refs else "") for refs in references]
-    rouge_l = rouge.compute(
-        predictions=list(predictions),
-        references=primary_refs,
-    )["rougeL"]
-    bleu_score = bleu.compute(
-        predictions=list(predictions),
-        references=[[r] for r in primary_refs],
-    )["bleu"]
+    # Best-of-N references: pass list-of-list directly to both metrics.
+    # Predictions whose reference list is empty are dropped (they would just
+    # contribute zero in any case, but HF metrics can crash on empty inner
+    # lists). EM / Token-F1 below handle the empty-refs case explicitly.
+    paired = [(p, list(r)) for p, r in zip(predictions, references) if r]
+    if paired:
+        scoring_preds = [p for p, _ in paired]
+        scoring_refs = [r for _, r in paired]
+        rouge_l = rouge.compute(
+            predictions=scoring_preds,
+            references=scoring_refs,
+        )["rougeL"]
+        bleu_score = bleu.compute(
+            predictions=scoring_preds,
+            references=scoring_refs,
+        )["bleu"]
+    else:
+        rouge_l = 0.0
+        bleu_score = 0.0
 
     n = len(predictions)
     em = sum(exact_match(p, refs) for p, refs in zip(predictions, references)) / max(n, 1)

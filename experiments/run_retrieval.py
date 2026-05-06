@@ -38,6 +38,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.data.msmarco import load_msmarco_passage  # noqa: E402
 from src.evaluation.retrieval import evaluate_retrieval  # noqa: E402
 from src.retrieval.bm25 import BM25Retriever  # noqa: E402
+from src.util.environment import capture_environment  # noqa: E402
 
 logger = logging.getLogger("run_retrieval")
 
@@ -147,6 +148,7 @@ def main() -> None:
     n_threads = int(cfg["retrieval"].get("n_threads", 0))
     bm25s_chunksize = int(cfg["retrieval"].get("bm25s_chunksize", 50))
     ks_mrr = tuple(cfg["eval_retrieval"].get("ks_mrr", [10]))
+    ks_ndcg = tuple(cfg["eval_retrieval"].get("ks_ndcg", [10]))
     ks_recall = tuple(cfg["eval_retrieval"].get("ks_recall", [100, 1000]))
     n_examples = int(cfg["eval_retrieval"].get("n_examples", 20))
     corpus_limit = cfg["data"].get("corpus_limit")
@@ -163,10 +165,19 @@ def main() -> None:
     index_time: float | None = None
     if have_index:
         logger.info("Loading cached BM25 index from %s", index_dir)
+        # Validate that the cached index was built with the same BM25
+        # parameters as the current YAML config. Otherwise the user's k1/b
+        # changes would be silently ignored — see R1 in the rigor review.
+        expected = {
+            "k1": float(cfg["retrieval"]["k1"]),
+            "b": float(cfg["retrieval"]["b"]),
+            "stopwords": cfg["retrieval"].get("stopwords", "en"),
+        }
         retriever = BM25Retriever.load(
             index_dir,
             n_threads=n_threads,
             chunksize=bm25s_chunksize,
+            expected_config=expected,
         )
     else:
         retriever = BM25Retriever(
@@ -305,6 +316,7 @@ def main() -> None:
         qrels=data.qrels,
         ks_mrr=ks_mrr,
         ks_recall=ks_recall,
+        ks_ndcg=ks_ndcg,
     )
     logger.info("Metrics: %s", metrics)
 
@@ -359,15 +371,20 @@ def main() -> None:
             f.write(json.dumps(example, ensure_ascii=False) + "\n")
     logger.info("Wrote %d examples to %s", len(sample_qids), examples_path)
 
-    # ---- 7. metrics.json ----
+    # ---- 7. metrics.json (unified schema across W2/W3) ----
+    n_examples = metrics.pop("n_queries", None)  # promote count to top level
     payload = {
+        "task": "retrieval",
+        "dataset": "msmarco-passage/dev/small",
+        "n_examples": n_examples,
         "config": cfg,
         "metrics": metrics,
         "wall_clock_seconds": {
             "indexing": index_time,
-            "search_this_run": search_time,
+            "search": search_time,
             "search_pending_count": len(pending_qids),
         },
+        "environment": capture_environment(),
         "top_k": top_k,
         "resumed": args.resume and bool(set(qids) - set(pending_qids)),
     }
@@ -377,8 +394,8 @@ def main() -> None:
 
     # ---- 8. Friendly summary ----
     print("\n=== Week 2 BM25 baseline ===")
-    print(f"queries evaluated: {metrics.get('n_queries')}")
-    for key in ("mrr@10", "recall@100", "recall@1000"):
+    print(f"queries evaluated: {n_examples}")
+    for key in ("mrr@10", "ndcg@10", "recall@100", "recall@1000"):
         if key in metrics:
             print(f"  {key:14s} = {metrics[key]:.4f}")
     print(f"outputs: {output_dir}")

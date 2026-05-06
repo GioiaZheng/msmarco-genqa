@@ -37,6 +37,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.data.msmarco import get_docs_store, load_msmarco_passage  # noqa: E402
 from src.evaluation.generation import evaluate_generation  # noqa: E402
 from src.generation.rag_generator import RAGGenerationConfig, RAGGenerator  # noqa: E402
+from src.util.environment import capture_environment  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -237,15 +238,19 @@ def main() -> None:
             )
     logger.info("Wrote %d qualitative examples to %s", min(20, len(predictions)), examples_path)
 
-    # ---- 7. Metrics ----
+    # ---- 7. Metrics (unified schema across W2/W3) ----
     metrics = evaluate_generation(predictions, references_per_query)
     logger.info("Metrics: %s", metrics)
 
+    n_examples = metrics.pop("n_predictions", len(predictions))
     payload = {
+        "task": "generation",
+        "dataset": "msmarco-passage/dev/small ∩ ms_marco/v2.1/validation",
+        "n_examples": n_examples,
         "config": cfg,
         "metrics": metrics,
         "wall_clock_seconds": {"generation": gen_time},
-        "n_eval": len(predictions),
+        "environment": capture_environment(),
     }
     with open(w3_dir / "metrics.json", "w") as f:
         json.dump(payload, f, indent=2, default=str)

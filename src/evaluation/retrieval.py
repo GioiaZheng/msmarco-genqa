@@ -45,11 +45,17 @@ def evaluate_retrieval(
     qrels: dict[str, set[str]],
     ks_mrr: Sequence[int] = (10,),
     ks_recall: Sequence[int] = (100, 1000),
+    ks_ndcg: Sequence[int] = (10,),
 ) -> dict[str, float]:
     """Average metrics across queries that have at least one positive qrel.
 
     Queries present in ``runs`` but absent from ``qrels`` (or with empty qrels)
     are skipped, mirroring the MS MARCO official evaluation behaviour.
+
+    Returned dict contains one key per ``mrr@k`` / ``ndcg@k`` / ``recall@k``,
+    plus ``n_queries`` (the number of queries that contributed to the
+    averages). The runner pulls ``n_queries`` out and promotes it to the
+    top-level ``n_examples`` field of the saved ``metrics.json``.
     """
     qids = [qid for qid in runs if qrels.get(qid)]
     n = len(qids)
@@ -60,6 +66,10 @@ def evaluate_retrieval(
     for k in ks_mrr:
         metrics[f"mrr@{k}"] = sum(
             reciprocal_rank(runs[q], qrels[q], k) for q in qids
+        ) / n
+    for k in ks_ndcg:
+        metrics[f"ndcg@{k}"] = sum(
+            ndcg_at_k(runs[q], qrels[q], k) for q in qids
         ) / n
     for k in ks_recall:
         metrics[f"recall@{k}"] = sum(

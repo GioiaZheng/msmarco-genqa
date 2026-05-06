@@ -1,12 +1,6 @@
----
-title: "Week 3: RAG Generation Baseline"
-date: "{{generated_at}}"
-geometry: margin=1in
----
-
 # Week 3: RAG Generation Baseline
 
-*Auto-generated from `outputs/week03_generation/`. Do not edit by hand. Re-run
+*Auto-generated {{generated_at}} from `outputs/week03_generation/`. Do not edit by hand. Re-run
 `python -m src.reporting.build_report --week week03` to refresh.*
 
 ## 1. Objective
@@ -49,11 +43,15 @@ answer
 
 ## 5. Evaluation Metrics
 
-- **ROUGE-L** — longest-common-subsequence overlap (HF `rouge`, vs. the
-  first reference).
-- **BLEU** — corpus-level n-gram precision (HF `bleu`).
-- **Exact Match (EM)** — SQuAD-style normalisation, best-of references.
-- **Token F1** — SQuAD-style token overlap, best-of references.
+All four metrics use **best-of-N references**: when MS MARCO provides
+multiple human-written answers for a query, each prediction is scored
+against every reference and the highest score is kept. This is the
+standard MS MARCO QA / SQuAD evaluation convention.
+
+- **ROUGE-L** — longest-common-subsequence overlap (HF `rouge`, multi-ref).
+- **BLEU** — corpus-level n-gram precision (HF `bleu`, multi-ref).
+- **Exact Match (EM)** — SQuAD-style normalisation, `any` over references.
+- **Token F1** — SQuAD-style token overlap, `max` over references.
 
 ## 6. Results
 

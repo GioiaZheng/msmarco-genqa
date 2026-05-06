@@ -9,11 +9,14 @@ Retrieval-augmented question answering on MS MARCO. The repo has two parallel tr
 
 | Week | Pipeline | Result | Notebook (prototype) |
 |------|----------|--------|----------------------|
-| W1 — EDA | n/a | n/a | `notebooks/week01_eda.ipynb` ✅ runs end-to-end |
+| W1 — EDA | n/a (notebook only) | n/a | `notebooks/week01_eda.ipynb` ✅ runs end-to-end |
 | W2 — BM25 retrieval | `experiments/run_retrieval.py` | **MRR@10 = 0.1703**, Recall@100 = 0.6212, Recall@1000 = 0.8154 on dev/small (6,980 q) | `notebooks/week02_retrieval.ipynb` ✅ MRR@10 = 0.1956 on sampled closed-set (n=30, optimistic) |
-| W3 — RAG generation | `experiments/run_generation_baseline.py` | not yet run | `notebooks/week03_generation.ipynb` ✅ 3-passage toy demo with T5-small |
+| W3 — RAG generation | `experiments/run_generation_baseline.py` | **ROUGE-L = 0.1619, BLEU = 0.0573, EM = 0.0050, Token-F1 = 0.1756** on a 200-query sample (T5-small, no fine-tuning, top-3 BM25 passages) | `notebooks/week03_generation.ipynb` ✅ 3-passage toy demo with T5-small |
 
-Reference: published Anserini/Lucene BM25 baseline on MS MARCO dev/small is MRR@10 ≈ 0.184. Our `bm25s`-based 0.1703 is in the same ballpark; the gap is consistent with tokenizer differences.
+References:
+
+- Published Anserini/Lucene BM25 baseline on MS MARCO dev/small: MRR@10 ≈ 0.184. Our `bm25s`-based 0.1703 is in the same ballpark; the gap is consistent with tokenizer differences.
+- W3 numbers were produced before R2 (best-of-N references for ROUGE-L/BLEU); the next W3 run will likely report slightly higher ROUGE-L/BLEU because each prediction is now scored against every reference and the best score is kept.
 
 ## 2. Directory layout
 

@@ -1,12 +1,6 @@
----
-title: "Week 2: BM25 Retrieval Baseline"
-date: "{{generated_at}}"
-geometry: margin=1in
----
-
 # Week 2: BM25 Retrieval Baseline
 
-*Auto-generated from `outputs/week02_bm25/`. Do not edit by hand. Re-run
+*Auto-generated {{generated_at}} from `outputs/week02_bm25/`. Do not edit by hand. Re-run
 `python -m src.reporting.build_report --week week02` to refresh.*
 
 ## 1. Objective
@@ -36,6 +30,7 @@ Wall-clock:
 ## 4. Evaluation Metrics
 
 - MRR@10
+- nDCG@10
 - Recall@100
 - Recall@1000
 
@@ -44,6 +39,7 @@ Wall-clock:
 | Metric        | Value                |
 |---------------|----------------------|
 | MRR@10        | {{mrr_at_10}}        |
+| nDCG@10       | {{ndcg_at_10}}       |
 | Recall@100    | {{recall_at_100}}    |
 | Recall@1000   | {{recall_at_1000}}   |
 | # queries     | {{n_queries_eval}}   |
