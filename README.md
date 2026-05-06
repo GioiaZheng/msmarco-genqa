@@ -1,107 +1,88 @@
 # MS MARCO GenQA
 
-A research project on **retrieval-augmented question answering (RAG)** built on the MS MARCO dataset.
+Retrieval-augmented question answering on MS MARCO. The repo has two parallel tracks:
 
-## 1. Current Status
+- **Script pipeline** (`experiments/`, `src/`) — reproducible, official-corpus, structured outputs + auto-generated reports. This is the source of truth for benchmark numbers.
+- **Notebooks** (`notebooks/`) — small prototype experiments on sampled data. Useful for narrative and visualization, **not** the source of benchmark numbers.
 
-The project is moving from notebook-only prototype to a reproducible,
-script-based experiment pipeline.
+## 1. Status
 
-| Week | Goal | Status |
-|------|------|--------|
-| Week 1 | EDA on MS MARCO (queries, passages, query types) | ✅ done — see [notebooks/week01_eda.ipynb](notebooks/week01_eda.ipynb) |
-| Week 2 | **Official BM25 retrieval baseline** on the full MS MARCO Passage corpus | 🟡 pipeline implemented (`experiments/run_retrieval.py`); awaiting first end-to-end run |
-| Week 3 | **RAG generation baseline** on real Week 2 retrievals | 🟡 pipeline implemented (`experiments/run_generation_baseline.py`); awaiting first end-to-end run |
-| Weeks 4–6 | Dense retrieval, reranking, generation fine-tuning | ❌ not started |
+| Week | Pipeline | Result | Notebook (prototype) |
+|------|----------|--------|----------------------|
+| W1 — EDA | n/a | n/a | `notebooks/week01_eda.ipynb` ✅ runs end-to-end |
+| W2 — BM25 retrieval | `experiments/run_retrieval.py` | **MRR@10 = 0.1703**, Recall@100 = 0.6212, Recall@1000 = 0.8154 on dev/small (6,980 q) | `notebooks/week02_retrieval.ipynb` ✅ MRR@10 = 0.1956 on sampled closed-set (n=30, optimistic) |
+| W3 — RAG generation | `experiments/run_generation_baseline.py` | not yet run | `notebooks/week03_generation.ipynb` ✅ 3-passage toy demo with T5-small |
 
-The legacy notebooks (`notebooks/week02_*.ipynb`, `notebooks/week03_*.ipynb`)
-remain in the repo as **prototype / pipeline-verification artifacts only**.
-Their results — including the MRR@10 = 0.2775 number on a sampled 49k
-closed-set corpus, and the 3-passage T5-small toy demo — are *not* the
-official deliverables and should not be cited as benchmark results.
+Reference: published Anserini/Lucene BM25 baseline on MS MARCO dev/small is MRR@10 ≈ 0.184. Our `bm25s`-based 0.1703 is in the same ballpark; the gap is consistent with tokenizer differences.
 
-The official deliverables are produced by the script pipeline below and
-written to `outputs/` and `reports/generated/`.
-
-## 2. Repository Structure
+## 2. Directory layout
 
 ```
-msmarco-genqa/
-├── configs/
-│   └── baseline.yaml             # paths, retrieval params, eval set sizes
-├── experiments/
-│   ├── run_retrieval.py          # Week 2: build BM25 index + evaluate dev/small
-│   └── run_generation_baseline.py # Week 3: RAG generation on Week 2 retrievals
-├── src/
-│   ├── data/msmarco.py           # ir_datasets loader for the official corpus
-│   ├── retrieval/bm25.py         # bm25s wrapper with save/load
-│   ├── generation/rag_generator.py
-│   ├── evaluation/
-│   │   ├── retrieval.py          # MRR@k, Recall@k, nDCG@k
-│   │   └── generation.py         # ROUGE-L, BLEU, EM, Token-F1
-│   ├── reporting/build_report.py # markdown + PDF report generator
-│   └── bm25_retriever.py         # legacy rank_bm25 wrapper (used by week3 notebook only)
-├── reports/
-│   ├── templates/                # markdown templates with {{placeholders}}
-│   └── generated/                # filled-in markdown + PDF (gitignored)
-├── outputs/                      # experiment outputs (gitignored)
-├── data/                         # raw/processed/cache (gitignored)
-├── figures/                      # static plots from notebooks (committed)
-└── notebooks/                    # exploratory + prototype notebooks (do not cite as official)
+configs/        baseline.yaml — paths + retrieval/generation/eval knobs
+experiments/    run_retrieval.py, run_generation_baseline.py
+src/
+  data/         msmarco.py — ir_datasets loader for the official corpus
+  retrieval/    bm25.py    — bm25s wrapper with save/load + chunked retrieve
+  generation/   rag_generator.py — T5/BART RAG generator
+  evaluation/   retrieval.py (MRR/Recall/nDCG), generation.py (ROUGE/BLEU/EM/F1)
+  reporting/    build_report.py — fills markdown templates from outputs/
+  bm25_retriever.py — legacy rank_bm25 wrapper, used only by week03 notebook
+notebooks/      prototype, narrative, plots
+reports/
+  templates/    week02_bm25.md, week03_generation.md  (committed)
+  generated/    filled-in markdown + optional PDF     (gitignored)
+outputs/        run.tsv, metrics.json, examples.jsonl per week  (gitignored)
+data/           raw/, processed/, cache/ — all gitignored, .gitkeep tracked
+figures/        plots from notebooks (committed)
+scripts/        smoke tests + the notebook regenerator
 ```
 
-Conventions:
-
-- Code runs from the project root. All scripts add the project root to
-  `sys.path` themselves; you do not need to set `PYTHONPATH`.
-- Paths in scripts come from `configs/baseline.yaml` or are derived from
-  `PROJECT_ROOT`. No hardcoded relative paths.
-- `outputs/`, `data/raw/`, `data/processed/`, `reports/generated/` are
-  gitignored. Only the directory structure (`.gitkeep` files) is committed.
+Everything runs from the project root. Scripts add `PROJECT_ROOT` to `sys.path` themselves; no `PYTHONPATH` needed.
 
 ## 3. Setup
 
-Recommended Python: 3.10+
+Python 3.10+ recommended (3.9 also works).
 
 ```bash
 pip install -r requirements.txt
-# optional, for PDF report generation
-brew install pandoc           # macOS
-brew install --cask basictex  # macOS LaTeX engine; alternative: `mactex`
-# Linux:
-# sudo apt-get install pandoc texlive-xetex
+# optional: PDF report generation (markdown report works without these)
+brew install pandoc                 # macOS
+brew install --cask basictex        # macOS LaTeX engine
+# Linux: sudo apt-get install pandoc texlive-xetex
 ```
 
-Without pandoc the pipeline still produces the markdown report; only the
-PDF step is skipped.
+## 4. Run the official baselines
 
-## 4. Running Week 2 — BM25 retrieval baseline
+### Week 2 — BM25 retrieval
 
 ```bash
 python experiments/run_retrieval.py
 python -m src.reporting.build_report --week week02
 ```
 
-What happens:
+First run: ~5 min download (~1 GB), ~15 min `ir_datasets` encoding fix pass, ~10 min `bm25s` index build, ~70 min retrieve. Total ≈ 1h40m on a 16 GB MacBook.
 
-1. `run_retrieval.py` downloads (first run only) the official MS MARCO
-   Passage corpus and dev/small queries via `ir_datasets`. Expect ~3 GB of
-   downloads and tens of minutes of indexing on first run; the index is
-   cached to `data/processed/bm25_index_msmarco/` for re-use.
-2. Top-1000 retrieval is run for all dev/small queries.
-3. Outputs:
-   - `outputs/week02_bm25/metrics.json` (MRR@10 / Recall@100 / Recall@1000)
-   - `outputs/week02_bm25/run.tsv` (TREC-format full top-1000 run)
-   - `outputs/week02_bm25/examples.jsonl` (qualitative samples)
-4. `build_report.py` fills `reports/templates/week02_bm25.md`, writes
-   `reports/generated/week02_bm25.md`, and (if pandoc is installed)
-   `reports/generated/week02_bm25.pdf`.
+Subsequent runs reuse the cached index (`data/processed/bm25_index_msmarco/`, 2.1 GB) and skip download/index — only retrieve runs (~70 min).
 
-Reference number: the published Anserini/Lucene BM25 baseline on this split
-is approximately MRR@10 ≈ 0.184. Our `bm25s`-based result should be in the
-same ballpark.
+If a run is killed mid-retrieve:
 
-## 5. Running Week 3 — RAG generation baseline
+```bash
+python experiments/run_retrieval.py --resume     # picks up at next chunk boundary
+```
+
+To force a fresh index:
+
+```bash
+python experiments/run_retrieval.py --rebuild-index
+```
+
+Outputs:
+- `outputs/week02_bm25/metrics.json`
+- `outputs/week02_bm25/run.tsv` (TREC-format top-1000, ~250 MB)
+- `outputs/week02_bm25/examples.jsonl`
+- `reports/generated/week02_bm25.md` (+ `.pdf` if pandoc installed)
+
+### Week 3 — RAG generation baseline
 
 Requires Week 2 to have produced `outputs/week02_bm25/run.tsv`.
 
@@ -110,56 +91,54 @@ python experiments/run_generation_baseline.py
 python -m src.reporting.build_report --week week03
 ```
 
-What happens:
+Default: 200 dev queries, T5-small, top-3 passages from BM25. ROUGE-L / BLEU / EM / Token-F1 against MS MARCO QA v2.1 reference answers. CPU runtime ~5–15 min.
 
-1. Loads the Week 2 BM25 run from `outputs/week02_bm25/run.tsv`.
-2. Cross-references dev/small query ids with MS MARCO QA v2.1 (HuggingFace
-   `ms_marco`, validation split) to recover human-written reference
-   answers.
-3. Samples a CPU-friendly evaluation subset (200 queries by default; see
-   `generation.num_eval_queries` in `configs/baseline.yaml`).
-4. Generates answers with `t5-small` conditioned on the BM25 top-3
-   passages.
-5. Outputs:
-   - `outputs/week03_generation/predictions.jsonl`
-   - `outputs/week03_generation/metrics.json`  (ROUGE-L, BLEU, EM, Token-F1)
-   - `outputs/week03_generation/examples.jsonl`
-6. `build_report.py` fills `reports/templates/week03_generation.md` and
-   produces the corresponding markdown + PDF.
+Tunable knobs in `configs/baseline.yaml`:
+- `generation.model_name` (`t5-small`, `t5-base`, `facebook/bart-base`, …)
+- `generation.num_eval_queries`
+- `generation.top_k_passages`
+
+## 5. Run the prototype notebooks
+
+```bash
+python -m nbconvert --to notebook --execute --inplace notebooks/week01_eda.ipynb
+python -m nbconvert --to notebook --execute --inplace notebooks/week02_retrieval.ipynb
+python -m nbconvert --to notebook --execute --inplace notebooks/week03_generation.ipynb
+```
+
+First run downloads:
+- HuggingFace `ms_marco` v2.1 validation split (~500 MB) — used by W1, W2
+- T5-small (~250 MB) — used by W3
+
+Notebook results are **prototypes**: small samples, closed-set retrieval, hand-written eval queries. Do not cite as benchmark numbers.
 
 ## 6. Configuration
 
-All knobs live in [configs/baseline.yaml](configs/baseline.yaml):
+All knobs live in [configs/baseline.yaml](configs/baseline.yaml). Key ones:
 
-- `retrieval.k1`, `retrieval.b` — BM25 hyperparameters
-- `retrieval.top_k` — depth of the saved run (default 1000)
-- `data.corpus_limit` — set to a small int (e.g. 200000) for a development
-  smoke test that does **not** reproduce official numbers; leave `null`
-  for the official baseline
-- `generation.model_name` — swap `t5-small` for `t5-base`,
-  `facebook/bart-base`, etc.
-- `generation.num_eval_queries` — Week 3 eval-set size
+| Key | Effect |
+|-----|--------|
+| `retrieval.k1`, `retrieval.b` | BM25 hyperparameters |
+| `retrieval.top_k` | Depth of saved run (default 1000) |
+| `retrieval.chunk_size` | Checkpoint cadence in queries (default 200). Smaller = more durable, more I/O. |
+| `retrieval.n_threads` | `0` = sequential (default, matches our 0.1703 baseline). `-1` = all CPUs. Try `-1` for new runs. |
+| `data.corpus_limit` | Set to a small int for a smoke test that does **not** reproduce official numbers; leave `null` for real runs. |
+| `generation.num_eval_queries` | Size of the W3 eval subset |
 
-## 7. Notebooks vs Scripts
+## 7. Known limitations
 
-- Notebooks are exploratory artifacts (data analysis, qualitative
-  inspection). They are **not** the source of truth for benchmark numbers.
-- Scripts in `experiments/` produce reproducible outputs and structured
-  metrics.json files. Reports under `reports/generated/` are the canonical
-  write-ups.
+- **Tokenizer mismatch with Anserini.** Our 0.1703 vs reference 0.184 is mostly tokenizer-induced (`bm25s` default tokenizer ≠ Lucene `EnglishAnalyzer`). Acceptable for a single-machine pure-Python pipeline.
+- **CPU-only retrieve is slow at 8.8M docs.** ~70 min for 6,980 queries. `n_threads=-1` may help; not yet benchmarked on this corpus.
+- **Generation: pretrained T5-small, no fine-tuning.** Numbers will be low on overlap-based metrics. Fine-tuning is in scope for a future week.
+- **NumPy 2.x runtime warning.** Some compiled deps (torch) were built against NumPy 1.x. Cosmetic on this codebase; downgrade to `numpy<2` if it ever causes a real failure.
 
-## 8. Roadmap
+## 8. Next
 
-The next units of work are:
-
-- Week 4: Sentence-BERT bi-encoder retriever + hybrid BM25/dense fusion.
-- Week 5: cross-encoder reranker over the BM25 top-100.
-- Week 6: supervised fine-tuning of the generation model on
-  `(question, gold passage, answer)` triples.
-
-Each will reuse the same data loader, evaluation metrics, output schema, and
-report template / generator, so the comparison across weeks stays
-apples-to-apples.
+- Run the W3 RAG baseline against the W2 retrievals.
+- Try `n_threads: -1` for a faster W2 re-run.
+- Add a Sentence-BERT bi-encoder retriever and a hybrid BM25+dense fusion.
+- Add a cross-encoder reranker over the BM25 top-100.
+- Supervised fine-tuning of the generation model on `(question, gold passage, answer)` triples from MS MARCO QA v2.1.
 
 ## 9. License
 
