@@ -33,12 +33,20 @@ class BM25Retriever:
         k1: float = 1.5,
         b: float = 0.75,
         stopwords: str | None = "en",
+        n_threads: int = 0,
+        chunksize: int = 50,
     ):
         self.corpus_texts = list(corpus_texts) if corpus_texts is not None else None
         self.doc_ids = list(doc_ids) if doc_ids is not None else None
         self.k1 = k1
         self.b = b
         self.stopwords = stopwords
+        # bm25s retrieve parallelism. ``n_threads=0`` is sequential (the safe
+        # default); ``-1`` uses all CPUs; positive integers spawn that many
+        # worker processes. ``chunksize`` is the per-task batch size used when
+        # ``n_threads != 0``.
+        self.n_threads = n_threads
+        self.chunksize = chunksize
         self._bm25 = None  # bm25s.BM25 instance
 
     def build(self) -> "BM25Retriever":
@@ -80,7 +88,12 @@ class BM25Retriever:
         logger.info("Saved index to %s", path)
 
     @classmethod
-    def load(cls, path: Path | str) -> "BM25Retriever":
+    def load(
+        cls,
+        path: Path | str,
+        n_threads: int = 0,
+        chunksize: int = 50,
+    ) -> "BM25Retriever":
         import bm25s
 
         path = Path(path)
@@ -94,6 +107,8 @@ class BM25Retriever:
             k1=cfg["k1"],
             b=cfg["b"],
             stopwords=cfg.get("stopwords"),
+            n_threads=n_threads,
+            chunksize=chunksize,
         )
         retriever._bm25 = bm25s.BM25.load(str(path))
         return retriever
@@ -119,7 +134,13 @@ class BM25Retriever:
         import bm25s
 
         tokens = bm25s.tokenize(list(queries), stopwords=self.stopwords)
-        results, scores = self._bm25.retrieve(tokens, k=k)
+        results, scores = self._bm25.retrieve(
+            tokens,
+            k=k,
+            n_threads=self.n_threads,
+            chunksize=self.chunksize,
+            show_progress=True,
+        )
         # results: (n_queries, k) of doc indices into the original corpus order
         doc_ids_lists = [
             [self.doc_ids[int(i)] for i in row] for row in results

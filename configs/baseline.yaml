@@ -19,6 +19,21 @@ retrieval:
   top_k: 1000
   index_dir: data/processed/bm25_index_msmarco
 
+  # Checkpoint cadence: ``run.tsv`` is flushed after every ``chunk_size``
+  # queries. If the process is killed, ``--resume`` will pick up at the next
+  # chunk boundary instead of starting from query 0.
+  chunk_size: 200
+
+  # bm25s parallel-retrieve. ``0`` = sequential (the safe default that
+  # produced the official MRR@10 = 0.1703 baseline). ``-1`` uses all CPUs;
+  # positive integers spawn that many worker processes. On macOS,
+  # multiprocessing-based parallelism is currently opt-in: it can be a 4-8x
+  # win or strictly worse depending on whether bm25s ends up forking or
+  # spawning. Try ``-1`` for new runs and compare wall-clock; if it doesn't
+  # help, set it back to ``0``.
+  n_threads: 0
+  bm25s_chunksize: 50
+
 eval_retrieval:
   ks_mrr: [10]
   ks_recall: [100, 1000]
