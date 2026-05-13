@@ -442,10 +442,152 @@ WEEK03_CELLS = [
 ]
 
 
+# --------------------------------------------------------------------------- #
+# Week 4 — Prototype dense retrieval on a 6-passage toy corpus.
+# --------------------------------------------------------------------------- #
+
+# Distinct setup cell for W4: the env vars must be set BEFORE faiss/torch are
+# imported, otherwise the macOS libomp duplicate-library issue makes the
+# kernel hang or crash. See ``experiments/run_dense_retrieval.py`` for the
+# same workaround at script level.
+W4_SETUP_CODE = '''import sys
+from pathlib import Path
+
+
+def _find_project_root(markers=(".git", "pyproject.toml", "requirements.txt")):
+    p = Path.cwd().resolve()
+    for parent in (p, *p.parents):
+        if any((parent / m).exists() for m in markers):
+            return parent
+    return p
+
+
+PROJECT_ROOT = _find_project_root()
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+# macOS libomp workaround: faiss-cpu and torch each ship libomp.dylib.
+# Loading both in the same process aborts/segfaults unless we tell the
+# runtime it's fine. Must be set before the first faiss/torch import.
+import os
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+os.environ.setdefault("OMP_NUM_THREADS", "4")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
+print("PROJECT_ROOT:", PROJECT_ROOT)
+'''
+
+
+WEEK04_CELLS = [
+    md(
+        "# Week 4 — Prototype dense retrieval (SBERT + FAISS)\n\n"
+        "Smallest possible end-to-end check: a 6-passage toy corpus, "
+        "`all-MiniLM-L6-v2` as the encoder, three hand-written queries, and "
+        "a side-by-side BM25 comparison on the *same* tiny corpus. Numbers "
+        "here are diagnostic only — they verify the pipeline runs, they are "
+        "**not** benchmark numbers.\n\n"
+        "The honest baseline lives in `experiments/run_dense_retrieval.py` "
+        "(50k qrels-anchored sample of MS MARCO Passage); see "
+        "`outputs/week04_dense/metrics.json` and "
+        "`reports/generated/week04_dense.md` for the real numbers."
+    ),
+    md("## Setup"),
+    code(W4_SETUP_CODE),
+    code(
+        "from src.retrieval.dense import DenseRetriever\n"
+        "from src.retrieval.bm25 import BM25Retriever"
+    ),
+    md(
+        "## 1. Toy corpus\n\n"
+        "Six passages, deliberately chosen so a sparse retriever can win on "
+        "lexical overlap and a dense retriever can win on paraphrase / "
+        "synonym overlap."
+    ),
+    code(
+        "corpus = [\n"
+        "    \"Canberra is the capital city of Australia.\",                              # d0\n"
+        "    \"The Eiffel Tower is a wrought-iron lattice tower located in Paris.\",      # d1\n"
+        "    \"William Shakespeare wrote the tragedy Hamlet in the early 17th century.\", # d2\n"
+        "    \"Sydney is the largest city in Australia but it is not the capital.\",      # d3\n"
+        "    \"The Pacific Ocean is the largest ocean on Earth.\",                        # d4\n"
+        "    \"Photosynthesis converts sunlight into chemical energy in green plants.\",  # d5\n"
+        "]\n"
+        "doc_ids = [f\"d{i}\" for i in range(len(corpus))]"
+    ),
+    md("## 2. Build the dense (SBERT + FAISS) and BM25 indexes on the same corpus"),
+    code(
+        "dense = DenseRetriever(model_name=\"sentence-transformers/all-MiniLM-L6-v2\", device=\"cpu\")\n"
+        "dense.build(corpus, doc_ids)\n"
+        "\n"
+        "bm25 = BM25Retriever(corpus_texts=corpus, doc_ids=doc_ids, k1=1.5, b=0.75)\n"
+        "bm25.build()\n"
+        "\"both retrievers ready\""
+    ),
+    md(
+        "## 3. Three queries — lexical-easy, paraphrase, semantic\n\n"
+        "We expect both retrievers to pick the obvious answer on lexical "
+        "queries. The interesting case is Q3, where the query word "
+        "*\"playwright\"* doesn't appear in any passage but is semantically "
+        "close to *\"wrote a tragedy\"* in d2."
+    ),
+    code(
+        "queries = [\n"
+        "    \"what is the capital of australia\",\n"
+        "    \"where is the eiffel tower\",\n"
+        "    \"which playwright wrote hamlet\",\n"
+        "]\n"
+        "\n"
+        "def show(label, scores, ids):\n"
+        "    print(f\"  {label:6s} top-3: \" + \", \".join(f\"{d}({s:.3f})\" for d, s in zip(ids[:3], scores[:3])))\n"
+        "\n"
+        "for q in queries:\n"
+        "    print(f\"Q: {q}\")\n"
+        "    d_scores, d_ids = dense.retrieve(q, k=3)\n"
+        "    b_scores, b_ids = bm25.retrieve(q, k=3)\n"
+        "    show(\"dense\",  d_scores, d_ids)\n"
+        "    show(\"bm25\",   b_scores, b_ids)\n"
+        "    print()"
+    ),
+    md(
+        "## 4. Where dense vs BM25 actually disagree\n\n"
+        "On the tiny corpus both retrievers get the right top-1 because "
+        "Q3 still contains the literal word *\"hamlet\"*. To see the gap, "
+        "drop the keyword and force a purely semantic query:"
+    ),
+    code(
+        "q = \"a famous english tragedy from the renaissance\"\n"
+        "scores_d, ids_d = dense.retrieve(q, k=3)\n"
+        "scores_b, ids_b = bm25.retrieve(q, k=3)\n"
+        "print(\"dense:\", list(zip(ids_d, [f'{s:.3f}' for s in scores_d])))\n"
+        "print(\"bm25: \", list(zip(ids_b, [f'{s:.3f}' for s in scores_b])))"
+    ),
+    md(
+        "BM25 has no signal (no content words overlap with the corpus), so "
+        "it returns near-zero scores in arbitrary order. The dense retriever "
+        "still ranks d2 (Shakespeare/Hamlet) at the top because the SBERT "
+        "embedding maps \"english tragedy\" close to \"Shakespeare's tragedy "
+        "Hamlet\". This is the qualitative reason to add dense retrieval in "
+        "the first place.\n\n"
+        "## Limitations\n\n"
+        "- 6-passage corpus is a smoke test, not an evaluation.\n"
+        "- `all-MiniLM-L6-v2` is generic-purpose, not MS-MARCO-tuned.\n"
+        "- FAISS `IndexFlatIP` on 6 vectors is microseconds; latency is "
+        "only meaningful at the 50k+ scale.\n\n"
+        "## Next — official dense baseline\n\n"
+        "Run the script-based pipeline on the 50k qrels-anchored sample:\n\n"
+        "```bash\n"
+        "python experiments/run_dense_retrieval.py --sample-size 50000 --rebuild-index\n"
+        "python -m src.reporting.build_report --week week04\n"
+        "```\n"
+    ),
+]
+
+
 def main() -> None:
     write_notebook(NOTEBOOKS_DIR / "week01_eda.ipynb", WEEK01_CELLS)
     write_notebook(NOTEBOOKS_DIR / "week02_retrieval.ipynb", WEEK02_CELLS)
     write_notebook(NOTEBOOKS_DIR / "week03_generation.ipynb", WEEK03_CELLS)
+    write_notebook(NOTEBOOKS_DIR / "week04_dense.ipynb", WEEK04_CELLS)
 
 
 if __name__ == "__main__":

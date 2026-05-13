@@ -51,3 +51,21 @@ generation:
 
 eval_generation:
   metrics: [rouge-l, bleu, exact-match, token-f1]
+
+# Week 4: dense retrieval baseline on a *sampled* sub-corpus.
+# We do NOT embed the full 8.8M corpus on a CPU laptop. The sample is
+# qrels-anchored: every dev/small relevant doc is included, then random
+# distractors fill to ``sample_size``. This makes BM25-on-sample vs
+# dense-on-sample an apples-to-apples comparison; both numbers are
+# **not** comparable to the full-corpus W2 baseline.
+dense:
+  model_name: sentence-transformers/all-MiniLM-L6-v2
+  sample_size: 50000
+  encode_batch_size: 32
+  device: null            # null -> auto (cuda if available, else cpu)
+  index_dir: data/processed/dense_index_minilm_50k
+  bm25_sample_index_dir: data/processed/bm25_sample_index_50k
+  output_dir: outputs/week04_dense
+  top_k: 1000
+  compare_bm25_on_sample: true
+  n_examples: 20          # qualitative examples dumped to examples.jsonl

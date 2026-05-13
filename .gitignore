@@ -144,6 +144,11 @@ ENV/
 env.bak/
 venv.bak/
 
+# Local Claude Code agent state (scheduled-task locks, settings.local.json,
+# scratch artifacts). Never enters git, even though .claude/settings.json
+# *would* normally be a tracked file in other repos — see CLAUDE.md.
+.claude/
+
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -226,9 +231,11 @@ results/
 outputs/*
 !outputs/.gitkeep
 
-# Generated reports (markdown + PDF). Templates stay tracked.
+# Generated reports: templates (reports/templates/*.md) and final PDFs stay
+# tracked; intermediate markdown re-rendered from outputs/ is ignored.
 reports/generated/*
 !reports/generated/.gitkeep
+!reports/generated/*.pdf
 
 # ir_datasets local home if it lands inside the repo
 .ir_datasets/

@@ -14,6 +14,10 @@ ir-datasets>=0.5.5            # official MS MARCO Passage corpus + dev/small
 rank-bm25>=0.2.2              # used by the legacy notebook prototype (week 3)
 bm25s>=0.2                    # primary backend for the official Week 2 baseline
 
+# Dense retrieval (Week 4)
+sentence-transformers>=2.2
+faiss-cpu>=1.7
+
 # Generation
 torch>=2.0
 transformers>=4.35

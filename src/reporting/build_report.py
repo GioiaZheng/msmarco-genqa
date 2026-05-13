@@ -291,6 +291,146 @@ def build_week03(out_dir: Path) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Week 04 — dense retrieval (sampled), with head-to-head BM25-on-sample.
+# --------------------------------------------------------------------------- #
+
+def _format_week04_case_studies(examples: list[dict], n: int = 5) -> str:
+    """Show queries where the dense vs BM25 first-rank disagrees most."""
+    if not examples:
+        return "*No examples available.*"
+
+    def _gap(e):
+        d = e.get("dense_first_rank_in_top10")
+        b = e.get("bm25_sample_first_rank_in_top10")
+        d_eff = d if d is not None else 11
+        b_eff = b if b is not None else 11
+        return abs(d_eff - b_eff), -(d_eff + b_eff)  # bigger gap first, then smaller ranks
+
+    ranked = sorted(examples, key=_gap, reverse=True)
+    blocks: list[str] = []
+    for e in ranked[:n]:
+        d = e.get("dense_first_rank_in_top10")
+        b = e.get("bm25_sample_first_rank_in_top10")
+        block = [
+            f"### `{e.get('query_id')}` — {e.get('query', '')}",
+            "",
+            f"- Dense first-relevant rank: **{d if d is not None else '>10'}**",
+            f"- BM25 first-relevant rank:  **{b if b is not None else '>10'}**",
+            f"- Relevant doc id(s): {', '.join(e.get('relevant_doc_ids') or []) or '—'}",
+        ]
+        blocks.append("\n".join(block))
+    return "\n\n".join(blocks)
+
+
+def _format_week04_discussion(dense_m: dict, bm25_m: dict | None) -> str:
+    """Generate a small bulleted discussion grounded in the actual numbers."""
+    if bm25_m is None:
+        return (
+            "- BM25 comparison was disabled for this run; only dense numbers reported."
+        )
+    bullets: list[str] = []
+
+    def _diff(key, label):
+        d = dense_m.get(key)
+        b = bm25_m.get(key)
+        if d is None or b is None:
+            return None
+        delta = d - b
+        if abs(delta) < 1e-3:
+            return f"- **{label}**: dense and BM25 are within 0.001 ({d:.4f} vs {b:.4f})."
+        winner = "dense" if delta > 0 else "BM25"
+        return (
+            f"- **{label}**: {winner} wins by {abs(delta):.4f} "
+            f"(dense {d:.4f} vs BM25 {b:.4f})."
+        )
+
+    for k, lbl in [
+        ("mrr@10", "MRR@10"),
+        ("ndcg@10", "nDCG@10"),
+        ("recall@100", "Recall@100"),
+        ("recall@1000", "Recall@1000"),
+    ]:
+        line = _diff(k, lbl)
+        if line:
+            bullets.append(line)
+
+    bullets.append(
+        "- Caveat: every dev relevant doc is in the sampled pool by construction, "
+        "so absolute numbers are upper-bounded and will drop on a larger / "
+        "non-anchored sample."
+    )
+    return "\n".join(bullets) if bullets else "- (no numeric comparison available)"
+
+
+def build_week04(out_dir: Path) -> str:
+    metrics_path = out_dir / "metrics.json"
+    examples_path = out_dir / "examples.jsonl"
+    if not metrics_path.exists():
+        raise FileNotFoundError(
+            f"{metrics_path} not found. Run experiments/run_dense_retrieval.py first."
+        )
+    payload = _read_json(metrics_path)
+    examples = _read_jsonl(examples_path)
+
+    cfg = payload.get("config", {})
+    metrics = payload.get("metrics", {})
+    dense_m = metrics.get("dense", {})
+    bm25_m = metrics.get("bm25_sample") or None
+    timing = payload.get("wall_clock_seconds", {})
+    sample = payload.get("sample", {})
+
+    n_eval = payload.get("n_examples", 0)
+    n_total_queries = cfg.get("data", {}).get("expected_dev_queries", 6980)
+    sample_size = sample.get("size", "—")
+    encode_s = timing.get("encode_corpus")
+    encode_per_doc_ms = (
+        (encode_s * 1000 / sample_size) if (encode_s and isinstance(sample_size, int) and sample_size) else None
+    )
+
+    def _delta(key):
+        d = dense_m.get(key)
+        b = (bm25_m or {}).get(key)
+        if d is None or b is None:
+            return "—"
+        return f"{d - b:+.4f}"
+
+    fields = {
+        "generated_at": dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "model_name": cfg.get("dense", {}).get("model_name", "—"),
+        "sample_size": f"{sample_size:,}" if isinstance(sample_size, int) else str(sample_size),
+        "k1": _fmt_float(cfg.get("retrieval", {}).get("k1"), 2),
+        "b": _fmt_float(cfg.get("retrieval", {}).get("b"), 2),
+        "n_eval_queries": n_eval,
+        "n_total_queries": n_total_queries,
+        "n_qrels_doc_ids_in_sample": sample.get("n_qrels_doc_ids_in_sample", "—"),
+        "seed": cfg.get("seed", "—"),
+        "top_k": payload.get("top_k", "—"),
+        "encode_seconds": _fmt_float(encode_s, 1),
+        "encode_per_doc_ms": _fmt_float(encode_per_doc_ms, 2),
+        "dense_search_seconds": _fmt_float(timing.get("dense_search"), 1),
+        "bm25_build_seconds": _fmt_float(timing.get("bm25_sample_build"), 1),
+        "bm25_search_seconds": _fmt_float(timing.get("bm25_sample_search"), 1),
+        "dense_mrr10": _fmt_float(dense_m.get("mrr@10")),
+        "dense_ndcg10": _fmt_float(dense_m.get("ndcg@10")),
+        "dense_r100": _fmt_float(dense_m.get("recall@100")),
+        "dense_r1000": _fmt_float(dense_m.get("recall@1000")),
+        "bm25_mrr10": _fmt_float((bm25_m or {}).get("mrr@10")),
+        "bm25_ndcg10": _fmt_float((bm25_m or {}).get("ndcg@10")),
+        "bm25_r100": _fmt_float((bm25_m or {}).get("recall@100")),
+        "bm25_r1000": _fmt_float((bm25_m or {}).get("recall@1000")),
+        "delta_mrr10": _delta("mrr@10"),
+        "delta_ndcg10": _delta("ndcg@10"),
+        "delta_r100": _delta("recall@100"),
+        "delta_r1000": _delta("recall@1000"),
+        "case_studies": _format_week04_case_studies(examples),
+        "discussion_bullets": _format_week04_discussion(dense_m, bm25_m),
+    }
+
+    template = (TEMPLATES_DIR / "week04_dense.md").read_text()
+    return _substitute(template, fields)
+
+
+# --------------------------------------------------------------------------- #
 # PDF
 # --------------------------------------------------------------------------- #
 
@@ -381,7 +521,7 @@ def main() -> None:
     parser.add_argument(
         "--week",
         required=True,
-        choices=["week01", "week02", "week03"],
+        choices=["week01", "week02", "week03", "week04"],
         help="Which week's report to build.",
     )
     args = parser.parse_args()
@@ -396,10 +536,14 @@ def main() -> None:
         out_dir = OUTPUTS_DIR / "week02_bm25"
         md = build_week02(out_dir)
         out_md = GENERATED_DIR / "week02_bm25.md"
-    else:
+    elif args.week == "week03":
         out_dir = OUTPUTS_DIR / "week03_generation"
         md = build_week03(out_dir)
         out_md = GENERATED_DIR / "week03_generation.md"
+    else:
+        out_dir = OUTPUTS_DIR / "week04_dense"
+        md = build_week04(out_dir)
+        out_md = GENERATED_DIR / "week04_dense.md"
 
     out_md.write_text(md)
     print(f"Wrote markdown: {out_md}")
