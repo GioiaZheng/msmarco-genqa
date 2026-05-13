@@ -1,0 +1,95 @@
+# Project metadata + tool config.
+#
+# Source dependencies still live in ``requirements.txt`` (loose lower bounds,
+# fast to install) and ``requirements-lock.txt`` (pip-freeze, for
+# reproducibility). This file deliberately does NOT duplicate them under
+# ``[project.dependencies]``: keeping a single source of truth avoids
+# the two files drifting.
+#
+# ``pip install -e .`` only registers the ``src`` package — it does not pull
+# any third-party deps. Run ``pip install -r requirements.txt`` (or
+# ``requirements-lock.txt``) alongside.
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "msmarco-genqa"
+version = "0.1.0"
+description = "Retrieval-augmented question answering on MS MARCO."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "msmarco-genqa contributors" }]
+
+# Deliberately empty — see header. pip install -e . registers the package,
+# pip install -r requirements.txt installs the actual dependencies.
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+exclude = ["tests*", "notebooks*", "experiments*", "scripts*"]
+
+
+# --------------------------------------------------------------------------- #
+# pytest
+# --------------------------------------------------------------------------- #
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+
+# Default: only fast unit tests. ``slow`` and ``integration`` are opt-in via
+# ``-m slow`` / ``-m integration`` (or via ``make test-slow``).
+addopts = "-m 'not slow and not integration'"
+
+markers = [
+    "slow: tests that need real models, large data, or network access (HF Hub, ir_datasets). Excluded by default.",
+    "integration: end-to-end tests that hit real external services. Excluded by default.",
+]
+
+
+# --------------------------------------------------------------------------- #
+# ruff
+# --------------------------------------------------------------------------- #
+#
+# Conservative ruleset: we want catch-real-bugs (pyflakes ``F``) plus
+# import-order hygiene (``I``), with a couple of widely-ignored style rules.
+# We deliberately do NOT enable opinionated style families (UP, B, S, …) on
+# this first pass — they would touch dozens of files without changing
+# behaviour and obscure the real fixes.
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+extend-exclude = [
+    "notebooks",
+    "data",
+    "outputs",
+    "reports/generated",
+    "figures",
+    ".ipynb_checkpoints",
+]
+
+[tool.ruff.lint]
+# Conservative first pass: pyflakes (real bugs only) + a handful of
+# whitespace warnings. Import-order (``I``) is intentionally OFF — it would
+# rewrite import blocks across many files for zero behavioural change, and
+# the user has asked us not to introduce wholesale formatting churn.
+# Promote to ``E`` / ``I`` / ``UP`` in a follow-up pass once the codebase
+# has been intentionally cleaned.
+select = ["F", "W"]
+ignore = [
+    "E501",  # line-too-long: requirements.txt comments + long URLs in docstrings
+    "E731",  # lambda assignment: occasionally clearer than def for one-liners
+    "E402",  # imports not at top: experiments/ scripts set PROJECT_ROOT before import
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Scripts pre-pend PROJECT_ROOT to sys.path before importing ``src.*``,
+# so E402 is unavoidable there until the project is fully installable
+# and the sys.path hacks are removed (TODO).
+"experiments/*.py" = ["E402"]
+"scripts/*.py" = ["E402"]
+"tests/conftest.py" = ["E402"]

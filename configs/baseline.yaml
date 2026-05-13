@@ -69,3 +69,23 @@ dense:
   top_k: 1000
   compare_bm25_on_sample: true
   n_examples: 20          # qualitative examples dumped to examples.jsonl
+
+# Week 5: cross-encoder reranking on top of the W4 dense run.
+# We score (query, passage) pairs with a small MS MARCO cross-encoder.
+# Cost is O(rerank_top_k) forward passes per query -- do NOT default to
+# 1000. Top-100 is the standard reranking depth.
+reranker:
+  model_name: cross-encoder/ms-marco-MiniLM-L-6-v2
+  rerank_top_k: 100
+  batch_size: 64
+  max_length: 512
+  device: null            # null -> auto (cuda if available, else cpu)
+  output_dir: outputs/week05_reranker
+  n_examples: 20
+
+  # Resume / chunking. ``chunk_size`` queries are scored and appended to
+  # ``run.tsv`` per flush. With top_k=100 on CPU (~30 pairs/s) a chunk
+  # of 200 queries is ~11 min of work, so a SIGKILL costs at most ~11
+  # min and ``--resume`` picks up from the next chunk. Smaller =
+  # more durable but more file-flush overhead.
+  chunk_size: 200

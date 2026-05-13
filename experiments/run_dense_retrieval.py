@@ -57,6 +57,7 @@ from src.retrieval.bm25 import BM25Retriever  # noqa: E402
 from src.retrieval.dense import DenseRetriever  # noqa: E402
 from src.retrieval.sampling import qrels_anchored_sample  # noqa: E402
 from src.util.environment import capture_environment  # noqa: E402
+from src.util.manifest import write_run_manifest  # noqa: E402
 
 logger = logging.getLogger("run_dense_retrieval")
 
@@ -410,6 +411,27 @@ def main() -> None:
     with open(output_dir / "metrics.json", "w") as f:
         json.dump(payload, f, indent=2, default=str)
     logger.info("Wrote metrics to %s", output_dir / "metrics.json")
+
+    manifest_outputs = [dense_run_path, examples_path, sample_path]
+    if bm25_run_path is not None:
+        manifest_outputs.append(bm25_run_path)
+    write_run_manifest(
+        project_root=PROJECT_ROOT,
+        output_dir=output_dir,
+        command=sys.argv,
+        config_path=args.config,
+        extra_outputs=manifest_outputs,
+        extra={
+            "task": "dense_retrieval",
+            "model_name": dense_cfg["model_name"],
+            "sample_size": len(sample_doc_ids),
+            "sampling_method": "qrels-anchored",
+            "top_k": top_k_eff,
+            "n_eval_queries": n_examples_total,
+            "compared_against_bm25_sample": bm25 is not None,
+            "seed": seed,
+        },
+    )
 
     # ---------------------------------------------------------------- #
     # 9. Friendly summary

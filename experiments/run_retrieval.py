@@ -39,6 +39,7 @@ from src.data.msmarco import load_msmarco_passage  # noqa: E402
 from src.evaluation.retrieval import evaluate_retrieval  # noqa: E402
 from src.retrieval.bm25 import BM25Retriever  # noqa: E402
 from src.util.environment import capture_environment  # noqa: E402
+from src.util.manifest import write_run_manifest  # noqa: E402
 
 logger = logging.getLogger("run_retrieval")
 
@@ -243,7 +244,6 @@ def main() -> None:
     rng = random.Random(seed)
     eligible = [q for q in qids if data.qrels.get(q)]
     sample_qids = rng.sample(eligible, min(n_examples, len(eligible)))
-    sample_qids_set = set(sample_qids)
 
     # ---- 4. Chunked retrieval ----
     logger.info(
@@ -391,6 +391,25 @@ def main() -> None:
     with open(output_dir / "metrics.json", "w") as f:
         json.dump(payload, f, indent=2, default=str)
     logger.info("Wrote metrics to %s", output_dir / "metrics.json")
+
+    write_run_manifest(
+        project_root=PROJECT_ROOT,
+        output_dir=output_dir,
+        command=sys.argv,
+        config_path=args.config,
+        extra_outputs=[run_path, examples_path],
+        extra={
+            "task": "retrieval",
+            "backend": cfg["retrieval"].get("backend", "bm25s"),
+            "k1": cfg["retrieval"].get("k1"),
+            "b": cfg["retrieval"].get("b"),
+            "stopwords": cfg["retrieval"].get("stopwords"),
+            "top_k": top_k,
+            "n_eval_queries": n_examples,
+            "resumed": bool(args.resume and (set(qids) - set(pending_qids))),
+            "seed": seed,
+        },
+    )
 
     # ---- 8. Friendly summary ----
     print("\n=== Week 2 BM25 baseline ===")

@@ -2,8 +2,8 @@
 
 Retrieval-augmented question answering on MS MARCO. The repo has two parallel tracks:
 
-- **Script pipeline** (`experiments/`, `src/`) — reproducible, official-corpus, structured outputs + auto-generated reports. This is the source of truth for benchmark numbers.
-- **Notebooks** (`notebooks/`) — small prototype experiments on sampled data. Useful for narrative and visualization, **not** the source of benchmark numbers.
+- **Script pipeline** (`experiments/`, `src/`) — reproducible, official-corpus, structured outputs + auto-generated reports. **This is the source of truth for benchmark numbers.**
+- **Notebooks** (`notebooks/`) — small prototype experiments on hand-written toy corpora or sampled data. They exist for narrative + visualization + smoke-checking the API. **Numbers in notebooks are illustrative only — do not cite them as benchmarks.** Every notebook has a "Limitations" section that says so explicitly, and points at the equivalent script for the honest result.
 
 ## 1. Status
 
@@ -24,24 +24,117 @@ Retrieval-augmented question answering on MS MARCO. The repo has two parallel tr
 ### Week 3 — RAG generation &nbsp;&nbsp;✅ done
 
 - Script: [`experiments/run_generation_baseline.py`](experiments/run_generation_baseline.py)
-- **ROUGE-L = 0.1619** &nbsp;·&nbsp; **BLEU = 0.0573** &nbsp;·&nbsp; **EM = 0.0050** &nbsp;·&nbsp; **Token-F1 = 0.1756**
-  on a 200-query sample (T5-small, no fine-tuning, top-3 BM25 passages)
+- **Sampled baseline** — 200-query sample of dev/small (seed 42), T5-small (no fine-tuning),
+  top-3 BM25 passages from the W2 run, best-of-N reference scoring:
+  - **ROUGE-L = 0.1626** &nbsp;·&nbsp; **BLEU = 0.0574** &nbsp;·&nbsp; **EM = 0.0050** &nbsp;·&nbsp; **Token-F1 = 0.1756**
+  - Run config: [`configs/baseline.yaml`](configs/baseline.yaml) · Command: `python experiments/run_generation_baseline.py` ·
+    Manifest: `outputs/week03_generation/manifest.json` *(gitignored; regenerated each run)*
+  - **Not** a full dev/small benchmark — 200 / 6,980 queries, CPU-friendly.
 - Prototype notebook: [`notebooks/week03_generation.ipynb`](notebooks/week03_generation.ipynb)
-  — 3-passage toy demo with T5-small
+  — 3-passage toy demo with T5-small (smoke test, not a benchmark)
+- Historical note: a re-run on 2026-05-13 produced essentially the same numbers
+  (ROUGE-L 0.1626 vs prior 0.1619, BLEU 0.0574 vs prior 0.0573). The earlier
+  numbers therefore do not need to be retracted — they were produced with
+  effectively the same scoring as today, and the `R2` best-of-N fix had only
+  marginal impact on T5-small at this sample size.
+
+### Week 4 — Dense retrieval (sampled) &nbsp;&nbsp;✅ done
+
+- Script: [`experiments/run_dense_retrieval.py`](experiments/run_dense_retrieval.py)
+- Encoder: `sentence-transformers/all-MiniLM-L6-v2`, FAISS `IndexFlatIP` over
+  L2-normalised embeddings, qrels-anchored 50k-passage sample.
+- **Dense MRR@10 = 0.8830** &nbsp;·&nbsp; **nDCG@10 = 0.9041** &nbsp;·&nbsp; **Recall@100 = 0.9946**
+  vs **BM25-on-sample MRR@10 = 0.6948** &nbsp;·&nbsp; **Recall@100 = 0.9338** (same 50k pool).
+- Numbers are **upper-bounded** by qrels-anchoring (every dev relevant doc is
+  in the pool by construction). The valid comparison is *dense vs BM25 on the
+  same sample*, not against the W2 full-corpus number.
+
+### Week 5 — Cross-encoder reranking &nbsp;&nbsp;✅ done
+
+- Script: [`experiments/run_reranker.py`](experiments/run_reranker.py)
+- Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2` over the W4 dense top-100.
+- **MRR@10 = 0.8846 → 0.9282** (+0.0435) &nbsp;·&nbsp; **nDCG@10 = 0.9014 → 0.9412** (+0.0398).
+  1,000-query CPU-subsample of dev/small; runtime ~58 min on a 6-core MacBook,
+  ~29 (query, passage) pairs/s, peak RSS ~3.9 GiB.
+  Recall@100 unchanged by construction (reranking is order-only).
+- Prototype notebook: [`notebooks/week05_reranker.ipynb`](notebooks/week05_reranker.ipynb)
+  — 8-passage toy demo showing the score-margin sharpening (bi-encoder gap
+  ~0.08 → cross-encoder gap ~7).
+- Narrative: W4 closed the recall gap (semantic matching). W5 closes the
+  *local-ordering* gap — once the relevant passage is somewhere in the top-100,
+  the cross-encoder is what pushes it to top-1 / top-3.
+
+### Generation × retrieval source &nbsp;&nbsp;✅ done
+
+Does feeding reranked top-K back into the T5-small generator actually
+improve answer quality? Apples-to-apples comparison: same 200-query seed-42
+subsample drawn from the 1,000 dev/small queries covered by the W5
+reranker run, same T5-small (no fine-tuning), same top-3 passages — only
+the upstream retrieval source changes. Both runs sample the **exact same
+200 query ids** (verified by qid set-diff = ∅).
+
+| Retrieval source &rarr; T5-small | ROUGE-L | BLEU | EM | Token-F1 |
+|---|---:|---:|---:|---:|
+| BM25 &nbsp; *(`outputs/week02_bm25/run.tsv`, restricted to W5 pool)*    | 0.2131 | 0.0967 | 0.0200 | 0.2234 |
+| Reranked &nbsp; *(`outputs/week05_reranker/run.tsv`)*                   | **0.4006** | **0.3283** | **0.0700** | **0.4003** |
+| **Δ (rerank − BM25)** | **+0.1875** | **+0.2316** | **+0.0500** | **+0.1769** |
+
+Conclusion: **reranking the first stage roughly doubles every generation
+metric on this subsample**. Cross-encoder reordering of top-100 → top-3
+delivers materially better passages into the generator's context window,
+and surface-form metrics pick that up even with a frozen pretrained
+T5-small. Qualitative example (qid 1043064, *"what is the chemical
+formula for oxygen tetrafluoride?"*): BM25 → *"Li 2 O"*; reranked →
+*"N2F4"* (matches the reference). The gain is real, not artifact.
+
+Caveats — read these before citing the table:
+
+- **The 1,000-query reranker subsample is structurally easier than full
+  dev/small.** BM25 generation on the 6,980-query baseline scores
+  ROUGE-L 0.1626 / BLEU 0.0574 / Token-F1 0.1756; on the W5-covered
+  1,000-query pool it scores 0.2131 / 0.0967 / 0.2234. So *level*
+  numbers in this table are inflated relative to the full benchmark; the
+  *delta* between rows is the load-bearing claim.
+- Same 200-query seed-42 subsample for both rows, so the comparison is
+  apples-to-apples *within this pool*. The original 200/6,980 W3
+  baseline result in [`outputs/week03_generation/`](outputs/week03_generation/) (gitignored) is kept unchanged
+  as the legacy reference; the new comparison lives in
+  [`outputs/week03_generation_bm25/`](outputs/week03_generation_bm25/)
+  and
+  [`outputs/week03_generation_reranked/`](outputs/week03_generation_reranked/)
+  (both gitignored). Manifests in each dir capture `retrieval_source`,
+  `input_run`, `restrict_to_run`, and the git commit.
+- Commands to reproduce:
+  ```bash
+  python experiments/run_generation_baseline.py \
+      --input-run outputs/week02_bm25/run.tsv \
+      --output-dir outputs/week03_generation_bm25 \
+      --retrieval-source bm25 \
+      --restrict-to-run outputs/week05_reranker/run.tsv
+
+  python experiments/run_generation_baseline.py \
+      --input-run outputs/week05_reranker/run.tsv \
+      --output-dir outputs/week03_generation_reranked \
+      --retrieval-source reranked
+  ```
 
 ### Reference points
 
 - Published Anserini/Lucene BM25 baseline on MS MARCO `dev/small`: MRR@10 ≈ 0.184. Our `bm25s`-based **0.1703** is in the same ballpark; the gap is consistent with tokenizer differences.
-- The W3 numbers above were produced before the best-of-N reference switch (`R2` in the rigor review). A re-run will likely report slightly higher ROUGE-L / BLEU because each prediction is now scored against every reference and the best score is kept.
 
 ## 2. Directory layout
 
 ```
-configs/        baseline.yaml — paths + retrieval/generation/eval knobs
-experiments/    run_retrieval.py, run_generation_baseline.py
+configs/        baseline.yaml — paths + retrieval/generation/reranker/eval knobs
+experiments/    run_retrieval.py, run_dense_retrieval.py,
+                run_generation_baseline.py, run_reranker.py
 src/
   data/         msmarco.py — ir_datasets loader for the official corpus
   retrieval/    bm25.py    — bm25s wrapper with save/load + chunked retrieve
+                dense.py   — Sentence-Transformers + FAISS dense retriever
+                sampling.py — qrels-anchored sub-corpus sampling
+  reranking/    cross_encoder.py — Cross-encoder reranker wrapper (W5)
+                io.py            — TREC run.tsv read/truncate/write helpers
   generation/   rag_generator.py — T5/BART RAG generator
   evaluation/   retrieval.py (MRR/Recall/nDCG), generation.py (ROUGE/BLEU/EM/F1)
   reporting/    build_report.py — fills markdown templates from outputs/
@@ -63,10 +156,30 @@ Everything runs from the project root. Scripts add `PROJECT_ROOT` to `sys.path` 
 Python 3.10+ recommended (3.9 also works).
 
 ```bash
+# Fast development install — loose lower bounds, latest compatible versions.
 pip install -r requirements.txt
-# optional: PDF report generation (markdown report works without these)
-brew install pandoc                 # macOS
-brew install --cask basictex        # macOS LaTeX engine
+pip install -e .                       # register `src` as a real package
+```
+
+For an environment that reproduces the numbers checked into the reports,
+pin to the lockfile instead:
+
+```bash
+pip install -r requirements-lock.txt   # exact versions, no upgrades
+pip install -e .
+```
+
+Or, equivalently:
+
+```bash
+make install                           # uses requirements.txt + editable install
+```
+
+Optional, only needed for PDF report generation (markdown reports work without):
+
+```bash
+brew install pandoc                    # macOS
+brew install --cask basictex           # macOS LaTeX engine
 # Linux: sudo apt-get install pandoc texlive-xetex
 ```
 
@@ -117,6 +230,67 @@ Tunable knobs in `configs/baseline.yaml`:
 - `generation.num_eval_queries`
 - `generation.top_k_passages`
 
+The runner is **retrieval-source agnostic** — feed it any TREC-format
+`run.tsv` (BM25 / dense / reranked) via the CLI flags. Defaults preserve
+the W3 BM25 baseline behaviour exactly; explicit flags pick a different
+upstream:
+
+```bash
+# Reranked → T5-small, on the queries the reranker actually covers
+python experiments/run_generation_baseline.py \
+    --input-run outputs/week05_reranker/run.tsv \
+    --output-dir outputs/week03_generation_reranked \
+    --retrieval-source reranked
+```
+
+Use `--restrict-to-run <other_run.tsv>` to force two generation runs to
+evaluate on the SAME 200-query subsample even when their upstream
+retrievers cover different query sets — see the "Generation × retrieval
+source" section above for the BM25-vs-reranked comparison this enables.
+
+### Week 4 — Dense retrieval (sampled corpus)
+
+Requires Week 2 to have produced `data/processed/bm25_index_msmarco/doc_ids.json`
+(the doc_id pool the qrels-anchored sampler draws from).
+
+```bash
+python experiments/run_dense_retrieval.py
+python -m src.reporting.build_report --week week04
+```
+
+First run: ~15 min to encode the 50k sampled passages, ~20 s for FAISS search.
+Subsequent runs reuse the cached FAISS index. Tunable knobs:
+- `dense.model_name` (e.g. `sentence-transformers/all-MiniLM-L6-v2`,
+  `sentence-transformers/msmarco-MiniLM-L6-cos-v5`)
+- `dense.sample_size` (default 50000; grows the pool, shrinks recall)
+- `dense.compare_bm25_on_sample` (head-to-head on the same sample)
+
+### Week 5 — Cross-encoder reranking
+
+Requires Week 4 to have produced `outputs/week04_dense/run.tsv`.
+
+```bash
+python experiments/run_reranker.py
+python -m src.reporting.build_report --week week05
+```
+
+Default: rerank the top-100 dense candidates per query with
+`cross-encoder/ms-marco-MiniLM-L-6-v2`. CPU-only runtime scales linearly with
+the number of queries — full 6,980 queries × top-100 is ~6 hours on a 6-core
+laptop. Use `--num-eval-queries` for a deterministic subsample.
+
+```bash
+# fast smoke test (~1 min)
+python experiments/run_reranker.py --num-eval-queries 50 --rerank-top-k 100
+# canonical baseline (~50 min on CPU with batch 128, OMP=12)
+OMP_NUM_THREADS=12 python experiments/run_reranker.py --num-eval-queries 1000
+```
+
+Tunable knobs in `configs/baseline.yaml` under `reranker:`:
+- `reranker.model_name` (any HF cross-encoder)
+- `reranker.rerank_top_k` (depth; cost is O(K))
+- `reranker.batch_size`, `reranker.max_length`
+
 ## 5. Run the prototype notebooks
 
 ```bash
@@ -144,6 +318,27 @@ All knobs live in [configs/baseline.yaml](configs/baseline.yaml). Key ones:
 | `data.corpus_limit` | Set to a small int for a smoke test that does **not** reproduce official numbers; leave `null` for real runs. |
 | `generation.num_eval_queries` | Size of the W3 eval subset |
 
+## 6.5. Reproducibility status
+
+Current state of the engineering scaffold (what works today; what's still TODO).
+
+| Area | Status | Notes |
+|---|---|---|
+| Default unit tests | ✅ | `make test` / `pytest -q` — 78 tests, no network, no heavy deps. Slow tests excluded by `[tool.pytest.ini_options]`. |
+| Slow tests | ✅ (skips gracefully) | `make test-slow` includes `@pytest.mark.slow`. HF metric scripts skip if unavailable; never hard-fail offline. |
+| Lockfile | ✅ basic | `requirements-lock.txt` is pip-freeze-style; sub-dep transitive closure + hash pinning are TODO (would need pip-tools / uv). |
+| Installable package | ✅ basic | `pip install -e .` registers `src` via `pyproject.toml`. Existing `sys.path.insert` shims in `experiments/` and `scripts/` are kept for now to avoid touching unrelated code; removing them is a TODO. |
+| CI | ✅ basic | `.github/workflows/ci.yml`: pytest + ruff on push/PR to main. Does not run slow tests or download MS MARCO data. |
+| Lint | ✅ minimal | `ruff` with `F` + `W` (pyflakes + whitespace). Style rules (`E`, `I`, `UP`, …) intentionally OFF on the first pass. |
+| Artifact manifest | ✅ wired | `src/util/manifest.py` provides `build_manifest()` / `write_manifest()` / `write_run_manifest()`. All 4 runners write `outputs/<week>/manifest.json` alongside `metrics.json`. Captures git commit + dirty flag, command, config hash, dependency-file hashes (requirements / lockfile / pyproject), and per-output sha256 (truncated). |
+| Numbers in `reports/generated/*.pdf` | ⚠️ historical | Reflect the dev environment at the time the PDF was committed. Re-running with `requirements-lock.txt` is the closest we get to reproduction today. |
+
+Current limitations to be aware of:
+
+- The lockfile reflects the author's **macOS CPU-only** dev environment. Linux / CUDA may resolve different versions; install `torch` from the appropriate PyTorch index *first*.
+- The corpus, encoder, and reranker checkpoints are downloaded by `ir_datasets` / HuggingFace at first run and **are not checksummed by the project**. If upstream changes silently, numbers may shift.
+- `experiments/run_*.py` still rely on `sys.path.insert(0, PROJECT_ROOT)` at the top of the file. `pip install -e .` makes this unnecessary, but the shim is kept until a future pass removes them.
+
 ## 7. Known limitations
 
 - **Tokenizer mismatch with Anserini.** Our 0.1703 vs reference 0.184 is mostly tokenizer-induced (`bm25s` default tokenizer ≠ Lucene `EnglishAnalyzer`). Acceptable for a single-machine pure-Python pipeline.
@@ -153,11 +348,16 @@ All knobs live in [configs/baseline.yaml](configs/baseline.yaml). Key ones:
 
 ## 8. Next
 
-- Run the W3 RAG baseline against the W2 retrievals.
 - Try `n_threads: -1` for a faster W2 re-run.
-- Add a Sentence-BERT bi-encoder retriever and a hybrid BM25+dense fusion.
-- Add a cross-encoder reranker over the BM25 top-100.
+- Hybrid first stage (BM25 + dense fusion, e.g. RRF) → cross-encoder rerank.
+- Rerank the BM25 top-100 as well, and compare delta-from-CE on a weak vs
+  strong first stage.
 - Supervised fine-tuning of the generation model on `(question, gold passage, answer)` triples from MS MARCO QA v2.1.
+- Re-run the BM25-vs-reranked generation comparison on **full dev/small**
+  (6,980 queries × top-100 cross-encoder reranking ≈ 6 h CPU): the
+  current 200-query subsample inherits the W5 reranker's 1,000-query
+  budget, so the *level* numbers in the comparison table are inflated.
+  The delta is robust, but the absolute scores will move.
 
 ## 9. License
 

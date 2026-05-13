@@ -2,22 +2,37 @@
 
 Pipeline:
 
-1. Load the Week 2 BM25 run (``outputs/week02_bm25/run.tsv``).
+1. Load a TREC-format retrieval run (``--input-run``; defaults to the W2
+   BM25 run at ``outputs/week02_bm25/run.tsv``).
 2. Load dev/small queries and the MS MARCO Passage docs_store (random access).
 3. Cross-reference dev/small query ids with MS MARCO QA v2.1 (HuggingFace
    ``ms_marco`` dataset, validation split) to recover human-written answers
    for evaluation.
-4. For each evaluated query, take the top-K BM25 passages, generate an
-   answer with the Seq2Seq model, and score predictions.
-5. Persist:
-   - ``outputs/week03_generation/predictions.jsonl``
-   - ``outputs/week03_generation/metrics.json``
-   - ``outputs/week03_generation/examples.jsonl``
+4. For each evaluated query, take the top-K passages from the run, generate
+   an answer with the Seq2Seq model, and score predictions.
+5. Persist (under ``--output-dir``, defaults to ``outputs/week03_generation``):
+   - ``predictions.jsonl``
+   - ``metrics.json``
+   - ``examples.jsonl``
+   - ``manifest.json``
+
+The runner is **retrieval-source agnostic** — point ``--input-run`` at any
+TREC-format ``run.tsv`` (BM25 / dense / reranked) and the rest of the
+pipeline is identical. Use ``--restrict-to-run`` to make different
+retrieval sources eval on the SAME query subsample (apples-to-apples),
+which matters when one source covers fewer queries than another (e.g.
+the W5 reranker covers 1,000 dev queries, not all 6,980).
 
 Run from the project root::
 
+    # W3 baseline: BM25 → T5-small (defaults preserve the legacy behaviour)
     python experiments/run_generation_baseline.py
-    python experiments/run_generation_baseline.py --config configs/baseline.yaml
+
+    # Reranked → T5-small, restricted to reranker-covered queries
+    python experiments/run_generation_baseline.py \\
+        --input-run outputs/week05_reranker/run.tsv \\
+        --output-dir outputs/week03_generation_reranked \\
+        --retrieval-source reranked
 """
 
 from __future__ import annotations
@@ -38,6 +53,7 @@ from src.data.msmarco import get_docs_store, load_msmarco_passage  # noqa: E402
 from src.evaluation.generation import evaluate_generation  # noqa: E402
 from src.generation.rag_generator import RAGGenerationConfig, RAGGenerator  # noqa: E402
 from src.util.environment import capture_environment  # noqa: E402
+from src.util.manifest import write_run_manifest  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +64,7 @@ def load_config(path: Path) -> dict:
         return yaml.safe_load(f)
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--config",
@@ -61,7 +77,93 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Override the eval set size from the config.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--input-run",
+        type=Path,
+        default=None,
+        help=(
+            "TREC-format run.tsv to feed the generator. Defaults to the W2 BM25 "
+            "run derived from cfg['eval_retrieval']['output_dir']."
+        ),
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory for predictions/metrics/examples/manifest. Defaults to "
+            "cfg['generation']['output_dir']."
+        ),
+    )
+    parser.add_argument(
+        "--retrieval-source",
+        type=str,
+        default=None,
+        help=(
+            "Short label for the upstream retriever (e.g. 'bm25', 'dense', "
+            "'reranked'). Recorded in the manifest so reports can keyed by it. "
+            "Defaults to a label inferred from --input-run."
+        ),
+    )
+    parser.add_argument(
+        "--restrict-to-run",
+        type=Path,
+        default=None,
+        help=(
+            "Optional secondary run.tsv whose queries the eval set is further "
+            "intersected with. Use this to make BM25-driven and reranked-driven "
+            "generation evaluate on the SAME 200-query subsample when one "
+            "upstream run covers fewer queries than the other."
+        ),
+    )
+    return parser.parse_args(argv)
+
+
+def resolve_input_run(args: argparse.Namespace, cfg: dict, project_root: Path) -> Path:
+    """Pick the run.tsv to feed the generator. CLI > config-derived default."""
+    if args.input_run is not None:
+        p = args.input_run
+        return p if p.is_absolute() else project_root / p
+    return project_root / cfg["eval_retrieval"]["output_dir"] / "run.tsv"
+
+
+def resolve_output_dir(args: argparse.Namespace, cfg: dict, project_root: Path) -> Path:
+    """Pick the output directory. CLI > config."""
+    if args.output_dir is not None:
+        p = args.output_dir
+        return p if p.is_absolute() else project_root / p
+    return project_root / cfg["generation"]["output_dir"]
+
+
+def infer_retrieval_source(input_run: Path) -> str:
+    """Best-effort short label derived from the input run path.
+
+    Falls back to 'bm25' for the W2 path and 'unknown' otherwise. The CLI
+    flag ``--retrieval-source`` is preferred whenever the caller knows.
+    """
+    name = input_run.parent.name.lower()
+    if "week02" in name or "bm25" in name:
+        return "bm25"
+    if "week04" in name or "dense" in name:
+        return "dense"
+    if "week05" in name or "rerank" in name:
+        return "reranked"
+    return "unknown"
+
+
+def compute_eligible(
+    runs: dict[str, list[str]],
+    queries: dict[str, str],
+    qa_answers: dict[str, list[str]],
+    restrict_qids: set[str] | None = None,
+) -> list[str]:
+    """Intersect the three sources that a query needs to be evaluable, plus
+    an optional ``restrict_qids`` filter (queries covered by another run).
+    """
+    eligible = set(runs) & set(queries) & set(qa_answers)
+    if restrict_qids is not None:
+        eligible &= restrict_qids
+    return sorted(eligible)
 
 
 def load_runs(run_path: Path) -> dict[str, list[str]]:
@@ -114,21 +216,43 @@ def main() -> None:
     random.seed(seed)
 
     cache_dir = PROJECT_ROOT / cfg["data"].get("cache_dir", "data/raw")
-    w2_dir = PROJECT_ROOT / cfg["eval_retrieval"]["output_dir"]
-    w3_dir = PROJECT_ROOT / cfg["generation"]["output_dir"]
-    w3_dir.mkdir(parents=True, exist_ok=True)
+    run_path = resolve_input_run(args, cfg, PROJECT_ROOT)
+    output_dir = resolve_output_dir(args, cfg, PROJECT_ROOT)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    retrieval_source = args.retrieval_source or infer_retrieval_source(run_path)
 
-    run_path = w2_dir / "run.tsv"
     if not run_path.exists():
         logger.error(
-            "Missing %s — run experiments/run_retrieval.py first.", run_path
+            "Missing input run at %s — pass --input-run or run the upstream "
+            "retrieval/reranker script first.",
+            run_path,
         )
         sys.exit(1)
 
     # ---- 1. Inputs ----
-    logger.info("Loading retrieval run from %s", run_path)
+    logger.info("Loading retrieval run from %s (source=%s)", run_path, retrieval_source)
     runs = load_runs(run_path)
     logger.info("Loaded retrieval results for %d queries.", len(runs))
+
+    restrict_qids: set[str] | None = None
+    restrict_run_rel: str | None = None
+    if args.restrict_to_run is not None:
+        restrict_path = (
+            args.restrict_to_run
+            if args.restrict_to_run.is_absolute()
+            else PROJECT_ROOT / args.restrict_to_run
+        )
+        if not restrict_path.exists():
+            logger.error("Missing --restrict-to-run file at %s", restrict_path)
+            sys.exit(1)
+        logger.info("Restricting eligibility to queries in %s", restrict_path)
+        restrict_qids = set(load_runs(restrict_path).keys())
+        logger.info("  ↳ %d queries in restriction set.", len(restrict_qids))
+        restrict_run_rel = (
+            str(restrict_path.relative_to(PROJECT_ROOT))
+            if restrict_path.is_relative_to(PROJECT_ROOT)
+            else str(restrict_path)
+        )
 
     # We only need queries (not the corpus) at this point; the corpus is
     # accessed lazily through the ir_datasets docs_store.
@@ -138,9 +262,10 @@ def main() -> None:
     qid_to_answers = load_qa_references(cache_dir=cache_dir)
 
     # ---- 2. Eligible eval set ----
-    eligible = sorted(set(runs) & set(data.queries) & set(qid_to_answers))
+    eligible = compute_eligible(runs, data.queries, qid_to_answers, restrict_qids)
     logger.info(
-        "Eligible queries (in run + dev/small + QA references): %d",
+        "Eligible queries (in run + dev/small + QA references%s): %d",
+        " + restriction" if restrict_qids is not None else "",
         len(eligible),
     )
     n_eval = args.num_eval_queries or int(
@@ -191,7 +316,7 @@ def main() -> None:
     )
 
     # ---- 5. Persist predictions.jsonl ----
-    pred_path = w3_dir / "predictions.jsonl"
+    pred_path = output_dir / "predictions.jsonl"
     with open(pred_path, "w") as f:
         for qid, q, passages, top_ids, pred, refs in zip(
             sample_qids,
@@ -218,7 +343,7 @@ def main() -> None:
     logger.info("Wrote predictions to %s", pred_path)
 
     # ---- 6. examples.jsonl (small qualitative subset) ----
-    examples_path = w3_dir / "examples.jsonl"
+    examples_path = output_dir / "examples.jsonl"
     with open(examples_path, "w") as f:
         for qid, q, passages, pred, refs in list(
             zip(sample_qids, queries, passages_per_query, predictions, references_per_query)
@@ -252,16 +377,44 @@ def main() -> None:
         "wall_clock_seconds": {"generation": gen_time},
         "environment": capture_environment(),
     }
-    with open(w3_dir / "metrics.json", "w") as f:
+    with open(output_dir / "metrics.json", "w") as f:
         json.dump(payload, f, indent=2, default=str)
-    logger.info("Wrote metrics to %s", w3_dir / "metrics.json")
+    logger.info("Wrote metrics to %s", output_dir / "metrics.json")
 
-    print("\n=== Week 3 RAG generation baseline ===")
+    input_run_rel = (
+        str(run_path.relative_to(PROJECT_ROOT))
+        if run_path.is_relative_to(PROJECT_ROOT)
+        else str(run_path)
+    )
+    manifest_extra: dict[str, object] = {
+        "task": "generation",
+        "model_name": gen_cfg.model_name,
+        "top_k_passages": top_k_passages,
+        "n_eval_queries": len(predictions),
+        "seed": seed,
+        "input_run": input_run_rel,
+        "retrieval_source": retrieval_source,
+        "run_name": output_dir.name,
+    }
+    if restrict_run_rel is not None:
+        manifest_extra["restrict_to_run"] = restrict_run_rel
+    write_run_manifest(
+        project_root=PROJECT_ROOT,
+        output_dir=output_dir,
+        command=sys.argv,
+        config_path=args.config,
+        extra_outputs=[pred_path, examples_path],
+        extra=manifest_extra,
+    )
+
+    print("\n=== RAG generation ===")
+    print(f"retrieval source: {retrieval_source}")
+    print(f"input run:        {input_run_rel}")
     print(f"queries evaluated: {len(predictions)}")
     for key in ("rouge-l", "bleu", "exact-match", "token-f1"):
         if key in metrics:
             print(f"  {key:14s} = {metrics[key]:.4f}")
-    print(f"outputs: {w3_dir}")
+    print(f"outputs: {output_dir}")
 
 
 if __name__ == "__main__":

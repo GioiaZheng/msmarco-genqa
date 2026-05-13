@@ -1,0 +1,57 @@
+# pip-freeze-style lockfile for reproducibility.
+#
+# `requirements.txt` is the loose, easy-to-install dep list (use for fast
+# development setup). This file pins exact versions known to produce the
+# numbers in `reports/generated/*.pdf` and `outputs/*/metrics.json` on the
+# author's macOS development machine (Python 3.9, CPU-only).
+#
+# Install with:
+#
+#     pip install -r requirements-lock.txt
+#     pip install -e .
+#
+# Caveats:
+# - This is not transitively closed — only the direct deps from
+#   `requirements.txt` plus a handful of test/lint tools are pinned.
+#   Sub-dependencies are still resolved at install time. For a fully
+#   reproducible lock with hashes, regenerate via pip-tools / uv.
+# - Pinned versions reflect the macOS CPU dev environment. Linux/CUDA
+#   builds may need a different torch wheel; install `torch` separately
+#   from the appropriate index before running pip install.
+
+# --- Core scientific stack ---
+numpy==1.26.4
+pandas==2.3.3
+matplotlib==3.9.4
+
+# --- Configuration ---
+PyYAML==6.0.3
+
+# --- Datasets and IO ---
+datasets==4.5.0
+ir_datasets==0.5.11
+
+# --- Lexical retrieval ---
+rank-bm25==0.2.2
+bm25s==0.3.8
+
+# --- Dense retrieval ---
+sentence-transformers==5.1.2
+faiss-cpu==1.13.0
+
+# --- Generation / reranking (transformers stack) ---
+torch==2.2.2
+transformers==4.57.6
+tokenizers==0.22.2
+sentencepiece==0.2.1
+safetensors==0.7.0
+
+# --- Evaluation ---
+evaluate==0.4.6
+rouge_score==0.1.2
+sacrebleu==2.6.0
+nltk==3.9.2
+
+# --- Testing / lint ---
+pytest==8.4.2
+ruff==0.15.12

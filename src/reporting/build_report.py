@@ -72,6 +72,15 @@ def _truncate(text: str, n: int = 220) -> str:
     return text if len(text) <= n else text[:n].rstrip() + "..."
 
 
+def _signed_delta(after: Any, before: Any, places: int = 4) -> str:
+    if after is None or before is None:
+        return "—"
+    try:
+        return f"{float(after) - float(before):+.{places}f}"
+    except (TypeError, ValueError):
+        return "—"
+
+
 def _substitute(template: str, fields: dict[str, str]) -> str:
     out = template
     for key, value in fields.items():
@@ -431,6 +440,158 @@ def build_week04(out_dir: Path) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Week 05 — cross-encoder reranking on top of the W4 dense run.
+# --------------------------------------------------------------------------- #
+
+
+def _format_week05_case_studies(examples: list[dict], n: int = 5) -> str:
+    """Show queries where the reranker moved the relevant doc the most."""
+    if not examples:
+        return "*No examples available.*"
+
+    def _gap(e):
+        d = e.get("dense_first_rank_in_top10")
+        r = e.get("rerank_first_rank_in_top10")
+        # Use 11 to mean "not in top-10". Bigger improvement first.
+        d_eff = d if d is not None else 11
+        r_eff = r if r is not None else 11
+        improvement = d_eff - r_eff
+        return improvement, -r_eff
+
+    ranked = sorted(examples, key=_gap, reverse=True)
+    blocks: list[str] = []
+    for e in ranked[:n]:
+        d = e.get("dense_first_rank_in_top10")
+        r = e.get("rerank_first_rank_in_top10")
+        block = [
+            f"### `{e.get('query_id')}` — {e.get('query', '')}",
+            "",
+            f"- Dense first-relevant rank:  **{d if d is not None else '>10'}**",
+            f"- Rerank first-relevant rank: **{r if r is not None else '>10'}**",
+            f"- Relevant doc id(s): {', '.join(e.get('relevant_doc_ids') or []) or '—'}",
+        ]
+        blocks.append("\n".join(block))
+    return "\n\n".join(blocks)
+
+
+def _format_week05_discussion(
+    dense_m: dict, rerank_m: dict, examples: list[dict]
+) -> str:
+    bullets: list[str] = []
+
+    def _diff(key, label):
+        d = dense_m.get(key)
+        r = rerank_m.get(key)
+        if d is None or r is None:
+            return None
+        delta = r - d
+        if abs(delta) < 1e-3:
+            return f"- **{label}**: rerank ≈ dense ({r:.4f} vs {d:.4f}, Δ={delta:+.4f})."
+        verb = "improves" if delta > 0 else "regresses"
+        return (
+            f"- **{label}**: cross-encoder {verb} the metric by {abs(delta):.4f} "
+            f"(dense {d:.4f} → rerank {r:.4f})."
+        )
+
+    for k, lbl in [("mrr@10", "MRR@10"), ("ndcg@10", "nDCG@10")]:
+        line = _diff(k, lbl)
+        if line:
+            bullets.append(line)
+
+    # Recall@100 is unchanged by reranking; call that out explicitly so the
+    # narrative ("recall saturated, reranker improves ordering") is grounded.
+    d_r100 = dense_m.get("recall@100")
+    r_r100 = rerank_m.get("recall@100")
+    if d_r100 is not None and r_r100 is not None:
+        if abs(r_r100 - d_r100) < 1e-6:
+            bullets.append(
+                "- **Recall@100** is unchanged ({:.4f}) — by construction, "
+                "the reranker only re-orders the top-K dense candidates and "
+                "cannot recover docs the dense retriever missed.".format(d_r100)
+            )
+
+    # Promotion stats from the examples.
+    promoted = sum(
+        1
+        for e in examples
+        if (e.get("rerank_first_rank_in_top10") or 99)
+        < (e.get("dense_first_rank_in_top10") or 99)
+    )
+    demoted = sum(
+        1
+        for e in examples
+        if (e.get("rerank_first_rank_in_top10") or 99)
+        > (e.get("dense_first_rank_in_top10") or 99)
+    )
+    if examples:
+        bullets.append(
+            f"- In the {len(examples)} sampled examples, the relevant passage "
+            f"was promoted in {promoted} and demoted in {demoted} "
+            f"(remaining cases unchanged or both >10)."
+        )
+    return "\n".join(bullets) if bullets else "- (no numeric comparison available)"
+
+
+def build_week05(out_dir: Path) -> str:
+    metrics_path = out_dir / "metrics.json"
+    examples_path = out_dir / "examples.jsonl"
+    if not metrics_path.exists():
+        raise FileNotFoundError(
+            f"{metrics_path} not found. Run experiments/run_reranker.py first."
+        )
+    payload = _read_json(metrics_path)
+    examples = _read_jsonl(examples_path)
+
+    rerank_info = payload.get("rerank", {})
+    metrics = payload.get("metrics", {})
+    dense_m = metrics.get("dense", {})
+    rerank_m = metrics.get("rerank", {})
+    timing = payload.get("wall_clock_seconds", {})
+    throughput = payload.get("throughput", {})
+
+    # Try to grab the W4 dense Recall@100 (for the "recall already
+    # saturated" framing) — fall back to the input dense top-K's recall.
+    w4_metrics_path = PROJECT_ROOT / "outputs" / rerank_info.get(
+        "input_week", "week04_dense"
+    ) / "metrics.json"
+    dense_r100_w4 = None
+    if w4_metrics_path.exists():
+        w4 = _read_json(w4_metrics_path)
+        dense_r100_w4 = (w4.get("metrics", {}).get("dense") or {}).get("recall@100")
+
+    fields = {
+        "generated_at": dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "model_name": rerank_info.get("model_name", "—"),
+        "rerank_top_k": rerank_info.get("rerank_top_k", "—"),
+        "input_run": rerank_info.get("input_run", "—"),
+        "n_queries": payload.get("n_examples", "—"),
+        "n_pairs": throughput.get("n_pairs", "—"),
+        "rerank_seconds": _fmt_float(timing.get("rerank"), 1),
+        "resolve_seconds": _fmt_float(timing.get("resolve_passages"), 1),
+        "queries_per_sec": _fmt_float(throughput.get("queries_per_sec"), 2),
+        "pairs_per_sec": _fmt_float(throughput.get("pairs_per_sec"), 0),
+        "peak_memory_mib": _fmt_float(payload.get("peak_memory_mib"), 0),
+        "batch_size": rerank_info.get("batch_size", "—"),
+        "max_length": rerank_info.get("max_length", "—"),
+        "dense_mrr10": _fmt_float(dense_m.get("mrr@10")),
+        "dense_ndcg10": _fmt_float(dense_m.get("ndcg@10")),
+        "dense_r100": _fmt_float(dense_m.get("recall@100")),
+        "rerank_mrr10": _fmt_float(rerank_m.get("mrr@10")),
+        "rerank_ndcg10": _fmt_float(rerank_m.get("ndcg@10")),
+        "rerank_r100": _fmt_float(rerank_m.get("recall@100")),
+        "delta_mrr10": _signed_delta(rerank_m.get("mrr@10"), dense_m.get("mrr@10")),
+        "delta_ndcg10": _signed_delta(rerank_m.get("ndcg@10"), dense_m.get("ndcg@10")),
+        "delta_r100": _signed_delta(rerank_m.get("recall@100"), dense_m.get("recall@100")),
+        "dense_recall_at_100_w4": _fmt_float(dense_r100_w4) if dense_r100_w4 else "—",
+        "case_studies": _format_week05_case_studies(examples),
+        "discussion_bullets": _format_week05_discussion(dense_m, rerank_m, examples),
+    }
+
+    template = (TEMPLATES_DIR / "week05_reranker.md").read_text()
+    return _substitute(template, fields)
+
+
+# --------------------------------------------------------------------------- #
 # PDF
 # --------------------------------------------------------------------------- #
 
@@ -521,7 +682,7 @@ def main() -> None:
     parser.add_argument(
         "--week",
         required=True,
-        choices=["week01", "week02", "week03", "week04"],
+        choices=["week01", "week02", "week03", "week04", "week05"],
         help="Which week's report to build.",
     )
     args = parser.parse_args()
@@ -540,10 +701,14 @@ def main() -> None:
         out_dir = OUTPUTS_DIR / "week03_generation"
         md = build_week03(out_dir)
         out_md = GENERATED_DIR / "week03_generation.md"
-    else:
+    elif args.week == "week04":
         out_dir = OUTPUTS_DIR / "week04_dense"
         md = build_week04(out_dir)
         out_md = GENERATED_DIR / "week04_dense.md"
+    else:
+        out_dir = OUTPUTS_DIR / "week05_reranker"
+        md = build_week05(out_dir)
+        out_md = GENERATED_DIR / "week05_reranker.md"
 
     out_md.write_text(md)
     print(f"Wrote markdown: {out_md}")
