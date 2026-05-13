@@ -370,7 +370,7 @@ def _render_markdown_report(
         "no_signal":
             "Small delta everywhere — no meaningful signal in either direction.",
     }
-    lines.append("| Bucket | n | %) of eval | Description |")
+    lines.append("| Bucket | n | % of eval | Description |")
     lines.append("|---|---:|---:|---|")
     total = summary["n_shared_qids"]
     for bucket, count in sorted(summary["buckets"].items(), key=lambda kv: -kv[1]):
