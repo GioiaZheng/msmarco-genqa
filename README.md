@@ -80,79 +80,114 @@ Retrieval-augmented question answering on MS MARCO. The repo has two parallel tr
 ### Generation × retrieval source &nbsp;&nbsp;✅ done
 
 Does feeding reranked top-K back into the T5-small generator actually
-improve answer quality? Apples-to-apples comparison: same 200-query seed-42
-subsample drawn from the 1,000 dev/small queries covered by the W5
-reranker run, same T5-small (no fine-tuning), same top-3 passages — only
-the upstream retrieval source changes. Both runs sample the **exact same
-200 query ids** (verified by qid set-diff = ∅).
+improve answer quality? Apples-to-apples comparison on **full dev/small
+(6 980 queries)**: same T5-small (no fine-tuning), same top-3 passages
+— only the upstream retrieval source changes. Both runs are mutually
+restricted via `--restrict-to-run` so the two predictions cover the
+**exact same 6 980 query ids** (verified by qid set-diff = ∅).
 
 | Retrieval source &rarr; T5-small | ROUGE-L | BLEU | EM | Token-F1 |
 |---|---:|---:|---:|---:|
-| BM25 &nbsp; *(`outputs/week02_bm25/run.tsv`, restricted to W5 pool)*    | 0.2131 | 0.0967 | 0.0200 | 0.2234 |
-| Reranked &nbsp; *(`outputs/week05_reranker/run.tsv`)*                   | **0.4006** | **0.3283** | **0.0700** | **0.4003** |
-| **Δ (rerank − BM25)** | **+0.1875** | **+0.2316** | **+0.0500** | **+0.1769** |
+| BM25 &nbsp; *(`outputs/week02_bm25/run.tsv`)*                              | 0.1859 | 0.0717 | 0.0135 | 0.1966 |
+| Reranked &nbsp; *(`outputs/week05_reranker_full/run.tsv`)*                 | **0.3621** | **0.2922** | **0.0606** | **0.3677** |
+| **Δ (rerank − BM25)** | **+0.1763** | **+0.2206** | **+0.0471** | **+0.1711** |
 
-Conclusion on this subsample: **reranking the first stage roughly
-doubles every generation metric, and the 95% paired-bootstrap CI on the
-per-query Δ excludes 0 for all four metrics** (see the bootstrap table
-below). Cross-encoder reordering of top-100 → top-3 delivers materially
-better passages into the generator's context window, and surface-form
-metrics pick that up even with a frozen pretrained T5-small.
+**Reranking the first stage roughly doubles every generation metric on
+full dev/small, and the 95% paired-bootstrap CI on the per-query Δ
+excludes 0 for all four metrics** (see the bootstrap table below).
+Cross-encoder reordering of top-100 → top-3 delivers materially better
+passages into the generator's context window, and surface-form metrics
+pick that up even with a frozen pretrained T5-small. The structural
+mechanism is visible in retrieval flags: the rate of having at least
+one relevance-judged passage in the top-3 jumps from **20.8 %** (BM25)
+to **96.9 %** (reranked) over the 6 980 paired queries.
+
+Per-query token-F1 splits 4 015 strict improvements / 1 766
+regressions / 1 199 ties — i.e. **net +2 249 / 6 980 queries (32 %)**
+strictly improved by feeding reranked passages, with the regressions
+mostly clustered around already-easy queries where BM25 happened to
+surface a usable passage.
+
 Qualitative example (qid 1043064, *"what is the chemical formula for
 oxygen tetrafluoride?"*): BM25 → *"Li 2 O"*; reranked → *"N2F4"*
-(matches the reference). Generalisation to full dev/small (6,980
-queries) is in the Next list — the load-bearing claim here is the
-**direction and rough magnitude** of the delta, not the absolute level.
+(matches the reference).
 
 #### Paired-bootstrap 95% CI on Δ (rerank − BM25)
 
-Same 200 paired qids, 10 000 bootstrap resamples, seed 42.
+Full 6 980 paired qids, 10 000 bootstrap resamples, seed 42.
 ROUGE-L and BLEU per-query scores here come from `rouge_score.RougeScorer`
 and NLTK `sentence_bleu` (smoothing method 1) so the per-query means
 differ slightly from the HF corpus-level numbers above; what matters is
-that all four CIs lie strictly above 0.
+that all four CIs lie strictly above 0 with effectively zero overlap.
 
 | Metric            | BM25 (per-query mean) | Reranked | Δ        | 95% CI on Δ           | p₂ (10k resamples) |
 |-------------------|----------------------:|---------:|---------:|----------------------:|-------------------:|
-| ROUGE-L           | 0.2186                | 0.4044   | +0.1858  | [+0.1344, +0.2389]    | < 0.001            |
-| BLEU (sentence)   | 0.0662                | 0.2060   | +0.1398  | [+0.0986, +0.1839]    | < 0.001            |
-| Exact-Match       | 0.0200                | 0.0700   | +0.0500  | [+0.0150, +0.0850]    | 0.007              |
-| Token-F1          | 0.2234                | 0.4003   | +0.1769  | [+0.1246, +0.2308]    | < 0.001            |
+| ROUGE-L           | 0.1934                | 0.3677   | +0.1742  | [+0.1663, +0.1820]    | < 0.001            |
+| BLEU (sentence)   | 0.0423                | 0.1754   | +0.1330  | [+0.1265, +0.1395]    | < 0.001            |
+| Exact-Match       | 0.0135                | 0.0606   | +0.0471  | [+0.0417, +0.0527]    | < 0.001            |
+| Token-F1          | 0.1966                | 0.3677   | +0.1711  | [+0.1632, +0.1789]    | < 0.001            |
 
-Reproduce: `python scripts/bootstrap_generation_comparison.py`
-(reads both `predictions.jsonl` files; writes
-`outputs/week03_generation_bootstrap/bootstrap_ci.json` — gitignored).
+CIs are ~6× tighter than the earlier 200-query subsample (n=200
+vs. n=6 980), and the full-dev Δ point estimates all sit inside the
+200-query CIs — the original direction-and-magnitude claim survives
+the move to full dev/small intact, with the level numbers naturally
+deflating to the harder full benchmark.
 
-Caveats — read these before citing the table:
+#### Bucket analysis by query type (token-F1)
 
-- **The 1,000-query reranker subsample is structurally easier than full
-  dev/small.** BM25 generation on the 6,980-query baseline scores
-  ROUGE-L 0.1626 / BLEU 0.0574 / Token-F1 0.1756; on the W5-covered
-  1,000-query pool it scores 0.2131 / 0.0967 / 0.2234. So *level*
-  numbers in this table are inflated relative to the full benchmark; the
-  *delta* between rows is the load-bearing claim.
-- Same 200-query seed-42 subsample for both rows, so the comparison is
-  apples-to-apples *within this pool*. The original 200/6,980 W3
-  baseline result in [`outputs/week03_generation/`](outputs/week03_generation/) (gitignored) is kept unchanged
-  as the legacy reference; the new comparison lives in
-  [`outputs/week03_generation_bm25/`](outputs/week03_generation_bm25/)
-  and
-  [`outputs/week03_generation_reranked/`](outputs/week03_generation_reranked/)
-  (both gitignored). Manifests in each dir capture `retrieval_source`,
-  `input_run`, `restrict_to_run`, and the git commit.
-- Commands to reproduce:
-  ```bash
-  python experiments/run_generation_baseline.py \
-      --input-run outputs/week02_bm25/run.tsv \
-      --output-dir outputs/week03_generation_bm25 \
-      --retrieval-source bm25 \
-      --restrict-to-run outputs/week05_reranker/run.tsv
+| query_type     |    n |   BM25 |  Reranked |        Δ |
+|----------------|-----:|-------:|----------:|---------:|
+| DESCRIPTION    | 3725 | 0.1889 |    0.3939 | **+0.2050** |
+| ENTITY         |  631 | 0.1765 |    0.3186 | +0.1421  |
+| LOCATION       |  498 | 0.2495 |    0.3928 | +0.1433  |
+| NUMERIC        | 1665 | 0.1997 |    0.3235 | +0.1238  |
+| PERSON         |  461 | 0.2186 |    0.3557 | +0.1371  |
 
-  python experiments/run_generation_baseline.py \
-      --input-run outputs/week05_reranker/run.tsv \
-      --output-dir outputs/week03_generation_reranked \
-      --retrieval-source reranked
-  ```
+`DESCRIPTION` queries (53 % of the eval set) benefit most from
+reranking; `NUMERIC` benefits least — consistent with the intuition
+that short numeric answers depend more on lexical surface match in
+the passage than on which-of-the-near-duplicates the reranker picks.
+Full bucket counts (`rerank_fixed_generation_improved` = 2 184,
+`rerank_fixed_generation_still_failing` = 2 684, `regression` = 233,
+…) in [`outputs/week06_analysis/summary.json`](outputs/week06_analysis/) (gitignored).
+
+Reproduce:
+
+```bash
+# 1. Generation on full dev/small (~1 h each on a 6-core CPU; mutually
+# restricted to the same qid set):
+python experiments/run_generation_baseline.py \
+    --input-run outputs/week02_bm25/run.tsv \
+    --output-dir outputs/week03_generation_bm25_full \
+    --retrieval-source bm25 \
+    --restrict-to-run outputs/week05_reranker_full/run.tsv \
+    --num-eval-queries 9999
+
+python experiments/run_generation_baseline.py \
+    --input-run outputs/week05_reranker_full/run.tsv \
+    --output-dir outputs/week03_generation_reranked_full \
+    --retrieval-source reranked \
+    --restrict-to-run outputs/week02_bm25/run.tsv \
+    --num-eval-queries 9999
+
+# 2. Four-metric paired bootstrap CI:
+python scripts/bootstrap_generation_comparison.py \
+    --bm25-dir outputs/week03_generation_bm25_full \
+    --reranked-dir outputs/week03_generation_reranked_full \
+    --output-dir outputs/week03_generation_bootstrap_full
+
+# 3. Bucket + retrieval-flag analysis (with token-F1 / EM CIs inline):
+python scripts/analyze_generation_rerank.py \
+    --bm25-dir outputs/week03_generation_bm25_full \
+    --reranked-dir outputs/week03_generation_reranked_full \
+    --output-dir outputs/week06_analysis
+```
+
+The earlier 200-query subsample comparison (BM25 0.2131 / Rerank
+0.4006 ROUGE-L, Δ +0.1875 with CI [+0.1344, +0.2389]) lives in
+`outputs/week03_generation_{bm25,reranked}/` (gitignored). The Δ point
+estimates and conclusions are consistent across the two scales; the
+full-dev numbers above are the version to cite.
 
 ### Reference points
 
