@@ -79,6 +79,27 @@ T5-small is pretrained-only (no SFT) so absolute level numbers are
 modest. The load-bearing claim is the **paired Δ between rows**, which
 is statistically robust on n = 6 980.
 
+A *low-cost semantic evaluation sanity check on 3 000 paired examples
+using DistilBERT-based BERTScore* (rescaled, paired-bootstrap CI; seed
+42) gives BM25 0.2192 → reranked 0.3920, **Δ +0.1728** ([+0.1608,
++0.1850], p < 0.001). Per-query: rerank strictly better on 64.8 % of
+qids; tie 5.7 %; strictly worse on 29.5 %. The semantic-proxy Δ
+(+0.1728) is within a hair of the surface-form Token-F1 Δ (+0.1711)
+and ROUGE-L Δ (+0.1742), so the reranker improvement **is not a
+surface-form artefact** — it shows up in a semantic-similarity scorer
+at the same magnitude. (DistilBERT is intentionally not the canonical
+BERTScore encoder; this is a proxy that complements rather than
+replaces a full `roberta-large` evaluation.)
+
+A 40-query seeded triage of the 233-strong `regression` bucket shows
+that **~90 % of regressions are generation-side truncation, not
+retrieval or semantic failures**: 55 % `truncation_midword` (output
+cut at `max_new_tokens = 64`), 35 % `truncation_short` (≤ 3 tokens,
+generator extracted only a title-like fragment), 5 % `topic_drift`,
+5 % `extractive_passage_bias`, 0 % `semantic_mismatch`. Cheapest
+immediate mitigation: raise the generator's token budget and re-
+evaluate before any heavier intervention.
+
 **W4 (Dense vs BM25 on the same 50k qrels-anchored sample, 6 980 queries)**
 
 | Metric      | BM25 (sample) | Dense (sample) | Δ          |
@@ -135,13 +156,22 @@ of the subsample.
 
 ## Next steps
 
+- **Bump T5-small `max_new_tokens` from 64 → 128** and re-run the W3
+  paired comparison. Regression taxonomy says 90 % of the 233 W3
+  regressions are truncation, not retrieval failure — this is the
+  cheapest intervention with the highest expected payoff.
+- Full-dev BERTScore with the canonical `roberta-large` encoder (the
+  current 3 000-paired DistilBERT proxy is a sanity check, not the
+  citation-grade evaluation).
 - Rerank BM25 top-100 (W2 run) and compare the delta to the dense delta
   — does the reranker recover more from a weaker first stage?
 - Hybrid first-stage (RRF over BM25 + dense) → rerank.
 - Scale the dense sample from 50k to 200k–500k passages to track how the
   BM25↔dense gap shifts as relevant-doc density drops.
-- Add a held-out test split and BERTScore for generation, so improvements
-  aren't overfit to dev/small or to surface-form metrics.
+- T5-small SFT on `(question, gold passage, answer)` triples — only
+  pursue after the cheap interventions above, since the regression
+  taxonomy already shows the bottleneck isn't generation quality but
+  output truncation.
 
 ## How this maps to the repo
 

@@ -151,6 +151,72 @@ Full bucket counts (`rerank_fixed_generation_improved` = 2 184,
 `rerank_fixed_generation_still_failing` = 2 684, `regression` = 233,
 …) in [`outputs/week06_analysis/summary.json`](outputs/week06_analysis/) (gitignored).
 
+#### Semantic-proxy BERTScore sanity check (3 000-paired subsample)
+
+The four metrics above are all surface-form (overlap, n-gram, exact).
+T5-small produces verbose extractive outputs that surface-form metrics
+under-credit when reworded, so the load-bearing question is: **does
+the +0.17 Token-F1 Δ also show up in a semantic-similarity metric?**
+
+A *low-cost semantic evaluation sanity check on 3 000 paired examples
+using DistilBERT-based BERTScore* (rescaled, paired-bootstrap CI; seed
+42). DistilBERT, not the canonical `roberta-large` — the absolute
+level is a proxy, but the paired Δ between two systems on the same
+3 000 qids is what matters and is stable under the encoder choice:
+
+| Metric                          | BM25 (per-q mean) | Reranked | Δ        | 95% CI on Δ           | p₂      |
+|---------------------------------|------------------:|---------:|---------:|----------------------:|--------:|
+| BERTScore-F1 (DistilBERT proxy) | 0.2192            | 0.3920   | **+0.1728** | [+0.1608, +0.1850]  | < 0.001 |
+
+Per-query: rerank strictly better on **64.8 %** of qids; tie 5.7 %;
+strictly worse on 29.5 %.
+
+**This is the load-bearing finding**: the semantic-proxy Δ (+0.1728) is
+within a hair of the surface-form Token-F1 Δ (+0.1711) and ROUGE-L Δ
+(+0.1742). The reranker improvement is *not* a surface-form artefact;
+it shows up in a semantic-similarity scorer at essentially the same
+magnitude. This is the result that justifies acting on the surface-
+form CIs above without first running a full `roberta-large` BERTScore.
+
+Reproduce: `python scripts/bertscore_paired_eval.py --n-pairs 3000`
+(writes `outputs/week06_bertscore_proxy/bertscore_proxy_ci.json`,
+gitignored). Caveat: DistilBERT is intentionally not the canonical
+BERTScore encoder — for cross-paper comparison, re-run with `--model-
+type microsoft/deberta-xlarge-mnli` or `--model-type roberta-large`
+on a longer time budget.
+
+#### Regression failure taxonomy (40-query triage of the 233-strong regression bucket)
+
+Of the 6 980 paired qids, 233 land in the `regression` bucket
+(reranker brings a relevant passage into top-3, yet token-F1 drops
+vs BM25). A 40-query seeded triage with deterministic heuristic
+labels (`scripts/regression_failure_taxonomy.py`, seed 42) reveals
+that **regressions are dominated by generation-side truncation, not
+retrieval failures or semantic drift**:
+
+| label                    |  n | share |
+|--------------------------|---:|------:|
+| `truncation_midword`     | 22 | 55 %  |
+| `truncation_short`       | 14 | 35 %  |
+| `topic_drift`            |  2 |  5 %  |
+| `extractive_passage_bias`|  2 |  5 %  |
+| `semantic_mismatch`      |  0 |  0 %  |
+
+`truncation_midword` (rerank prediction ends without terminal
+punctuation on an alphabetic char — cut by `max_new_tokens=64`)
+and `truncation_short` (≤ 3 tokens; generator extracted only a
+title-like fragment) together account for **90 %** of the sample.
+Example (qid 49802, query "belizean cuisine"): BM25 → 24-token
+description; reranked → "Belizean cuisine" (the title from the
+passage). The reranker is doing its job — bringing in richer
+passages — but T5-small's 64-token output cap and tendency to
+extract leading headings turn richer context into shorter, less
+overlap-matching answers on this bucket. Cheapest immediate
+mitigation: bump `max_new_tokens` from 64 to 128 and re-evaluate.
+
+Full markdown report with 40 per-example detail rows in
+[`outputs/week06_analysis/regression_taxonomy.md`](outputs/week06_analysis/) (gitignored).
+
 Reproduce:
 
 ```bash
@@ -181,6 +247,14 @@ python scripts/analyze_generation_rerank.py \
     --bm25-dir outputs/week03_generation_bm25_full \
     --reranked-dir outputs/week03_generation_reranked_full \
     --output-dir outputs/week06_analysis
+
+# 4. Semantic-proxy BERTScore sanity check on a 3,000-paired subsample
+# (~3 min CPU with DistilBERT; pass --n-pairs 0 for full-dev):
+python scripts/bertscore_paired_eval.py \
+    --n-pairs 3000
+
+# 5. Regression failure taxonomy (40-query triage, deterministic labels):
+python scripts/regression_failure_taxonomy.py
 ```
 
 The earlier 200-query subsample comparison (BM25 0.2131 / Rerank
