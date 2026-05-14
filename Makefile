@@ -4,7 +4,7 @@
 # Python dependencies are installed (``pip install -r requirements.txt &&
 # pip install -e .``).
 
-.PHONY: help install test test-slow lint smoke clean-pycache
+.PHONY: help install test test-slow lint smoke review-all clean-pycache
 
 PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
@@ -17,6 +17,7 @@ help:
 	@echo "  make test-slow   -- include slow tests (HF metric scripts; skipped if offline)"
 	@echo "  make lint        -- ruff check on src/, tests/, experiments/, scripts/"
 	@echo "  make smoke       -- run the Week-02 retrieval smoke test"
+	@echo "  make review-all  -- regenerate reports/generated/review_all.{md,pdf}"
 
 # ----------------------------------------------------------------------------- #
 # Install
@@ -61,6 +62,17 @@ lint:
 # Verifies the BM25 wrapper + run.tsv schema; safe to run on any machine.
 smoke:
 	$(PYTHON) scripts/smoke_test_week02.py
+
+# ----------------------------------------------------------------------------- #
+# Reports
+# ----------------------------------------------------------------------------- #
+
+# Regenerate the cross-week progress report. The template is static
+# narrative (``reports/templates/review_all.md``); only the timestamp at
+# the top is substituted. The .pdf lands next to the .md and is the
+# version that goes into git (per the reporting policy).
+review-all:
+	$(PYTHON) -m src.reporting.build_report --week review_all
 
 # ----------------------------------------------------------------------------- #
 # Housekeeping

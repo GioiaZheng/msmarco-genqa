@@ -53,10 +53,23 @@ Retrieval-augmented question answering on MS MARCO. The repo has two parallel tr
 
 - Script: [`experiments/run_reranker.py`](experiments/run_reranker.py)
 - Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2` over the W4 dense top-100.
-- **MRR@10 = 0.8846 → 0.9282** (+0.0435) &nbsp;·&nbsp; **nDCG@10 = 0.9014 → 0.9412** (+0.0398).
-  1,000-query CPU-subsample of dev/small; runtime ~58 min on a 6-core MacBook,
-  ~29 (query, passage) pairs/s, peak RSS ~3.9 GiB.
-  Recall@100 unchanged by construction (reranking is order-only).
+- **Full dev/small (6 980 queries)** — `outputs/week05_reranker_full/` (gitignored):
+
+  | Metric      | Dense (W4) | + CE rerank | Δ          |
+  |-------------|-----------:|------------:|-----------:|
+  | MRR@10      | 0.8830     | 0.9304      | **+0.0474** |
+  | nDCG@10     | 0.9041     | 0.9434      | +0.0393    |
+  | Recall@100  | 0.9946     | 0.9946      | +0.0000    |
+
+  Runtime ~4 h 37 min on a 6-core MacBook (538 000 (query, passage) pairs
+  at ~32 pairs/s, peak RSS ~3.3 GiB). Recall@100 is unchanged by
+  construction — reranking is order-only.
+- **Sanity check vs the 1 000-query CPU subsample run.** An earlier
+  pilot on a 1 000-query subsample of dev/small produced
+  MRR Δ +0.0435, nDCG Δ +0.0398 (level: 0.8846 → 0.9282 / 0.9014 → 0.9412).
+  The full-dev deltas (+0.0474 / +0.0393) sit on top of the subsample
+  deltas with a similar magnitude, so the subsample was not biased — the
+  reranker gain is a property of dev/small, not of the 1 000-query slice.
 - Prototype notebook: [`notebooks/week05_reranker.ipynb`](notebooks/week05_reranker.ipynb)
   — 8-passage toy demo showing the score-margin sharpening (bi-encoder gap
   ~0.08 → cross-encoder gap ~7).
@@ -79,13 +92,36 @@ the upstream retrieval source changes. Both runs sample the **exact same
 | Reranked &nbsp; *(`outputs/week05_reranker/run.tsv`)*                   | **0.4006** | **0.3283** | **0.0700** | **0.4003** |
 | **Δ (rerank − BM25)** | **+0.1875** | **+0.2316** | **+0.0500** | **+0.1769** |
 
-Conclusion: **reranking the first stage roughly doubles every generation
-metric on this subsample**. Cross-encoder reordering of top-100 → top-3
-delivers materially better passages into the generator's context window,
-and surface-form metrics pick that up even with a frozen pretrained
-T5-small. Qualitative example (qid 1043064, *"what is the chemical
-formula for oxygen tetrafluoride?"*): BM25 → *"Li 2 O"*; reranked →
-*"N2F4"* (matches the reference). The gain is real, not artifact.
+Conclusion on this subsample: **reranking the first stage roughly
+doubles every generation metric, and the 95% paired-bootstrap CI on the
+per-query Δ excludes 0 for all four metrics** (see the bootstrap table
+below). Cross-encoder reordering of top-100 → top-3 delivers materially
+better passages into the generator's context window, and surface-form
+metrics pick that up even with a frozen pretrained T5-small.
+Qualitative example (qid 1043064, *"what is the chemical formula for
+oxygen tetrafluoride?"*): BM25 → *"Li 2 O"*; reranked → *"N2F4"*
+(matches the reference). Generalisation to full dev/small (6,980
+queries) is in the Next list — the load-bearing claim here is the
+**direction and rough magnitude** of the delta, not the absolute level.
+
+#### Paired-bootstrap 95% CI on Δ (rerank − BM25)
+
+Same 200 paired qids, 10 000 bootstrap resamples, seed 42.
+ROUGE-L and BLEU per-query scores here come from `rouge_score.RougeScorer`
+and NLTK `sentence_bleu` (smoothing method 1) so the per-query means
+differ slightly from the HF corpus-level numbers above; what matters is
+that all four CIs lie strictly above 0.
+
+| Metric            | BM25 (per-query mean) | Reranked | Δ        | 95% CI on Δ           | p₂ (10k resamples) |
+|-------------------|----------------------:|---------:|---------:|----------------------:|-------------------:|
+| ROUGE-L           | 0.2186                | 0.4044   | +0.1858  | [+0.1344, +0.2389]    | < 0.001            |
+| BLEU (sentence)   | 0.0662                | 0.2060   | +0.1398  | [+0.0986, +0.1839]    | < 0.001            |
+| Exact-Match       | 0.0200                | 0.0700   | +0.0500  | [+0.0150, +0.0850]    | 0.007              |
+| Token-F1          | 0.2234                | 0.4003   | +0.1769  | [+0.1246, +0.2308]    | < 0.001            |
+
+Reproduce: `python scripts/bootstrap_generation_comparison.py`
+(reads both `predictions.jsonl` files; writes
+`outputs/week03_generation_bootstrap/bootstrap_ci.json` — gitignored).
 
 Caveats — read these before citing the table:
 
@@ -353,11 +389,6 @@ Current limitations to be aware of:
 - Rerank the BM25 top-100 as well, and compare delta-from-CE on a weak vs
   strong first stage.
 - Supervised fine-tuning of the generation model on `(question, gold passage, answer)` triples from MS MARCO QA v2.1.
-- Re-run the BM25-vs-reranked generation comparison on **full dev/small**
-  (6,980 queries × top-100 cross-encoder reranking ≈ 6 h CPU): the
-  current 200-query subsample inherits the W5 reranker's 1,000-query
-  budget, so the *level* numbers in the comparison table are inflated.
-  The delta is robust, but the absolute scores will move.
 
 ## 9. License
 

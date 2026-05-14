@@ -61,6 +61,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.data.msmarco import load_msmarco_passage  # noqa: E402
+from src.evaluation.bootstrap import paired_bootstrap_diff  # noqa: E402
 from src.evaluation.generation import (  # noqa: E402
     _normalize,
     exact_match,
@@ -109,6 +110,18 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.30,
         help="Token-F1 below this is considered 'still failing'.",
+    )
+    parser.add_argument(
+        "--bootstrap-resamples",
+        type=int,
+        default=10000,
+        help="Paired-bootstrap resamples for CI on Δ token-F1 / EM. 0 disables.",
+    )
+    parser.add_argument(
+        "--bootstrap-seed",
+        type=int,
+        default=42,
+        help="Reproducibility seed for the paired bootstrap.",
     )
     return parser.parse_args()
 
@@ -331,6 +344,31 @@ def _render_markdown_report(
     )
     lines.append("")
 
+    boot = summary.get("bootstrap_ci")
+    if boot:
+        lines.append(
+            "**Paired-bootstrap 95% CI on Δ** (rerank − BM25), "
+            f"{boot['token_f1']['n_resamples']} resamples, seed "
+            f"{boot['token_f1']['seed']}:"
+        )
+        lines.append("")
+        lines.append("| Metric | Δ (per-query mean) | 95% CI | p₂ |")
+        lines.append("|---|---:|---:|---:|")
+        for name, key in (("Token-F1", "token_f1"), ("Exact-Match", "exact_match")):
+            r = boot[key]
+            lines.append(
+                f"| {name} | {r['mean_delta']:+.4f} | "
+                f"[{r['ci_low']:+.4f}, {r['ci_high']:+.4f}] | "
+                f"{r['p_two_sided']:.4f} |"
+            )
+        lines.append("")
+        lines.append(
+            "*ROUGE-L / BLEU CIs require per-query scorers from "
+            "`rouge_score` / NLTK; produce them with "
+            "`python scripts/bootstrap_generation_comparison.py`.*"
+        )
+        lines.append("")
+
     # ---- By query_type ----
     lines.append("## 3. By MS MARCO QA `query_type`")
     lines.append("")
@@ -548,6 +586,38 @@ def main() -> None:
             "n_with_qrel": sum(1 for r in rows if r["bm25_relevant_in_top3"] is not None),
         },
     }
+
+    # ---- 6b. Paired bootstrap CI on Δ token-F1 / EM (paired by index) ----
+    if args.bootstrap_resamples > 0 and rows:
+        logger.info(
+            "Paired-bootstrap CI on Δ token-F1 / Δ exact-match (n_resamples=%d, seed=%d)...",
+            args.bootstrap_resamples,
+            args.bootstrap_seed,
+        )
+        bm25_tf1 = [r["bm25_token_f1"] for r in rows]
+        rerank_tf1 = [r["rerank_token_f1"] for r in rows]
+        bm25_em = [r["bm25_exact_match"] for r in rows]
+        rerank_em = [r["rerank_exact_match"] for r in rows]
+        summary["bootstrap_ci"] = {
+            "token_f1": paired_bootstrap_diff(
+                bm25_tf1,
+                rerank_tf1,
+                n_resamples=args.bootstrap_resamples,
+                seed=args.bootstrap_seed,
+            ),
+            "exact_match": paired_bootstrap_diff(
+                bm25_em,
+                rerank_em,
+                n_resamples=args.bootstrap_resamples,
+                seed=args.bootstrap_seed,
+            ),
+            "notes": (
+                "Paired bootstrap on per-query (bm25, rerank) Token-F1 and "
+                "Exact-Match. ROUGE-L / BLEU CIs are produced by the "
+                "standalone scripts/bootstrap_generation_comparison.py script, "
+                "which adds the rouge_score and NLTK per-query scorers."
+            ),
+        }
     with open(args.output_dir / "summary.json", "w") as f:
         json.dump(summary, f, indent=2, ensure_ascii=False)
     logger.info("Wrote summary to %s", args.output_dir / "summary.json")

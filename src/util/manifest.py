@@ -10,10 +10,10 @@ captures enough provenance to re-identify a run six months from now:
 - Output paths and per-file sizes.
 - A wall-clock timestamp.
 
-This is intentionally **scaffolding** — the experiment runners do not yet
-call ``build_manifest`` from end to end. The interface is here so it can be
-wired into ``run_retrieval.py`` / ``run_dense_retrieval.py`` /
-``run_reranker.py`` in a follow-up PR without churning their signatures.
+All four ``experiments/run_*.py`` runners write a manifest via
+``write_run_manifest`` (the convenience wrapper at the bottom of this
+file) after their ``metrics.json``. ``build_manifest`` is the lower-level
+constructor; ``write_run_manifest`` is the standard entry point.
 
 Manifests deliberately exclude:
 

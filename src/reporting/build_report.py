@@ -1,20 +1,26 @@
-"""Render weekly markdown reports (and optionally PDFs) from experiment outputs.
+"""Render markdown reports (and optionally PDFs) from experiment outputs.
 
 Usage::
 
     python -m src.reporting.build_report --week week02
     python -m src.reporting.build_report --week week03
+    python -m src.reporting.build_report --week review_all
 
-The renderer reads:
+For ``weekNN`` the renderer reads:
 
 - ``outputs/<week>/metrics.json``
 - ``outputs/<week>/examples.jsonl`` (W2)
 - ``outputs/<week>/predictions.jsonl`` (W3)
 
 substitutes ``{{...}}`` placeholders inside ``reports/templates/<week>.md``,
-and writes ``reports/generated/<week>.md``. If ``pandoc`` is on PATH it
-attempts to produce ``reports/generated/<week>.pdf``; missing pandoc is a
-warning, not an error.
+and writes ``reports/generated/<week>.md``.
+
+For ``review_all`` the renderer just stamps a timestamp into the static
+``reports/templates/review_all.md`` template and writes
+``reports/generated/review_all.md`` — no metrics.json is consulted.
+
+If ``pandoc`` is on PATH it attempts to produce ``reports/generated/<name>.pdf``;
+missing pandoc is a warning, not an error.
 """
 
 from __future__ import annotations
@@ -592,6 +598,28 @@ def build_week05(out_dir: Path) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Cross-week review (static template, no metrics.json dependency)
+# --------------------------------------------------------------------------- #
+
+
+def build_review_all(out_dir: Path) -> str:
+    """Render the cross-week progress report.
+
+    The template is hand-written narrative — no per-week metrics.json
+    is read here. The only substitution is ``{{generated_at}}`` so each
+    rebuild stamps a fresh timestamp at the top.
+
+    ``out_dir`` is unused; kept in the signature for API symmetry with
+    the per-week builders.
+    """
+    template = (TEMPLATES_DIR / "review_all.md").read_text()
+    fields = {
+        "generated_at": dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
+    }
+    return _substitute(template, fields)
+
+
+# --------------------------------------------------------------------------- #
 # PDF
 # --------------------------------------------------------------------------- #
 
@@ -682,8 +710,12 @@ def main() -> None:
     parser.add_argument(
         "--week",
         required=True,
-        choices=["week01", "week02", "week03", "week04", "week05"],
-        help="Which week's report to build.",
+        choices=["week01", "week02", "week03", "week04", "week05", "review_all"],
+        help=(
+            "Which report to build. ``weekNN`` builds the per-week report "
+            "from outputs/weekNN_*/. ``review_all`` builds the cross-week "
+            "progress report from the static review_all template."
+        ),
     )
     args = parser.parse_args()
 
@@ -705,10 +737,14 @@ def main() -> None:
         out_dir = OUTPUTS_DIR / "week04_dense"
         md = build_week04(out_dir)
         out_md = GENERATED_DIR / "week04_dense.md"
-    else:
+    elif args.week == "week05":
         out_dir = OUTPUTS_DIR / "week05_reranker"
         md = build_week05(out_dir)
         out_md = GENERATED_DIR / "week05_reranker.md"
+    else:
+        # ``review_all``: cross-week narrative, no metrics.json dependency.
+        md = build_review_all(OUTPUTS_DIR)
+        out_md = GENERATED_DIR / "review_all.md"
 
     out_md.write_text(md)
     print(f"Wrote markdown: {out_md}")
