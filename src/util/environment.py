@@ -38,7 +38,6 @@ def capture_environment(
     package_names: tuple[str, ...] = (
         "bm25s",
         "ir_datasets",
-        "rank_bm25",
         "numpy",
         "torch",
         "transformers",

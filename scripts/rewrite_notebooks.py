@@ -342,6 +342,34 @@ WEEK02_CELLS = [
 # Week 3 — Prototype RAG on a toy corpus + 3 hand-written queries.
 # --------------------------------------------------------------------------- #
 
+# W3 uses the same import shape as W4/W5: PROJECT_ROOT on sys.path so that
+# ``from src.retrieval.bm25 import BM25Retriever`` resolves through the
+# package. The earlier W3 prototype shipped a sibling ``bm25_retriever``
+# module under ``src/``; that has been retired in favour of the canonical
+# bm25s-based retriever the experiments use.
+W3_SETUP_CODE = '''import sys
+from pathlib import Path
+
+
+def _find_project_root(markers=(".git", "pyproject.toml", "requirements.txt")):
+    p = Path.cwd().resolve()
+    for parent in (p, *p.parents):
+        if any((parent / m).exists() for m in markers):
+            return parent
+    return p
+
+
+PROJECT_ROOT = _find_project_root()
+FIGURES_DIR = PROJECT_ROOT / "figures"
+FIGURES_DIR.mkdir(exist_ok=True)
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+print("PROJECT_ROOT:", PROJECT_ROOT)
+'''
+
+
 WEEK03_CELLS = [
     md(
         "# Week 3 — Prototype RAG (T5-small + BM25)\n\n"
@@ -354,13 +382,13 @@ WEEK03_CELLS = [
         "BM25 retrieval results."
     ),
     md("## Setup"),
-    code(SETUP_CODE),
+    code(W3_SETUP_CODE),
     code(
         "import torch\n"
         "from transformers import AutoTokenizer, AutoModelForSeq2SeqLM\n"
         "import evaluate\n"
         "\n"
-        "from bm25_retriever import BM25Retriever\n"
+        "from src.retrieval.bm25 import BM25Retriever\n"
         "\n"
         "device = \"cuda\" if torch.cuda.is_available() else \"cpu\"\n"
         "print(\"device:\", device)"
@@ -372,8 +400,17 @@ WEEK03_CELLS = [
         "    \"Sydney is the largest city in Australia.\",\n"
         "    \"Australia is a country in Oceania.\",\n"
         "]\n"
-        "retriever = BM25Retriever(corpus)\n"
-        "for r in retriever.retrieve(\"what is the capital of australia\", k=3):\n"
+        "doc_ids = [f\"d{i}\" for i in range(len(corpus))]\n"
+        "passage_by_id = dict(zip(doc_ids, corpus))\n"
+        "\n"
+        "retriever = BM25Retriever(corpus_texts=corpus, doc_ids=doc_ids, k1=1.5, b=0.75).build()\n"
+        "\n"
+        "def topk(query, k=3):\n"
+        '    """Return [{score, passage}, ...] for parity with the W3 toy demo API."""\n'
+        "    scores, ids = retriever.retrieve(query, k=k)\n"
+        '    return [{"score": float(s), "passage": passage_by_id[d]} for s, d in zip(scores, ids)]\n'
+        "\n"
+        "for r in topk(\"what is the capital of australia\", k=3):\n"
         "    print(f'{r[\"score\"]:.3f}  {r[\"passage\"]}')"
     ),
     md("Canberra ranked first — retriever is wired correctly."),
@@ -392,7 +429,7 @@ WEEK03_CELLS = [
         "    return f\"question: {query} context: {context}\"\n"
         "\n"
         "def generate_answer(query: str, k: int = 3, max_new_tokens: int = 64) -> str:\n"
-        "    results = retriever.retrieve(query, k=k)\n"
+        "    results = topk(query, k=k)\n"
         "    inp = tokenizer(build_prompt(query, results), return_tensors=\"pt\", truncation=True, max_length=512).to(device)\n"
         "    with torch.no_grad():\n"
         "        out = model.generate(**inp, max_new_tokens=max_new_tokens)\n"

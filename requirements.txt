@@ -11,7 +11,7 @@ datasets>=2.14
 ir-datasets>=0.5.5            # official MS MARCO Passage corpus + dev/small
 
 # Lexical retrieval
-rank-bm25>=0.2.2              # used by the legacy notebook prototype (week 3)
+rank-bm25>=0.2.2              # used by the week 2 prototype notebook only
 bm25s>=0.2                    # primary backend for the official Week 2 baseline
 
 # Dense retrieval (Week 4)

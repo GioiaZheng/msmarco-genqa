@@ -1,6 +1,43 @@
 # MS MARCO GenQA
 
-Retrieval-augmented question answering on MS MARCO. The repo has two parallel tracks:
+## TL;DR
+
+A reproducible, single-machine end-to-end MS MARCO retrieval-augmented QA
+pipeline built up across six weekly stages:
+
+> **W1 EDA → W2 BM25 retrieval → W3 RAG generation (T5-small) → W4 dense
+> retrieval (SBERT + FAISS) → W5 cross-encoder reranking → W6 semantic-proxy
+> evaluation + regression-failure taxonomy.**
+
+**Headline result.** Swapping the first-stage retriever from BM25 to a
+cross-encoder reranked dense top-3 — same T5-small generator, same 6 980
+dev/small queries — roughly **doubles every generation metric**: Token-F1
+**0.197 → 0.368** (Δ +0.171), ROUGE-L **0.193 → 0.368** (Δ +0.174), with
+95 % paired-bootstrap CIs strictly above 0 on all four surface-form
+metrics. A DistilBERT-based BERTScore proxy on a 3 000-pair subsample
+recovers the same Δ (+0.173), so the gain is **not** a surface-form
+artefact. A 40-query triage of the regression bucket shows ~90 % of the
+remaining regressions are *generation-side truncation*, not retrieval
+or semantic failures — pointing at the cheapest next intervention
+(`max_new_tokens` 64 → 128).
+
+**How to inspect.** The full statistical write-up lives in
+[§1 Status](#1-status) below (each weekly stage is self-contained with a
+headline number + script + report pointer); the BM25-vs-reranked
+generation comparison is consolidated in *Generation × retrieval source*.
+PDF per-week reports live in `reports/generated/*.pdf`.
+
+**How to reproduce.** `make install`, then run the per-week scripts in
+[§4 Run the official baselines](#4-run-the-official-baselines). The W3
+full-dev comparison + W6 evaluation overlay are a single block under
+*Generation × retrieval source*. The repo is **batch-eval oriented** by
+design — there is no one-shot `--question` CLI; [§4.5](#45-single-query-demo)
+shows the minimal in-Python composition for an honest single-query
+sanity check.
+
+## Project layout
+
+The repo has two parallel tracks:
 
 - **Script pipeline** (`experiments/`, `src/`) — reproducible, official-corpus, structured outputs + auto-generated reports. **This is the source of truth for benchmark numbers.**
 - **Notebooks** (`notebooks/`) — small prototype experiments on hand-written toy corpora or sampled data. They exist for narrative + visualization + smoke-checking the API. **Numbers in notebooks are illustrative only — do not cite them as benchmarks.** Every notebook has a "Limitations" section that says so explicitly, and points at the equivalent script for the honest result.
@@ -32,11 +69,9 @@ Retrieval-augmented question answering on MS MARCO. The repo has two parallel tr
   - **Not** a full dev/small benchmark — 200 / 6,980 queries, CPU-friendly.
 - Prototype notebook: [`notebooks/week03_generation.ipynb`](notebooks/week03_generation.ipynb)
   — 3-passage toy demo with T5-small (smoke test, not a benchmark)
-- Historical note: a re-run on 2026-05-13 produced essentially the same numbers
-  (ROUGE-L 0.1626 vs prior 0.1619, BLEU 0.0574 vs prior 0.0573). The earlier
-  numbers therefore do not need to be retracted — they were produced with
-  effectively the same scoring as today, and the `R2` best-of-N fix had only
-  marginal impact on T5-small at this sample size.
+- A full-dev comparison of this same generator against a *reranked* upstream
+  retriever lives in [*Generation × retrieval source*](#generation--retrieval-source--done)
+  below — that is the headline result, not this 200-query subsample.
 
 ### Week 4 — Dense retrieval (sampled) &nbsp;&nbsp;✅ done
 
@@ -77,38 +112,11 @@ Retrieval-augmented question answering on MS MARCO. The repo has two parallel tr
   *local-ordering* gap — once the relevant passage is somewhere in the top-100,
   the cross-encoder is what pushes it to top-1 / top-3.
 
-### Week 6 — Evaluation layer &nbsp;&nbsp;✅ done
-
-Two follow-up evaluations on top of the W3 full-dev paired predictions —
-neither requires a new model run, both are CPU-only:
-
-- **Semantic-proxy BERTScore** on a 3 000-pair subsample of the 6 980 shared
-  qids (script: [`scripts/bertscore_paired_eval.py`](scripts/bertscore_paired_eval.py),
-  output: `outputs/week06_bertscore_proxy/bertscore_proxy_ci.json`):
-  BM25 0.2192 → Reranked 0.3920, **Δ +0.1728, 95 % paired-bootstrap CI
-  [+0.1608, +0.1850], p < 0.001**. Per-query: rerank strictly better
-  64.8 %, tie 5.7 %, BM25 strictly better 29.5 %.
-  Scorer is **DistilBERT-based BERTScore** (`distilbert-base-uncased`,
-  `rescale_with_baseline=True`) — a deliberate proxy for the canonical
-  `roberta-large` BERTScore; the proxy answers "is the rerank Δ also
-  visible in a semantic-similarity scorer?", *not* "what is the
-  citation-grade BERTScore?". The semantic Δ sits within a hair of the
-  surface-form Token-F1 Δ (+0.1711) and ROUGE-L Δ (+0.1742), so the
-  rerank gain is not a surface-form artefact.
-- **Regression failure taxonomy** on a 40-query seeded triage of the
-  233-strong regression bucket (queries where rerank brought the
-  relevant passage into top-3 but generator F1 *dropped* vs BM25;
-  script: [`scripts/regression_failure_taxonomy.py`](scripts/regression_failure_taxonomy.py),
-  output: `outputs/week06_analysis/regression_taxonomy.{json,md}`):
-  **~90 % of regressions are generation-side truncation, not retrieval
-  or semantic failures** (55 % `truncation_midword`, 35 %
-  `truncation_short`, 5 % `topic_drift`, 5 % `extractive_passage_bias`,
-  0 % `semantic_mismatch`). The cheapest mitigation is raising
-  `max_new_tokens=64→128` and re-evaluating — see §8 *Next*.
-- Per-week report: [`reports/generated/week06_eval_layer.pdf`](reports/generated/week06_eval_layer.pdf)
-  (regenerate with `python -m src.reporting.build_report --week week06`).
-
 ### Generation × retrieval source &nbsp;&nbsp;✅ done
+
+*Cross-week synthesis (not a new stage): uses the W2 BM25 run.tsv and the
+W5 reranked run.tsv as inputs and produces the full-dev paired
+predictions that W6's evaluation layer scores below.*
 
 Does feeding reranked top-K back into the T5-small generator actually
 improve answer quality? Apples-to-apples comparison on **full dev/small
@@ -294,6 +302,41 @@ The earlier 200-query subsample comparison (BM25 0.2131 / Rerank
 estimates and conclusions are consistent across the two scales; the
 full-dev numbers above are the version to cite.
 
+### Week 6 — Evaluation layer &nbsp;&nbsp;✅ done
+
+Two follow-up evaluations layered on top of the full-dev paired
+predictions produced by *Generation × retrieval source* above —
+neither requires a new model run, both are CPU-only:
+
+- **Semantic-proxy BERTScore** on a 3 000-pair subsample of the 6 980 shared
+  qids (script: [`scripts/bertscore_paired_eval.py`](scripts/bertscore_paired_eval.py),
+  output: `outputs/week06_bertscore_proxy/bertscore_proxy_ci.json`):
+  BM25 0.2192 → Reranked 0.3920, **Δ +0.1728, 95 % paired-bootstrap CI
+  [+0.1608, +0.1850], p < 0.001**. Per-query: rerank strictly better
+  64.8 %, tie 5.7 %, BM25 strictly better 29.5 %.
+  Scorer is **DistilBERT-based BERTScore** (`distilbert-base-uncased`,
+  `rescale_with_baseline=True`) — a deliberate proxy for the canonical
+  `roberta-large` BERTScore; the proxy answers "is the rerank Δ also
+  visible in a semantic-similarity scorer?", *not* "what is the
+  citation-grade BERTScore?". The semantic Δ sits within a hair of the
+  surface-form Token-F1 Δ (+0.1711) and ROUGE-L Δ (+0.1742), so the
+  rerank gain is not a surface-form artefact. Full detail (table,
+  per-query split, caveats) under *Semantic-proxy BERTScore sanity check*
+  above.
+- **Regression failure taxonomy** on a 40-query seeded triage of the
+  233-strong regression bucket (queries where rerank brought the
+  relevant passage into top-3 but generator F1 *dropped* vs BM25;
+  script: [`scripts/regression_failure_taxonomy.py`](scripts/regression_failure_taxonomy.py),
+  output: `outputs/week06_analysis/regression_taxonomy.{json,md}`):
+  **~90 % of regressions are generation-side truncation, not retrieval
+  or semantic failures** (55 % `truncation_midword`, 35 %
+  `truncation_short`, 5 % `topic_drift`, 5 % `extractive_passage_bias`,
+  0 % `semantic_mismatch`). The cheapest mitigation is raising
+  `max_new_tokens=64→128` and re-evaluating — see §8 *Next*. Full label
+  table and worked example under *Regression failure taxonomy* above.
+- Per-week report: [`reports/generated/week06_eval_layer.pdf`](reports/generated/week06_eval_layer.pdf)
+  (regenerate with `python -m src.reporting.build_report --week week06`).
+
 ### Reference points
 
 - Published Anserini/Lucene BM25 baseline on MS MARCO `dev/small`: MRR@10 ≈ 0.184. Our `bm25s`-based **0.1703** is in the same ballpark; the gap is consistent with tokenizer differences.
@@ -314,7 +357,6 @@ src/
   generation/   rag_generator.py — T5/BART RAG generator
   evaluation/   retrieval.py (MRR/Recall/nDCG), generation.py (ROUGE/BLEU/EM/F1)
   reporting/    build_report.py — fills markdown templates from outputs/
-  bm25_retriever.py — legacy rank_bm25 wrapper, used only by week03 notebook
 notebooks/      prototype, narrative, plots
 reports/
   templates/    week02_bm25.md, week03_generation.md  (committed)
@@ -469,20 +511,23 @@ Tunable knobs in `configs/baseline.yaml` under `reranker:`:
 
 ## 4.5. Single-query demo
 
-The pipeline above is **batch-eval oriented**: every entrypoint in
-`experiments/` consumes a retrieval run (`run.tsv`) over the full dev
-set and emits metrics + paired predictions. There is no
+The pipeline above is **batch-eval oriented by design**: every entrypoint
+in `experiments/` consumes a retrieval run (`run.tsv`) over the full dev
+set and emits metrics + paired predictions. There is intentionally no
 `--question "..."` CLI wrapper — the project optimises for reproducible
-benchmark numbers, not for serving one-off queries.
+benchmark numbers, not for serving one-off queries. The block below is
+the smallest in-Python composition for an honest "ask one question"
+sanity check; it is **not** a shipped CLI command.
 
-For an honest "ask one question" sanity check, compose the existing
-modules directly. The generator has a single-shot `generate` method
-that takes a question plus a list of retrieved passages and returns a
-short-form answer:
+### A. Generator-only single-shot (runs as written)
+
+The generator has a single-shot `generate(query, passages)` method. With
+`pip install -e .` in place, this block runs end-to-end on CPU in
+roughly the time it takes to download T5-small:
 
 ```python
-# illustrative — runs end-to-end with the W3 generator config defaults
-# (T5-small, top-3 passages, max_new_tokens=64)
+# Real, runnable as-is — same generator config the W3 baseline uses
+# (T5-small, top-3 passages folded into the prompt, max_new_tokens=64).
 from src.generation.rag_generator import RAGGenerationConfig, RAGGenerator
 
 gen = RAGGenerator(RAGGenerationConfig())
@@ -500,16 +545,34 @@ answer = gen.generate(
 print(answer)
 ```
 
-To make this go through actual retrieval, load one of the on-disk
-indexes the batch scripts use — `src.retrieval.bm25.BM25Retriever`
-over `data/processed/bm25_index_msmarco/`, or
-`src.retrieval.dense.DenseRetriever` over the W4 dense index — pull
-top-K passages for the query, then hand them to `gen.generate(...)`
-above. Both retriever classes expose a `retrieve(query, k=...)` method
-that mirrors what the batch runners call internally.
+This is honest about what the project ships: a generator the user feeds
+passages to. The passages here are hand-written, not retrieved — so the
+answer reflects generator behaviour, not the end-to-end pipeline.
 
-A thin `python -m src.demo.ask "<question>"` wrapper that does this in
-one command is listed under §8 *Next*.
+### B. Composition sketch: retrieve + generate (not packaged)
+
+To put real retrieval in front of the generator, load one of the
+on-disk indexes the batch scripts use, then map the returned `doc_ids`
+back to passage text. There is no shipped helper — the snippet below is
+the **minimal composition pattern**, not a runnable copy-paste:
+
+```python
+# Sketch — assumes W2 BM25 index already built and a doc_id → passage map
+# is available. The batch runners build that map from ir_datasets; pulling
+# it out into a standalone helper is a TODO (see §8 Next, src.demo.ask).
+from src.retrieval.bm25 import BM25Retriever
+
+bm25 = BM25Retriever.load("data/processed/bm25_index_msmarco")
+scores, doc_ids = bm25.retrieve("what is bm25", k=3)
+passages = [passage_by_id[d] for d in doc_ids]  # supply your own map
+answer = gen.generate(query="what is bm25", passages=passages)
+```
+
+`BM25Retriever.retrieve` (and `DenseRetriever.retrieve` over the W4 dense
+index) both return `(scores, doc_ids)`; resolving `doc_ids` to passage
+text is the missing piece for a one-command demo. A thin
+`python -m src.demo.ask "<question>"` wrapper that bundles that mapping
+is listed under §8 *Next*.
 
 ## 5. Run the prototype notebooks
 

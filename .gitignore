@@ -144,10 +144,12 @@ ENV/
 env.bak/
 venv.bak/
 
-# Local Claude Code agent state (scheduled-task locks, settings.local.json,
-# scratch artifacts). Never enters git, even though .claude/settings.json
-# *would* normally be a tracked file in other repos — see CLAUDE.md.
+# Local Claude Code agent state and per-repo Claude instructions. Neither
+# the local agent state under .claude/ nor the CLAUDE.md operating contract
+# enter git — CLAUDE.md exists on disk as Claude Code's instruction file
+# but is intentionally not tracked.
 .claude/
+CLAUDE.md
 
 # Spyder project settings
 .spyderproject
