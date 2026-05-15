@@ -38,7 +38,7 @@ under `outputs/week06_*/`. Neither requires re-running W3/W5.
 This is deliberately *not* the canonical `roberta-large` BERTScore. It
 is a fast proxy whose only purpose is to answer "is the surface-form
 Δ also visible in a semantic-similarity scorer?". The full-dev
-`roberta-large` pass is listed under §6 *Next*.
+`roberta-large` pass is listed under §7 *Next*.
 
 ### 2.2 Regression failure taxonomy
 
@@ -89,9 +89,10 @@ at the same magnitude.
 **{{tax_truncation_total_pct}} of regressions are generation-side
 truncation, not retrieval or semantic failures.** The cross-encoder
 gets the relevant passage into the generator's window; the generator
-then cuts the answer at `max_new_tokens=64` or extracts a title-like
-fragment. The cheapest intervention by far is raising the generator's
-token budget — see §6 *Next*.
+then emits a short or mid-sentence answer. This *looks* like the
+`max_new_tokens=64` cap firing; a follow-up run at
+`max_new_tokens=128` falsifies that reading — see §6 *Closure of the
+budget-cap hypothesis*.
 
 `semantic_mismatch` did not pick up any sampled rows under the rule
 cascade. Per the script's documentation that bucket is the residual
@@ -117,21 +118,50 @@ in §3 (the rerank gain is real on a semantic scorer).
   regression bucket. Seed-stable, but a different seed would shift the
   exact percentages by a few points.
 
-## 6. Next
+## 6. Closure of the budget-cap hypothesis
 
-- **Bump T5-small `max_new_tokens` from 64 → 128.** The taxonomy says
-  ~{{tax_truncation_total_pct_rounded}} of regressions are output
-  truncation, which makes this the highest-expected-payoff cheap fix.
-  Re-run the paired W3 generation comparison and the regression
-  taxonomy after the change.
+The §4 taxonomy at the time predicted that raising
+`max_new_tokens` from 64 → 128 would close most of the regression
+bucket. A follow-up sweep on full dev/small (same generator,
+prompts, retrieval inputs, seed; CLI override only, canonical
+64-token outputs untouched) **falsifies** that prediction:
+
+| signal                              | mnt=64 (canonical) | mnt=128 |
+|-------------------------------------|-------------------:|--------:|
+| Token-F1 Δ (rerank − BM25)          | +0.1711            | +0.1706 |
+| ROUGE-L Δ                            | +0.1742            | +0.1736 |
+| BLEU Δ                               | +0.1330            | +0.1325 |
+| EM Δ                                 | +0.0471            | +0.0471 |
+| Regression bucket size               | 233                | 231     |
+| Truncation share (40-query triage)   | 90.0 %             | 87.5 %  |
+
+All four surface-form deltas move by <0.005; the regression bucket
+shrinks by 2 queries; the truncation share moves 2.5 percentage
+points — all within noise on a 40-query sample. T5-small is hitting
+EOS naturally on this prompt format, not running out of decode
+budget. The mid-word-ending output style is intrinsic to the model.
+
+Outputs under
+`outputs/week03_generation_{bm25,reranked}_full_mnt128/`,
+`outputs/week06_bootstrap_mnt128/`, `outputs/week06_taxonomy_mnt128/`
+(all gitignored). BERTScore proxy on the new predictions was
+skipped and remains optional; see *Reproduce — closure run* below.
+
+## 7. Next
+
+- **Generator-side work targets capacity / output style, not decode
+  budget.** The closure result above re-aims any further work on the
+  generator: instruction-tuned or QA-style small models, or moving
+  off T5-small entirely. The decode budget is no longer a candidate
+  bottleneck.
 - **Full-dev BERTScore with `roberta-large`.** Convert the §3 proxy
   into a citation-grade evaluation. Same script, two CLI flags.
-- **Failure-mode classifier upgrade.** Once truncation is mitigated,
-  the residual regression bucket will be dominated by topic-drift /
+- **Failure-mode classifier upgrade.** The residual regression
+  bucket — once budget is ruled out — is dominated by topic-drift /
   extractive-bias / semantic-mismatch; a learned classifier (rather
   than the current rule cascade) is appropriate at that point.
 
-## 7. Reproduce
+## 8. Reproduce
 
 ```bash
 # (1) Generation on full dev/small — done in W3, but listed here for
@@ -166,4 +196,37 @@ python scripts/bertscore_paired_eval.py \
 
 # (4) Regression failure taxonomy (40-query seeded triage):
 python scripts/regression_failure_taxonomy.py
+```
+
+### Reproduce — closure run (`max_new_tokens=128`)
+
+The sweep and the two cheap analyses; BERTScore on the new
+predictions is optional and was skipped at write time.
+
+```bash
+# (1) Full BM25-vs-reranked sweep at max_new_tokens=128. Writes to
+# fresh _mnt128 directories; the canonical _full outputs are not
+# touched.
+python scripts/run_full_generation_and_analysis.py \
+    --max-new-tokens 128 --out-suffix _mnt128
+
+# (2) Paired-bootstrap CI on the new predictions:
+python scripts/bootstrap_generation_comparison.py \
+    --bm25-dir outputs/week03_generation_bm25_full_mnt128 \
+    --reranked-dir outputs/week03_generation_reranked_full_mnt128 \
+    --output-dir outputs/week06_bootstrap_mnt128
+
+# (3) Regression failure taxonomy on the new predictions:
+python scripts/regression_failure_taxonomy.py \
+    --bm25-dir outputs/week03_generation_bm25_full_mnt128 \
+    --reranked-dir outputs/week03_generation_reranked_full_mnt128 \
+    --per-query outputs/week06_analysis_mnt128/per_query_metrics.jsonl \
+    --output-dir outputs/week06_taxonomy_mnt128
+
+# (4) Optional: BERTScore proxy on the new predictions (~15-30 min):
+python scripts/bertscore_paired_eval.py \
+    --bm25-dir outputs/week03_generation_bm25_full_mnt128 \
+    --reranked-dir outputs/week03_generation_reranked_full_mnt128 \
+    --output-dir outputs/week06_bertscore_proxy_mnt128 \
+    --n-pairs 3000
 ```

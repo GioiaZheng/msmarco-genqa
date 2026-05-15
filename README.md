@@ -17,9 +17,13 @@ dev/small queries — roughly **doubles every generation metric**: Token-F1
 metrics. A DistilBERT-based BERTScore proxy on a 3 000-pair subsample
 recovers the same Δ (+0.173), so the gain is **not** a surface-form
 artefact. A 40-query triage of the regression bucket shows ~90 % of the
-remaining regressions are *generation-side truncation*, not retrieval
-or semantic failures — pointing at the cheapest next intervention
-(`max_new_tokens` 64 → 128).
+remaining regressions surface as *mid-word / short generation-side
+output*, not retrieval or semantic failures. A follow-up
+`max_new_tokens=64→128` sweep on full dev/small **falsifies** the
+budget-cap reading (truncation share 90 % → 87.5 %; all four
+surface-form deltas move by <0.005) — the bottleneck is generator
+capacity / output style, not decode budget. See *Week 6 — Evaluation
+layer* §*Closure* below.
 
 **How to inspect.** The full statistical write-up lives in
 [§1 Status](#1-status) below (each weekly stage is self-contained with a
@@ -242,16 +246,16 @@ retrieval failures or semantic drift**:
 | `semantic_mismatch`      |  0 |  0 %  |
 
 `truncation_midword` (rerank prediction ends without terminal
-punctuation on an alphabetic char — cut by `max_new_tokens=64`)
+punctuation on an alphabetic char — initially attributed to the
+`max_new_tokens=64` cap; see *Closure* below for the falsification)
 and `truncation_short` (≤ 3 tokens; generator extracted only a
 title-like fragment) together account for **90 %** of the sample.
 Example (qid 49802, query "belizean cuisine"): BM25 → 24-token
 description; reranked → "Belizean cuisine" (the title from the
 passage). The reranker is doing its job — bringing in richer
-passages — but T5-small's 64-token output cap and tendency to
-extract leading headings turn richer context into shorter, less
-overlap-matching answers on this bucket. Cheapest immediate
-mitigation: bump `max_new_tokens` from 64 to 128 and re-evaluate.
+passages — but T5-small's tendency to emit short / mid-sentence
+answers turns richer context into less overlap-matching output on
+this bucket.
 
 Full markdown report with 40 per-example detail rows in
 [`outputs/week06_analysis/regression_taxonomy.md`](outputs/week06_analysis/) (gitignored).
@@ -331,9 +335,28 @@ neither requires a new model run, both are CPU-only:
   **~90 % of regressions are generation-side truncation, not retrieval
   or semantic failures** (55 % `truncation_midword`, 35 %
   `truncation_short`, 5 % `topic_drift`, 5 % `extractive_passage_bias`,
-  0 % `semantic_mismatch`). The cheapest mitigation is raising
-  `max_new_tokens=64→128` and re-evaluating — see §8 *Next*. Full label
-  table and worked example under *Regression failure taxonomy* above.
+  0 % `semantic_mismatch`). At the time of the W6 report this pointed
+  at a cheap budget-cap intervention; the *Closure* bullet below
+  records the falsification of that reading.
+- **Decoding-budget closure — `max_new_tokens=64→128` on full dev/small.**
+  Same generator, same prompts, same retrieval inputs, same seed;
+  only `max_new_tokens` changes (CLI override, canonical 64-token
+  outputs untouched). Result: rerank Δ is **statistically and
+  practically unchanged** — Token-F1 Δ +0.1706 (CI [+0.163, +0.178]),
+  ROUGE-L Δ +0.1736 (CI [+0.166, +0.181]), BLEU Δ +0.1325, EM Δ
+  +0.0471, all four CIs strictly above zero. The regression bucket
+  shrank only 233 → 231 queries and the truncation share dropped
+  90.0 % → **87.5 %** (40-query seeded triage, same rule cascade).
+  **The W6 budget-cap hypothesis is falsified**: T5-small is hitting
+  EOS naturally on this prompt format, not running out of decode
+  budget. The mid-word-ending output style is intrinsic to the model,
+  not a symptom of the 64-token cap. Outputs under
+  `outputs/week03_generation_{bm25,reranked}_full_mnt128/`,
+  `outputs/week06_bootstrap_mnt128/`,
+  `outputs/week06_taxonomy_mnt128/` (gitignored). BERTScore proxy on
+  the new predictions was **skipped**; it remains optional and can
+  be reproduced with one command (see *Reproduce* under
+  `reports/templates/week06_eval_layer.md`).
 - Per-week report: [`reports/generated/week06_eval_layer.pdf`](reports/generated/week06_eval_layer.pdf)
   (regenerate with `python -m src.reporting.build_report --week week06`).
 
@@ -631,12 +654,14 @@ Current limitations to be aware of:
 
 ## 8. Next
 
-- **Address generation truncation.** The W6 regression taxonomy shows
-  ~90 % of W3 regressions are output truncation, not retrieval or
-  semantics. Bump T5-small `max_new_tokens` from 64 → 128 (and/or raise
-  the prompt budget if the context window allows), then re-run the
-  paired W3 full-dev comparison and the regression taxonomy. Cheapest
-  intervention with the highest expected payoff.
+- **Generator capacity / output style, not decode budget.** The W6
+  closure experiment (`max_new_tokens=64→128`, full dev/small) showed
+  the budget was not the bottleneck — truncation share dropped only
+  90 % → 87.5 % and all four surface-form deltas moved by <0.005. The
+  mid-word-ending output style is intrinsic to T5-small on the
+  `question: ... context: ...` prompt format, not a symptom of the
+  64-token cap. Subsequent generator-side work should target model
+  capacity or QA-style instruction tuning, not the decode budget.
 - **Try a MS-MARCO-tuned dense encoder.** Swap
   `sentence-transformers/all-MiniLM-L6-v2` for
   `sentence-transformers/msmarco-MiniLM-L6-cos-v5` (same architecture,
