@@ -598,6 +598,141 @@ def build_week05(out_dir: Path) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Week 06 — evaluation layer (BERTScore semantic proxy + regression taxonomy).
+#
+# Unlike W2-W5 this week has no single ``metrics.json`` of its own; the
+# numbers live in two sibling output dirs:
+#   - outputs/week06_bertscore_proxy/bertscore_proxy_ci.json
+#   - outputs/week06_analysis/{summary.json, regression_taxonomy.json}
+# ``out_dir`` is the canonical W6 dir (``outputs/week06_analysis``); the
+# BERTScore proxy JSON is looked up by sibling path inside the function.
+# --------------------------------------------------------------------------- #
+
+
+def _fmt_pct(value: Any, denom: float | int, places: int = 1) -> str:
+    """Render ``value`` as a percent of ``denom`` (e.g. 14/40 → '35.0 %')."""
+    try:
+        f = float(value) / float(denom) * 100.0
+    except (TypeError, ValueError, ZeroDivisionError):
+        return "—"
+    return f"{f:.{places}f} %"
+
+
+def build_week06(out_dir: Path) -> str:
+    summary_path = out_dir / "summary.json"
+    taxonomy_path = out_dir / "regression_taxonomy.json"
+    bertscore_path = (
+        out_dir.parent / "week06_bertscore_proxy" / "bertscore_proxy_ci.json"
+    )
+
+    if not summary_path.exists():
+        raise FileNotFoundError(
+            f"{summary_path} not found. "
+            "Run scripts/analyze_generation_rerank.py first."
+        )
+    if not taxonomy_path.exists():
+        raise FileNotFoundError(
+            f"{taxonomy_path} not found. "
+            "Run scripts/regression_failure_taxonomy.py first."
+        )
+    if not bertscore_path.exists():
+        raise FileNotFoundError(
+            f"{bertscore_path} not found. "
+            "Run scripts/bertscore_paired_eval.py first."
+        )
+
+    summary = _read_json(summary_path)
+    taxonomy = _read_json(taxonomy_path)
+    bert = _read_json(bertscore_path)
+
+    # Headline / counts
+    n_shared = summary.get("n_shared_qids", 0)
+    n_regression = (summary.get("headline") or {}).get("n_strict_regressions", 0)
+
+    # BERTScore proxy
+    bs_boot = bert.get("bootstrap", {}) or {}
+    bs_meta = bert.get("bertscore", {}) or {}
+    bs_subsample = bert.get("subsample", {}) or {}
+    n_pairs = bs_subsample.get("n_sampled", 0)
+    win = bert.get("win_rate_rerank_strictly_better", 0.0)
+    tie = bert.get("tie_rate", 0.0)
+    loss = bert.get("loss_rate_bm25_strictly_better", 0.0)
+
+    # Regression taxonomy — the JSON omits categories whose count is zero, so
+    # default-to-zero on lookup.
+    tax_counts = taxonomy.get("counts", {}) or {}
+    tax_n_sampled = taxonomy.get("n_sampled", 0)
+    cats = (
+        "truncation_short",
+        "truncation_midword",
+        "topic_drift",
+        "extractive_passage_bias",
+        "semantic_mismatch",
+    )
+    tax_values = {c: int(tax_counts.get(c, 0)) for c in cats}
+    truncation_total = (
+        tax_values["truncation_short"] + tax_values["truncation_midword"]
+    )
+
+    fields = {
+        "generated_at": dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "n_shared_qids": f"{n_shared:,}",
+        "n_regression": str(n_regression),
+        # BERTScore proxy
+        "bertscore_model": bs_meta.get("model_type", "—"),
+        "bertscore_n_pairs": f"{n_pairs:,}" if isinstance(n_pairs, int) else str(n_pairs),
+        "bertscore_n_resamples": f"{bs_boot.get('n_resamples', 0):,}",
+        "bertscore_seed": bs_boot.get("seed", "—"),
+        "bertscore_mean_bm25": _fmt_float(bs_boot.get("mean_a")),
+        "bertscore_mean_rerank": _fmt_float(bs_boot.get("mean_b")),
+        "bertscore_delta": f"{bs_boot.get('mean_delta', 0.0):+.4f}",
+        "bertscore_ci_low": f"{bs_boot.get('ci_low', 0.0):+.4f}",
+        "bertscore_ci_high": f"{bs_boot.get('ci_high', 0.0):+.4f}",
+        "bertscore_p_two_sided": (
+            "< 0.001"
+            if (bs_boot.get("p_two_sided") or 0.0) < 0.001
+            else _fmt_float(bs_boot.get("p_two_sided"), 3)
+        ),
+        "bertscore_win_rate_pct": f"{win * 100:.1f} %",
+        "bertscore_tie_rate_pct": f"{tie * 100:.1f} %",
+        "bertscore_loss_rate_pct": f"{loss * 100:.1f} %",
+        "bertscore_subsample_pct": (
+            f"{n_pairs / n_shared * 100:.1f} %" if n_shared else "—"
+        ),
+        # Regression taxonomy
+        "tax_n_sampled": str(tax_n_sampled),
+        "tax_seed": taxonomy.get("seed", "—"),
+        "tax_truncation_short": str(tax_values["truncation_short"]),
+        "tax_truncation_midword": str(tax_values["truncation_midword"]),
+        "tax_topic_drift": str(tax_values["topic_drift"]),
+        "tax_extractive_passage_bias": str(tax_values["extractive_passage_bias"]),
+        "tax_semantic_mismatch": str(tax_values["semantic_mismatch"]),
+        "tax_truncation_short_pct": _fmt_pct(
+            tax_values["truncation_short"], tax_n_sampled
+        ),
+        "tax_truncation_midword_pct": _fmt_pct(
+            tax_values["truncation_midword"], tax_n_sampled
+        ),
+        "tax_topic_drift_pct": _fmt_pct(tax_values["topic_drift"], tax_n_sampled),
+        "tax_extractive_passage_bias_pct": _fmt_pct(
+            tax_values["extractive_passage_bias"], tax_n_sampled
+        ),
+        "tax_semantic_mismatch_pct": _fmt_pct(
+            tax_values["semantic_mismatch"], tax_n_sampled
+        ),
+        "tax_truncation_total_pct": _fmt_pct(truncation_total, tax_n_sampled),
+        "tax_truncation_total_pct_rounded": (
+            f"{round(truncation_total / tax_n_sampled * 100):d} %"
+            if tax_n_sampled
+            else "—"
+        ),
+    }
+
+    template = (TEMPLATES_DIR / "week06_eval_layer.md").read_text()
+    return _substitute(template, fields)
+
+
+# --------------------------------------------------------------------------- #
 # Cross-week review (static template, no metrics.json dependency)
 # --------------------------------------------------------------------------- #
 
@@ -710,7 +845,7 @@ def main() -> None:
     parser.add_argument(
         "--week",
         required=True,
-        choices=["week01", "week02", "week03", "week04", "week05", "review_all"],
+        choices=["week01", "week02", "week03", "week04", "week05", "week06", "review_all"],
         help=(
             "Which report to build. ``weekNN`` builds the per-week report "
             "from outputs/weekNN_*/. ``review_all`` builds the cross-week "
@@ -741,6 +876,13 @@ def main() -> None:
         out_dir = OUTPUTS_DIR / "week05_reranker"
         md = build_week05(out_dir)
         out_md = GENERATED_DIR / "week05_reranker.md"
+    elif args.week == "week06":
+        # Two source dirs: analysis (summary + taxonomy) + bertscore proxy.
+        # ``out_dir`` is the canonical analysis dir; bertscore JSON is
+        # discovered relative to it inside ``build_week06``.
+        out_dir = OUTPUTS_DIR / "week06_analysis"
+        md = build_week06(out_dir)
+        out_md = GENERATED_DIR / "week06_eval_layer.md"
     else:
         # ``review_all``: cross-week narrative, no metrics.json dependency.
         md = build_review_all(OUTPUTS_DIR)
