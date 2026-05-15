@@ -360,6 +360,55 @@ neither requires a new model run, both are CPU-only:
 - Per-week report: [`reports/generated/week06_eval_layer.pdf`](reports/generated/week06_eval_layer.pdf)
   (regenerate with `python -m src.reporting.build_report --week week06`).
 
+### Week 7 — Grounding audit &nbsp;&nbsp;✅ done
+
+Cheap deterministic CPU pass over the existing full-dev paired
+predictions to answer the question the W6 closure left open: *what
+is T5-small actually doing on this prompt format — extracting from
+the passages, or generating from parametric memory?* Two metrics in
+[`src/evaluation/grounding.py`](src/evaluation/grounding.py), driven
+by [`scripts/grounding_audit.py`](scripts/grounding_audit.py); no
+new generation, no model load, ~2 s scoring + bootstrap.
+
+- **Lexical content-token grounding** (fraction of unique non-stopword
+  prediction tokens that appear anywhere in the prompt's top-3
+  passages): BM25 **0.9972** → Reranked **0.9977**, **Δ +0.0005
+  (95 % paired-bootstrap CI [−0.0003, +0.0014], p=0.24)**. Both arms
+  sit at the lexical ceiling — almost every content word T5-small
+  emits is already in the prompt. The rerank advantage on grounding
+  at the word level is indistinguishable from zero because there is
+  no slack.
+- **3-gram grounding** (fraction of the prediction's contiguous
+  3-grams that appear as a contiguous span in any single passage):
+  BM25 **0.9873** → Reranked **0.9905**, **Δ +0.0032 (95 %
+  paired-bootstrap CI [+0.0015, +0.0050], p < 0.001)**. Reranking
+  slightly raises phrase-level grounding too, but both arms are
+  again ~99 %.
+- **Headline read:** T5-small on the `question: ... context: ...`
+  prompt is effectively performing **extractive QA**. The W3/W5
+  rerank gain (Δ Token-F1 +0.171) is almost entirely downstream of
+  retrieval — the reranker puts the right words into the prompt and
+  the generator copies them. This is a *calibration* of the earlier
+  result, not a contradiction: the W3 surface-form deltas are real,
+  but the mechanism is "better passages → better extractive output",
+  not "better passages → better neural reasoning".
+- **Edge cases reported separately:** ~10 % of predictions per arm
+  are <3 tokens (the `truncation_short` / `extractive_passage_bias`
+  pattern from the W6 taxonomy), scoring n-gram grounding as 1.0
+  vacuously. Lexical-vacuous predictions are negligible (<0.3 %).
+  Counts are identical-shape on both arms, so the paired Δ is
+  unaffected.
+- Outputs:
+  [`outputs/week07_grounding/{per_query_grounding.jsonl,summary.json}`](outputs/)
+  (gitignored).
+- Per-week report:
+  [`reports/generated/week07_grounding.pdf`](reports/generated/week07_grounding.pdf)
+  (regenerate with `python -m src.reporting.build_report --week week07`).
+- *Out of scope for this commit:* NLI-based grounding (the canonical
+  semantic-faithfulness measure) and a bucket / query-type
+  breakdown joining with the W6 `per_query_metrics.jsonl`. Both
+  listed in §7 of the W7 template as forward-pointers.
+
 ### Reference points
 
 - Published Anserini/Lucene BM25 baseline on MS MARCO `dev/small`: MRR@10 ≈ 0.184. Our `bm25s`-based **0.1703** is in the same ballpark; the gap is consistent with tokenizer differences.
@@ -654,14 +703,30 @@ Current limitations to be aware of:
 
 ## 8. Next
 
+- **Extend the W7 grounding audit with an NLI proxy** (highest-leverage
+  cheap follow-up). The W7 lexical + 3-gram pass shows T5-small is
+  ~99 % extractive on both arms — but lexical extraction is not the
+  same as semantic faithfulness (heavy paraphrase scores low; verbatim
+  copy from a *distractor* passage scores high). Score
+  `entailment(passages → prediction)` on a 3 000-pair subsample with a
+  small CPU cross-encoder (`cross-encoder/nli-deberta-v3-small`),
+  mirroring the W6 BERTScore-proxy pattern. The audit script already
+  exposes `--nli-n-pairs` as a placeholder argument; the metric is
+  the only thing missing.
+- **W7 bucket / query-type breakdown.** Join per-query grounding scores
+  with the W6 `per_query_metrics.jsonl` to ask: are the W3 regression
+  queries *passage-external* on the rerank arm? If yes, the W6
+  `truncation_midword` rule is actually identifying low-grounding
+  outputs, not budget-cut outputs — a cleaner mechanism for the W6
+  closure finding. ~50 lines, no new compute.
 - **Generator capacity / output style, not decode budget.** The W6
-  closure experiment (`max_new_tokens=64→128`, full dev/small) showed
-  the budget was not the bottleneck — truncation share dropped only
-  90 % → 87.5 % and all four surface-form deltas moved by <0.005. The
-  mid-word-ending output style is intrinsic to T5-small on the
-  `question: ... context: ...` prompt format, not a symptom of the
-  64-token cap. Subsequent generator-side work should target model
-  capacity or QA-style instruction tuning, not the decode budget.
+  closure (`max_new_tokens=64→128`, full dev/small) plus the W7
+  ceiling (~99 % extractiveness on both arms) together imply
+  generator-side work should target either *richer prompt formats
+  that demand reasoning* (multi-passage synthesis, citation-aware
+  decoding) or *a different model* — not the decode budget. The
+  current `question: ... context: ...` shape is fundamentally an
+  extractive-QA prompt; T5-small is doing what the prompt asks.
 - **Try a MS-MARCO-tuned dense encoder.** Swap
   `sentence-transformers/all-MiniLM-L6-v2` for
   `sentence-transformers/msmarco-MiniLM-L6-cos-v5` (same architecture,

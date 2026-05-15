@@ -733,6 +733,87 @@ def build_week06(out_dir: Path) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Week 07 — grounding audit (lexical + 3-gram, no model load).
+#
+# Reads ``outputs/week07_grounding/summary.json`` and substitutes into the
+# template at ``reports/templates/week07_grounding.md``. The summary is
+# produced by ``scripts/grounding_audit.py``.
+# --------------------------------------------------------------------------- #
+
+
+def build_week07(out_dir: Path) -> str:
+    summary_path = out_dir / "summary.json"
+    if not summary_path.exists():
+        raise FileNotFoundError(
+            f"{summary_path} not found. "
+            "Run scripts/grounding_audit.py first."
+        )
+    summary = _read_json(summary_path)
+    n_shared = summary.get("n_shared_qids", 0)
+    metrics = summary.get("metrics") or {}
+    lex = metrics.get("lexical_content_token_grounding") or {}
+    ngram = metrics.get("ngram_grounding") or {}
+    edge = summary.get("edge_cases") or {}
+
+    def _p2(value: Any) -> str:
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            return "—"
+        return "< 0.001" if v < 0.001 else f"{v:.3f}"
+
+    def _pct_rate(value: Any) -> str:
+        try:
+            return f"{float(value) * 100:.1f} %"
+        except (TypeError, ValueError):
+            return "—"
+
+    # ~rate of ngram-vacuous predictions per arm, rounded for prose.
+    ngram_vac_total = int(edge.get("bm25_n_ngram_vacuous", 0)) + int(
+        edge.get("rerank_n_ngram_vacuous", 0)
+    )
+    ngram_vac_avg_pct = (
+        f"{(ngram_vac_total / 2 / n_shared) * 100:.0f} %"
+        if n_shared
+        else "—"
+    )
+
+    fields = {
+        "generated_at": dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "n_shared_qids": f"{n_shared:,}",
+        # Lexical content-token grounding
+        "lex_mean_bm25": _fmt_float(lex.get("mean_bm25")),
+        "lex_mean_rerank": _fmt_float(lex.get("mean_rerank")),
+        "lex_delta": f"{lex.get('delta_mean', 0.0):+.4f}",
+        "lex_ci_low": f"{lex.get('ci_low', 0.0):+.4f}",
+        "lex_ci_high": f"{lex.get('ci_high', 0.0):+.4f}",
+        "lex_p_two_sided": _p2(lex.get("p_two_sided")),
+        "lex_win_rate_pct": _pct_rate(lex.get("win_rate_rerank_strictly_better")),
+        "lex_tie_rate_pct": _pct_rate(lex.get("tie_rate")),
+        "lex_loss_rate_pct": _pct_rate(lex.get("loss_rate_bm25_strictly_better")),
+        # n-gram grounding
+        "ngram_mean_bm25": _fmt_float(ngram.get("mean_bm25")),
+        "ngram_mean_rerank": _fmt_float(ngram.get("mean_rerank")),
+        "ngram_delta": f"{ngram.get('delta_mean', 0.0):+.4f}",
+        "ngram_ci_low": f"{ngram.get('ci_low', 0.0):+.4f}",
+        "ngram_ci_high": f"{ngram.get('ci_high', 0.0):+.4f}",
+        "ngram_p_two_sided": _p2(ngram.get("p_two_sided")),
+        "ngram_win_rate_pct": _pct_rate(ngram.get("win_rate_rerank_strictly_better")),
+        "ngram_tie_rate_pct": _pct_rate(ngram.get("tie_rate")),
+        "ngram_loss_rate_pct": _pct_rate(ngram.get("loss_rate_bm25_strictly_better")),
+        # Edge cases
+        "bm25_lex_vacuous": str(int(edge.get("bm25_n_lex_vacuous", 0))),
+        "bm25_ngram_vacuous": str(int(edge.get("bm25_n_ngram_vacuous", 0))),
+        "rerank_lex_vacuous": str(int(edge.get("rerank_n_lex_vacuous", 0))),
+        "rerank_ngram_vacuous": str(int(edge.get("rerank_n_ngram_vacuous", 0))),
+        "ngram_vacuous_pct_rounded": ngram_vac_avg_pct,
+    }
+
+    template = (TEMPLATES_DIR / "week07_grounding.md").read_text()
+    return _substitute(template, fields)
+
+
+# --------------------------------------------------------------------------- #
 # Cross-week review (static template, no metrics.json dependency)
 # --------------------------------------------------------------------------- #
 
@@ -845,7 +926,7 @@ def main() -> None:
     parser.add_argument(
         "--week",
         required=True,
-        choices=["week01", "week02", "week03", "week04", "week05", "week06", "review_all"],
+        choices=["week01", "week02", "week03", "week04", "week05", "week06", "week07", "review_all"],
         help=(
             "Which report to build. ``weekNN`` builds the per-week report "
             "from outputs/weekNN_*/. ``review_all`` builds the cross-week "
@@ -883,6 +964,10 @@ def main() -> None:
         out_dir = OUTPUTS_DIR / "week06_analysis"
         md = build_week06(out_dir)
         out_md = GENERATED_DIR / "week06_eval_layer.md"
+    elif args.week == "week07":
+        out_dir = OUTPUTS_DIR / "week07_grounding"
+        md = build_week07(out_dir)
+        out_md = GENERATED_DIR / "week07_grounding.md"
     else:
         # ``review_all``: cross-week narrative, no metrics.json dependency.
         md = build_review_all(OUTPUTS_DIR)
