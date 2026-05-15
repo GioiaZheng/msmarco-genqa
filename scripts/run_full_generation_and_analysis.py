@@ -78,25 +78,42 @@ class DriverConfig:
     retrieval_source_reranked: str
     seconds_per_query_estimate: float
     require_full_manifest: bool
+    max_new_tokens: int | None = None
+
+
+def _suffix(s: str) -> str:
+    if not s:
+        return ""
+    return s if s.startswith("_") else "_" + s
 
 
 def build_default_config(args: argparse.Namespace) -> DriverConfig:
-    """Production defaults: full dev/small via outputs/week05_reranker_full/."""
+    """Production defaults: full dev/small via outputs/week05_reranker_full/.
+
+    ``--out-suffix`` (e.g. ``_mnt128``) appends to the three output directories
+    so a budget-sweep run leaves the canonical _full directories untouched.
+    """
+    suf = _suffix(args.out_suffix)
+    # Raise the per-query estimate when the generator gets a bigger budget;
+    # the estimate is only used to warn the user about wall-clock in the
+    # preflight, so over-estimating is safer than under.
+    spq = 0.30 if not args.max_new_tokens or args.max_new_tokens <= 64 else 0.50
     return DriverConfig(
         reranker_run=PROJECT_ROOT / "outputs/week05_reranker_full/run.tsv",
         reranker_manifest=PROJECT_ROOT / "outputs/week05_reranker_full/manifest.json",
         bm25_run=PROJECT_ROOT / "outputs/week02_bm25/run.tsv",
-        bm25_out=PROJECT_ROOT / "outputs/week03_generation_bm25_full",
-        rerank_out=PROJECT_ROOT / "outputs/week03_generation_reranked_full",
-        analysis_out=PROJECT_ROOT / "outputs/week06_analysis",
-        log_dir=PROJECT_ROOT / "logs",
+        bm25_out=PROJECT_ROOT / f"outputs/week03_generation_bm25_full{suf}",
+        rerank_out=PROJECT_ROOT / f"outputs/week03_generation_reranked_full{suf}",
+        analysis_out=PROJECT_ROOT / f"outputs/week06_analysis{suf}",
+        log_dir=PROJECT_ROOT / f"logs{suf}",
         n_eval_queries=args.num_eval_queries or 99999,
         expected_qids=args.expected_qids,
         rerank_top_k=args.rerank_top_k,
         retrieval_source_bm25="bm25",
         retrieval_source_reranked="reranked",
-        seconds_per_query_estimate=0.30,  # T5-small on CPU, top-3 passages
+        seconds_per_query_estimate=spq,
         require_full_manifest=True,
+        max_new_tokens=args.max_new_tokens,
     )
 
 
@@ -105,16 +122,17 @@ def build_dryrun_config(args: argparse.Namespace) -> DriverConfig:
     already on disk (historical W5 1k-qid run by default). Writes to
     outputs/dryrun/... so a real run is never disturbed.
     """
+    suf = _suffix(args.out_suffix)
     return DriverConfig(
         reranker_run=PROJECT_ROOT / args.dryrun_reranker_run,
         reranker_manifest=PROJECT_ROOT / args.dryrun_reranker_run.replace(
             "run.tsv", "manifest.json"
         ),
         bm25_run=PROJECT_ROOT / "outputs/week02_bm25/run.tsv",
-        bm25_out=PROJECT_ROOT / "outputs/dryrun/gen_bm25",
-        rerank_out=PROJECT_ROOT / "outputs/dryrun/gen_reranked",
-        analysis_out=PROJECT_ROOT / "outputs/dryrun/analysis",
-        log_dir=PROJECT_ROOT / "outputs/dryrun/logs",
+        bm25_out=PROJECT_ROOT / f"outputs/dryrun/gen_bm25{suf}",
+        rerank_out=PROJECT_ROOT / f"outputs/dryrun/gen_reranked{suf}",
+        analysis_out=PROJECT_ROOT / f"outputs/dryrun/analysis{suf}",
+        log_dir=PROJECT_ROOT / f"outputs/dryrun/logs{suf}",
         n_eval_queries=args.dryrun_n,
         expected_qids=0,  # don't enforce qid coverage in dry-run
         rerank_top_k=args.rerank_top_k,
@@ -122,6 +140,7 @@ def build_dryrun_config(args: argparse.Namespace) -> DriverConfig:
         retrieval_source_reranked="reranked",
         seconds_per_query_estimate=0.30,
         require_full_manifest=False,  # historical 1k run may pre-date the manifest schema
+        max_new_tokens=args.max_new_tokens,
     )
 
 
@@ -345,6 +364,8 @@ def phase_gen_bm25(cfg: DriverConfig, force: bool) -> str:
         "--restrict-to-run", str(cfg.reranker_run),
         "--num-eval-queries", str(cfg.n_eval_queries),
     ]
+    if cfg.max_new_tokens is not None:
+        cmd += ["--max-new-tokens", str(cfg.max_new_tokens)]
     _run(cmd, cfg.log_dir / "gen_bm25.log")
     return "OK"
 
@@ -360,6 +381,8 @@ def phase_gen_reranked(cfg: DriverConfig, force: bool) -> str:
         "--retrieval-source", cfg.retrieval_source_reranked,
         "--num-eval-queries", str(cfg.n_eval_queries),
     ]
+    if cfg.max_new_tokens is not None:
+        cmd += ["--max-new-tokens", str(cfg.max_new_tokens)]
     _run(cmd, cfg.log_dir / "gen_reranked.log")
     return "OK"
 
@@ -446,6 +469,26 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--skip-preflight",
         action="store_true",
         help="Skip the preflight summary print (useful in scripted pipelines).",
+    )
+    p.add_argument(
+        "--max-new-tokens",
+        type=int,
+        default=None,
+        help=(
+            "Override generator max_new_tokens for both gen phases. Pass-through "
+            "to run_generation_baseline.py; the runner records it in each "
+            "manifest's argv. Leave unset to use cfg['generation']."
+        ),
+    )
+    p.add_argument(
+        "--out-suffix",
+        type=str,
+        default="",
+        help=(
+            "Optional suffix appended to bm25_out, rerank_out, and analysis_out "
+            "so a budget-sweep run writes to fresh directories without "
+            "clobbering the canonical _full outputs. Example: --out-suffix _mnt128."
+        ),
     )
     return p.parse_args(argv)
 

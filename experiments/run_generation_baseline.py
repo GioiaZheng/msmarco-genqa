@@ -116,6 +116,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "upstream run covers fewer queries than the other."
         ),
     )
+    parser.add_argument(
+        "--max-new-tokens",
+        type=int,
+        default=None,
+        help=(
+            "Override cfg['generation']['max_new_tokens']. Use when running a "
+            "controlled generation-budget sweep without editing the config; "
+            "the manifest's argv record captures the override for provenance."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -212,6 +222,10 @@ def main() -> None:
     )
     args = parse_args()
     cfg = load_config(args.config)
+    if args.max_new_tokens is not None:
+        # Override before config snapshot is captured into the manifest so
+        # the snapshot reflects the effective value, not the file default.
+        cfg.setdefault("generation", {})["max_new_tokens"] = args.max_new_tokens
     seed = cfg.get("seed", 42)
     random.seed(seed)
 
