@@ -153,25 +153,37 @@ lexical vacuous counts are negligible (<0.3 % of either arm).
 
 ## 7. Next
 
-- **NLI-based grounding.** Score `entailment(passages → prediction)`
-  on a 3 000-pair subsample with a small CPU cross-encoder
-  (`cross-encoder/nli-deberta-v3-small`). Mirrors the W6 BERTScore-
-  proxy pattern: cheap, deliberately not citation-grade, and tests
-  whether the *semantic* grounding Δ matches the *lexical* one. The
-  audit script already exposes `--nli-n-pairs` as a placeholder
-  argument; the metric is the only thing missing.
-- **Bucket / query-type breakdown.** Join the per-query grounding
-  scores with the W6 `per_query_metrics.jsonl` and `regression`
-  bucket labels. Specifically, ask: are the W3 regression queries
-  (rerank brings relevant passage to top-3, generator gets *worse*
-  F1 than under BM25) characterised by *passage-external* predictions
-  on the rerank arm? If yes, the W6 truncation taxonomy's
-  `truncation_midword` rule is identifying low-grounding outputs, not
-  budget-cut outputs — a cleaner mechanism for the W6 closure
-  finding.
 - **Span-level citation linking.** For each prediction, attribute its
   content tokens to the specific source passage. Cheap (~50 lines)
   but explicitly out of scope for this commit per the W7 scope.
+
+### 7.1 W7 follow-ups (done; live in the README)
+
+The two forward-pointers in the original W7 §7 (NLI-based grounding
+and per-query bucket / type breakdown) were both delivered in a later
+pass. Numbers are not embedded here to keep the W7 snapshot stable;
+see the README §1 Week 7 for the live writeup.
+
+- *W7-A* — NLI-entailment grounding via
+  `cross-encoder/nli-deberta-v3-small` on a 3 000-paired-qid subsample.
+  Module `src/evaluation/nli_grounding.py`, driven by this same
+  `scripts/grounding_audit.py` with `--nli-n-pairs 3000`. Headline:
+  the NLI Δ is **negative and strictly excludes zero** (BM25 0.227 →
+  Reranked 0.082, Δ −0.145, 95 % CI [−0.16, −0.13]) — the only metric
+  in this project whose Δ reverses sign vs the W3 surface-form story.
+- *W7-C* — per-query Spearman / Pearson + binned (≥0.9 vs <0.9)
+  Mann-Whitney joining lex / 3-gram / NLI grounding against W6
+  Token-F1 and a freshly-cached per-qid BERTScore-F1
+  (`scripts/grounding_correlation.py`, output
+  `outputs/week07_grounding_correlation/`). All 12 binned cells have
+  Δ(high − low) > 0; magnitudes 0.04–0.10 on Token-F1 / BERTScore.
+- *W7-D* — seeded 30-case study of the rerank-arm low-grounding tail
+  (197 queries with lex < 0.9 OR ngram < 0.9), with a coarse
+  rule-cascade label per case. **0 / 30 hallucinations** (no case had
+  lex < 0.5); 77 % are paraphrase / reordering, 23 % are tokeniser /
+  morphology artefacts. Script
+  `scripts/low_grounding_case_study.py`, output
+  `outputs/week07_low_grounding_cases/cases.md`.
 
 ## 8. Reproduce
 

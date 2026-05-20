@@ -359,6 +359,36 @@ neither requires a new model run, both are CPU-only:
   `reports/templates/week06_eval_layer.md`).
 - Per-week report: [`reports/generated/week06_eval_layer.pdf`](reports/generated/week06_eval_layer.pdf)
   (regenerate with `python -m src.reporting.build_report --week week06`).
+- **W6 follow-ups — three offline analyses on the existing
+  per-query metrics, no new generation / reranker runs:**
+  - *W6-A: question-form tagging* of all 6 980 dev/small queries
+    (who / what / when / where / why / how / which / yes_no / other;
+    complementary to MS MARCO QA's native answer-type `query_type`).
+    Script: [`scripts/tag_query_forms.py`](scripts/tag_query_forms.py).
+    Output: `outputs/week06_querytype/`.
+  - *W6-B: rerank Δ by question-form* — joins W6-A onto the W3/W5/W6
+    per-query metrics; reports per-form ΔToken-F1 / ΔROUGE-L / ΔEM /
+    ΔMRR@10 / ΔnDCG@10 with paired-bootstrap CIs. **`which` (n=120) is
+    the only form whose 95 % CI on ΔToken-F1 includes zero** (Δ = +0.0250,
+    CI [−0.028, +0.077], p = 0.33), even though its retrieval-side
+    ΔMRR@10 is +0.71 — the reranker is doing its job on retrieval but
+    the gain doesn't transfer downstream on selection-style queries.
+    Factual wh-forms (what / where / why / how / who) all see Δ in the
+    +0.12 to +0.23 range with CIs strictly above zero. Script:
+    [`scripts/analyze_rerank_by_query_form.py`](scripts/analyze_rerank_by_query_form.py).
+    Output: `outputs/week06_rerank_by_form/`.
+  - *W6-C: regression vs non-regression query profile* — Mann-Whitney
+    U on five structural features (query length tokens / chars, qrels
+    density, BM25 + rerank top-3 mean passage length). Regression
+    queries do *not* differ from the rest on the query side at any
+    meaningful effect size; the only detectable signal is a small
+    downward shift in retrieved passage length on both arms (rerank
+    Δmedian −2.7 tokens, p = 0.0073, r = −0.103). Consistent with
+    the W6 taxonomy finding that ~90 % of regressions are
+    generator-side truncation: shorter passages give T5-small less
+    material to extract. Script:
+    [`scripts/regression_query_profile.py`](scripts/regression_query_profile.py);
+    three boxplots under [`figures/w6c_regression_vs_other_*.png`](figures/).
 
 ### Week 7 — Grounding audit &nbsp;&nbsp;✅ done
 
@@ -404,10 +434,45 @@ new generation, no model load, ~2 s scoring + bootstrap.
 - Per-week report:
   [`reports/generated/week07_grounding.pdf`](reports/generated/week07_grounding.pdf)
   (regenerate with `python -m src.reporting.build_report --week week07`).
-- *Out of scope for this commit:* NLI-based grounding (the canonical
-  semantic-faithfulness measure) and a bucket / query-type
-  breakdown joining with the W6 `per_query_metrics.jsonl`. Both
-  listed in §7 of the W7 template as forward-pointers.
+- **W7-A — NLI-entailment grounding (semantic-faithfulness companion).**
+  Scores `entailment(passages → prediction)` with
+  `cross-encoder/nli-deberta-v3-small` on a 3 000-paired-qid subsample
+  (seed 42, same paired-bootstrap-CI convention as the W6 BERTScore
+  proxy). Result: BM25 **0.2270** → Reranked **0.0821**, **Δ −0.1448
+  (95 % CI [−0.1597, −0.1297], p < 0.001)**. The NLI Δ is *negative
+  and strictly excludes zero* — the only metric in this project whose
+  Δ reverses sign vs the W3/W5/W6 surface-form story. Likely mechanism
+  (to be tested by a generator swap): T5-small on reranked top-3 emits
+  more fragmentary / mid-word-cut snippets that inflate word and
+  3-gram overlap (positive lex / ngram / Token-F1) but score low on a
+  sentence-level NLI cross-encoder which cannot entail a fragmentary
+  hypothesis. Module:
+  [`src/evaluation/nli_grounding.py`](src/evaluation/nli_grounding.py);
+  driver: the same `grounding_audit.py` script with `--nli-n-pairs 3000`.
+- **W7-C — grounding ↔ downstream correlation.** Per-query
+  Spearman / Pearson + binned (≥0.9 vs <0.9) Mann-Whitney comparing
+  lex / 3-gram / NLI grounding against Token-F1 and a freshly-scored
+  DistilBERT BERTScore-F1 (full 6 980 paired qids; NLI cells restricted
+  to the 3 000-pair subsample). Every binned cell has Δ(high − low) > 0;
+  magnitudes 0.04–0.10 in absolute Token-F1 / BERTScore. Direction is
+  consistent across all 12 cells (high grounding → higher downstream);
+  magnitude is small because both arms sit near the lex / 3-gram
+  ceiling on most queries. BERTScore is cached per-qid for re-use by
+  follow-on analyses. Script:
+  [`scripts/grounding_correlation.py`](scripts/grounding_correlation.py).
+- **W7-D — low-grounding case study (30-query seeded triage).** Of the
+  197 rerank-arm queries with `lex_rerank < 0.9` OR `ngram_rerank < 0.9`,
+  sampled 30 at seed = 42 and dumped (query, top-3 passages, BM25 +
+  rerank predictions, references) with a coarse rule-cascade label.
+  **23 / 30 (77 %) `paraphrase_reorder`** (content words present in
+  the prompt, order / phrasing differs); **7 / 30 (23 %)
+  `partial_external`**, most of which are tokeniser / morphology
+  artefacts (`350oF` vs `350°F`; `competed` vs `compete`). **0 / 30
+  `parametric_or_external`** (lex < 0.5) — no genuine hallucinations
+  in the sample. Reinforces the W7 headline: T5-small on this prompt
+  format is performing extractive QA even on its worst-grounded outputs.
+  Script:
+  [`scripts/low_grounding_case_study.py`](scripts/low_grounding_case_study.py).
 
 ### Reference points
 
@@ -703,23 +768,24 @@ Current limitations to be aware of:
 
 ## 8. Next
 
-- **Extend the W7 grounding audit with an NLI proxy** (highest-leverage
-  cheap follow-up). The W7 lexical + 3-gram pass shows T5-small is
-  ~99 % extractive on both arms — but lexical extraction is not the
-  same as semantic faithfulness (heavy paraphrase scores low; verbatim
-  copy from a *distractor* passage scores high). Score
-  `entailment(passages → prediction)` on a 3 000-pair subsample with a
-  small CPU cross-encoder (`cross-encoder/nli-deberta-v3-small`),
-  mirroring the W6 BERTScore-proxy pattern. The audit script already
-  exposes `--nli-n-pairs` as a placeholder argument; the metric is
-  the only thing missing.
-- **W7 bucket / query-type breakdown.** Join per-query grounding scores
-  with the W6 `per_query_metrics.jsonl` to ask: are the W3 regression
-  queries *passage-external* on the rerank arm? If yes, the W6
-  `truncation_midword` rule is actually identifying low-grounding
-  outputs, not budget-cut outputs — a cleaner mechanism for the W6
-  closure finding. ~50 lines, no new compute.
-- **Generator capacity / output style, not decode budget.** The W6
+- **W5 follow-ups (in progress / queued).**
+  *W5-A*: rerank the W2 full-corpus BM25 top-100 with the same
+  `ms-marco-MiniLM-L-6-v2` and compare ΔMRR@10 / ΔnDCG@10 head-to-head
+  with the existing W5 dense+rerank. The cleaner question: does the
+  cross-encoder *recover more* from a weaker first stage? Driver:
+  the existing `experiments/run_reranker.py` with
+  `--input-run outputs/week02_bm25/run.tsv`; summary table:
+  [`scripts/compare_rerank_first_stages.py`](scripts/compare_rerank_first_stages.py).
+  *W5-B*: K ∈ {50, 100, 200} sweep on both first stages for the
+  performance–latency Pareto.
+- **W4 follow-ups.** *W4-B*: head-to-head on the same 50 k
+  qrels-anchored sample for `bge-small-en-v1.5`, `all-MiniLM-L12-v2`,
+  and the existing `all-MiniLM-L6-v2` baseline — pick the best
+  same-tier general-purpose encoder before scaling. *W4-A*: relevant-
+  document-density sensitivity (1 % / 5 % / 10 %) with the W4-B winner
+  vs BM25 on the same sample, to track how the BM25 ↔ dense gap shifts
+  as the pool dilutes.
+- **W7-B — generator capacity, not decode budget.** The W6 closure
   closure (`max_new_tokens=64→128`, full dev/small) plus the W7
   ceiling (~99 % extractiveness on both arms) together imply
   generator-side work should target either *richer prompt formats

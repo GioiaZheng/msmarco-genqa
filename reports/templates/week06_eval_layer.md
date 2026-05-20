@@ -161,6 +161,26 @@ skipped and remains optional; see *Reproduce — closure run* below.
   extractive-bias / semantic-mismatch; a learned classifier (rather
   than the current rule cascade) is appropriate at that point.
 
+### 7.1 W6 follow-ups (done; live in the README)
+
+After this snapshot was written, three offline analyses were layered
+on top of the same per-query metrics. They do **not** require any new
+generation / reranker run; numbers are not embedded here to keep the
+W6 snapshot stable, see the README §1 Week 6 for the live writeup.
+
+- *W6-A* — question-form tagging of dev/small queries
+  (`scripts/tag_query_forms.py`, output `outputs/week06_querytype/`).
+- *W6-B* — rerank Δ by question-form, with paired-bootstrap CIs per
+  form (`scripts/analyze_rerank_by_query_form.py`, output
+  `outputs/week06_rerank_by_form/`). Headline: `which` is the only
+  form whose ΔToken-F1 CI includes zero.
+- *W6-C* — Mann-Whitney comparison of regression vs non-regression
+  queries on five structural features
+  (`scripts/regression_query_profile.py`; boxplots under `figures/`).
+  Result: regressions look structurally identical to the rest on the
+  query side; only the retrieved top-3 passage length is slightly
+  shorter (p = 0.0073, r = −0.103).
+
 ## 8. Reproduce
 
 ```bash
