@@ -38,7 +38,6 @@ import argparse
 import json
 import logging
 import sys
-from collections import Counter
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -378,8 +377,8 @@ def render_markdown(
             )
     else:
         lines.append(
-            f"- No (arm × grounding × downstream) cell crosses p < 0.05 with "
-            f"both bins ≥ 30 queries — at this dataset's grounding ceiling, "
+            "- No (arm × grounding × downstream) cell crosses p < 0.05 with "
+            "both bins ≥ 30 queries — at this dataset's grounding ceiling, "
             "the residual low-grounding mass is too small / too noisy to "
             "produce a statistically detectable downstream lift."
         )
