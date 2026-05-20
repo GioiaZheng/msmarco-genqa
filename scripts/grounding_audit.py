@@ -45,6 +45,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import random
 import sys
 import time
 from pathlib import Path
@@ -100,10 +101,32 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=0,
         help=(
-            "Reserved for the optional NLI-proxy subsample. The first W7 "
-            "commit ships lexical + n-gram only; passing a non-zero value "
-            "here is currently a no-op and a warning is logged."
+            "Paired subsample size for the optional NLI-entailment "
+            "grounding pass. ``0`` (default) skips NLI; pass e.g. "
+            "``3000`` to mirror the W6 BERTScore-proxy convention. "
+            "Pass a value ``>= n_shared_qids`` to score every paired "
+            "qid (slow but exhaustive)."
         ),
+    )
+    parser.add_argument(
+        "--nli-model",
+        type=str,
+        default="cross-encoder/nli-deberta-v3-small",
+        help="HF model id for the NLI cross-encoder.",
+    )
+    parser.add_argument("--nli-batch-size", type=int, default=16)
+    parser.add_argument("--nli-max-length", type=int, default=512)
+    parser.add_argument(
+        "--nli-device",
+        type=str,
+        default=None,
+        help="Override device for NLI scoring; auto-detect when omitted.",
+    )
+    parser.add_argument(
+        "--nli-subsample-seed",
+        type=int,
+        default=42,
+        help="Seed for the paired NLI subsample; independent of --bootstrap-seed.",
     )
     return parser.parse_args()
 
@@ -194,20 +217,13 @@ def main() -> None:
     )
     args = parse_args()
 
-    if args.nli_n_pairs:
-        logger.warning(
-            "--nli-n-pairs=%d ignored: NLI proxy is not in this commit. "
-            "See reports/templates/week07_grounding.md §7 Next.",
-            args.nli_n_pairs,
-        )
-
     bm25 = load_predictions_ordered(args.bm25_dir / "predictions.jsonl")
     rerank = load_predictions_ordered(args.reranked_dir / "predictions.jsonl")
     _assert_paired(bm25, rerank)
     n_shared = len(bm25)
     logger.info("Paired predictions: %d shared qids.", n_shared)
 
-    # ---- per-query scoring ----
+    # ---- per-query scoring (lex + ngram on full pool) ----
     logger.info("Scoring lexical + %d-gram grounding ...", args.ngram_n)
     t0 = time.time()
     bm25_lex, bm25_ngram, bm25_lex_vac, bm25_ngram_vac = score_arm(bm25, args.ngram_n)
@@ -217,13 +233,100 @@ def main() -> None:
     scoring_secs = time.time() - t0
     logger.info("  scoring done in %.1f s.", scoring_secs)
 
+    # ---- NLI grounding on a paired subsample ----
+    nli_block: dict[str, Any] | None = None
+    bm25_nli_per_qid: dict[str, float] = {}
+    rerank_nli_per_qid: dict[str, float] = {}
+    if args.nli_n_pairs and args.nli_n_pairs > 0:
+        n_sub = min(int(args.nli_n_pairs), n_shared)
+        if n_sub >= n_shared:
+            sampled_indices = list(range(n_shared))
+            subsample_label = "full"
+        else:
+            rng = random.Random(args.nli_subsample_seed)
+            sampled_indices = sorted(rng.sample(range(n_shared), n_sub))
+            subsample_label = f"random seed={args.nli_subsample_seed}"
+        logger.info(
+            "NLI paired subsample: %d of %d qids (%s); model=%s",
+            n_sub, n_shared, subsample_label, args.nli_model,
+        )
+
+        from src.evaluation.nli_grounding import per_query_nli_entailment
+
+        bm25_preds = [bm25[i].get("prediction") or "" for i in sampled_indices]
+        bm25_psgs = [list(bm25[i].get("passages") or []) for i in sampled_indices]
+        rerank_preds = [rerank[i].get("prediction") or "" for i in sampled_indices]
+        rerank_psgs = [list(rerank[i].get("passages") or []) for i in sampled_indices]
+
+        t_nli = time.time()
+        logger.info("  ... BM25 arm NLI scoring ...")
+        bm25_nli = per_query_nli_entailment(
+            bm25_preds,
+            bm25_psgs,
+            model_type=args.nli_model,
+            batch_size=args.nli_batch_size,
+            device=args.nli_device,
+            max_length=args.nli_max_length,
+        )
+        logger.info("  BM25 arm done in %.1f s.", time.time() - t_nli)
+        t_nli2 = time.time()
+        logger.info("  ... reranked arm NLI scoring ...")
+        rerank_nli = per_query_nli_entailment(
+            rerank_preds,
+            rerank_psgs,
+            model_type=args.nli_model,
+            batch_size=args.nli_batch_size,
+            device=args.nli_device,
+            max_length=args.nli_max_length,
+        )
+        logger.info("  reranked arm done in %.1f s.", time.time() - t_nli2)
+
+        # Paired bootstrap on the NLI delta (rerank − bm25) over the subsample.
+        nli_boot = paired_bootstrap_diff(
+            bm25_nli,
+            rerank_nli,
+            n_resamples=args.n_resamples,
+            ci=args.ci,
+            seed=args.bootstrap_seed,
+        )
+        nli_win, nli_tie, nli_loss = _win_tie_loss(bm25_nli, rerank_nli)
+
+        # Index per-qid scores so the per_query_grounding.jsonl can carry
+        # them on the sampled rows (the rest get null).
+        for i, idx in enumerate(sampled_indices):
+            qid = str(bm25[idx]["query_id"])
+            bm25_nli_per_qid[qid] = float(bm25_nli[i])
+            rerank_nli_per_qid[qid] = float(rerank_nli[i])
+
+        nli_block = {
+            "model": args.nli_model,
+            "n_subsample": n_sub,
+            "subsample_label": subsample_label,
+            "subsample_seed": int(args.nli_subsample_seed),
+            "mean_bm25": nli_boot["mean_a"],
+            "mean_rerank": nli_boot["mean_b"],
+            "delta_mean": nli_boot["mean_delta"],
+            "ci_low": nli_boot["ci_low"],
+            "ci_high": nli_boot["ci_high"],
+            "p_two_sided": nli_boot["p_two_sided"],
+            "win_rate_rerank_strictly_better": float(nli_win),
+            "tie_rate": float(nli_tie),
+            "loss_rate_bm25_strictly_better": float(nli_loss),
+            "bootstrap": {
+                "n": nli_boot["n"],
+                "n_resamples": nli_boot["n_resamples"],
+                "ci": nli_boot["ci"],
+                "seed": nli_boot["seed"],
+            },
+        }
+
     # ---- per-query JSONL ----
     args.output_dir.mkdir(parents=True, exist_ok=True)
     per_query_path = args.output_dir / "per_query_grounding.jsonl"
     with open(per_query_path, "w") as f:
         for i in range(n_shared):
             qid = str(bm25[i]["query_id"])
-            row = {
+            row: dict[str, Any] = {
                 "query_id": qid,
                 "lex_bm25": float(bm25_lex[i]),
                 "lex_rerank": float(rerank_lex[i]),
@@ -232,6 +335,14 @@ def main() -> None:
                 "ngram_rerank": float(rerank_ngram[i]),
                 "ngram_delta": float(rerank_ngram[i] - bm25_ngram[i]),
             }
+            if nli_block is not None:
+                nli_b = bm25_nli_per_qid.get(qid)
+                nli_r = rerank_nli_per_qid.get(qid)
+                row["nli_bm25"] = nli_b
+                row["nli_rerank"] = nli_r
+                row["nli_delta"] = (
+                    None if (nli_b is None or nli_r is None) else nli_r - nli_b
+                )
             f.write(json.dumps(row) + "\n")
     logger.info("Wrote %s", per_query_path)
 
@@ -258,8 +369,9 @@ def main() -> None:
         "task": "w7_grounding_audit",
         "label": (
             "Lexical content-token + n-gram grounding of W3 generator "
-            "predictions to their prompt passages. Measures extractiveness, "
-            "not semantic faithfulness; see report §6 Limitations."
+            "predictions to their prompt passages; optional NLI-entailment "
+            "grounding on a paired subsample (semantic check). See report "
+            "§6 Limitations for the extractiveness-vs-faithfulness split."
         ),
         "inputs": {
             "bm25_predictions": str(
@@ -308,6 +420,7 @@ def main() -> None:
                     "seed": ngram_boot["seed"],
                 },
             },
+            "nli_entailment_grounding": nli_block,
         },
         "edge_cases": {
             # Counts of predictions that fall into the documented "vacuous"
@@ -355,6 +468,13 @@ def main() -> None:
         print(
             f"  {label:28s}  {boot['mean_a']:>8.4f}  {boot['mean_b']:>8.4f}  "
             f"{boot['mean_delta']:>+9.4f}  {ci_str:>22s}  {boot['p_two_sided']:>8.4f}"
+        )
+    if nli_block is not None:
+        ci_str = f"[{nli_block['ci_low']:+.4f}, {nli_block['ci_high']:+.4f}]"
+        label = f"nli (n={nli_block['n_subsample']})"
+        print(
+            f"  {label:28s}  {nli_block['mean_bm25']:>8.4f}  {nli_block['mean_rerank']:>8.4f}  "
+            f"{nli_block['delta_mean']:>+9.4f}  {ci_str:>22s}  {nli_block['p_two_sided']:>8.4f}"
         )
     print()
     print(
