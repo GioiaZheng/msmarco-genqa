@@ -54,6 +54,7 @@ logger = logging.getLogger("grounding_correlation")
 GROUNDING_METRICS: tuple[tuple[str, str], ...] = (
     ("lex", "Lexical content-token grounding"),
     ("ngram", "3-gram grounding"),
+    ("nli", "NLI entailment grounding"),
 )
 DOWNSTREAM_METRICS: tuple[tuple[str, str], ...] = (
     ("token_f1", "Token-F1"),
@@ -312,14 +313,20 @@ def render_markdown(
         for g_key, g_label in GROUNDING_METRICS:
             for d_key, d_label in DOWNSTREAM_METRICS:
                 cell = summary["correlations"][arm_key][g_key][d_key]
-                lines.append(
-                    f"| {arm_label} | {g_label} | {d_label} | "
-                    f"{cell['n']} | "
-                    f"{cell['spearman_rho']:+.3f} | "
-                    f"{cell['spearman_p']:.3g} | "
-                    f"{cell['pearson_r']:+.3f} | "
-                    f"{cell['pearson_p']:.3g} |"
-                )
+                if cell["n"] == 0:
+                    lines.append(
+                        f"| {arm_label} | {g_label} | {d_label} | "
+                        "0 | — | — | — | — |"
+                    )
+                else:
+                    lines.append(
+                        f"| {arm_label} | {g_label} | {d_label} | "
+                        f"{cell['n']} | "
+                        f"{cell['spearman_rho']:+.3f} | "
+                        f"{cell['spearman_p']:.3g} | "
+                        f"{cell['pearson_r']:+.3f} | "
+                        f"{cell['pearson_p']:.3g} |"
+                    )
     lines.append("")
 
     lines.append(f"## 2. Binned mean — grounding ≥ {HIGH_THRESHOLD:.1f} vs < {HIGH_THRESHOLD:.1f}")
@@ -334,6 +341,12 @@ def render_markdown(
         for g_key, g_label in GROUNDING_METRICS:
             for d_key, d_label in DOWNSTREAM_METRICS:
                 cell = summary["binned"][arm_key][g_key][d_key]
+                if cell["n_high"] == 0 and cell["n_low"] == 0:
+                    lines.append(
+                        f"| {arm_label} | {g_label} | {d_label} | "
+                        "0 | 0 | — | — | — | — | — |"
+                    )
+                    continue
                 lines.append(
                     f"| {arm_label} | {g_label} | {d_label} | "
                     f"{cell['n_high']} | {cell['n_low']} | "
@@ -375,9 +388,9 @@ def render_markdown(
     lines.append("## 3. Caveats")
     lines.append("")
     lines.append(
-        "- Grounding scores are heavily ties at 1.0 (97 % lex, 89-92 % "
-        "3-gram). Spearman ρ on a near-constant variable is structurally "
-        "small; the bin comparison is the right read."
+        "- Lex / 3-gram grounding scores are heavily tied at 1.0 (97 % "
+        "lex, 89-92 % 3-gram). Spearman ρ on a near-constant variable is "
+        "structurally small; the bin comparison is the right read."
     )
     lines.append(
         "- Lexical grounding's low-bin has only ~40 queries per arm; "
@@ -385,14 +398,16 @@ def render_markdown(
         "conclusive."
     )
     lines.append(
+        "- NLI grounding (W7-A) lives on a 3,000-paired-qid subsample, "
+        "so the per-arm correlation is on n=3,000 (not 6,980). The "
+        "≥0.9 bin is *flipped* in cardinality vs lex / 3-gram — NLI "
+        "scores concentrate well below 0.9 for T5-small on this prompt "
+        "format, so n_high is small and n_low is large."
+    )
+    lines.append(
         "- BERTScore here is the W6-proxy DistilBERT setup, not the "
         "citation-grade roberta-large. The correlation pattern should "
         "transfer, the absolute level will shift."
-    )
-    lines.append(
-        "- NLI-based grounding is the obvious next column (the audit "
-        "script already reserves `--nli-n-pairs`); W7-A is queued to add "
-        "it and back-fill the §1 / §2 tables."
     )
     lines.append("")
     return "\n".join(lines)
@@ -439,7 +454,13 @@ def main() -> None:
         force=args.force_bertscore,
     )
 
-    # Build the per-qid frame (long-ish; one row per qid).
+    # Build the per-qid frame (long-ish; one row per qid). NLI columns are
+    # nullable: when the W7-A audit was run with --nli-n-pairs < n_shared,
+    # only the sampled qids carry NLI values; the rest are None and are
+    # filtered out per-(grounding × downstream) cell below.
+    def _opt_float(x: Any) -> float | None:
+        return None if x is None else float(x)
+
     rows_out: list[dict[str, Any]] = []
     for qid in qids:
         g = grounding_of[qid]
@@ -452,6 +473,8 @@ def main() -> None:
                 "lex_rerank": float(g["lex_rerank"]),
                 "ngram_bm25": float(g["ngram_bm25"]),
                 "ngram_rerank": float(g["ngram_rerank"]),
+                "nli_bm25": _opt_float(g.get("nli_bm25")),
+                "nli_rerank": _opt_float(g.get("nli_rerank")),
                 "token_f1_bm25": float(m["bm25_token_f1"]),
                 "token_f1_rerank": float(m["rerank_token_f1"]),
                 "bertscore_f1_bm25": float(b["bm25_f1"]),
@@ -466,30 +489,63 @@ def main() -> None:
     logger.info("Wrote %s (%d rows)", out_jsonl, len(rows_out))
 
     # ---- correlations + binned ----
+    # NLI columns may be None on rows outside the W7-A subsample; for the
+    # NLI grounding metric we filter to qids with both NLI and the
+    # downstream metric present. Lex / ngram are always present on every
+    # qid so their slice is the full 6,980.
     by_arm_corr: dict[str, Any] = {}
     by_arm_bins: dict[str, Any] = {}
     for arm_key, _arm_label in ARMS:
         by_arm_corr[arm_key] = {}
         by_arm_bins[arm_key] = {}
         for g_key, _ in GROUNDING_METRICS:
-            grounding_vec = [r[f"{g_key}_{arm_key}"] for r in rows_out]
             by_arm_corr[arm_key][g_key] = {}
             by_arm_bins[arm_key][g_key] = {}
             for d_key, _ in DOWNSTREAM_METRICS:
-                ds_vec = [r[f"{d_key}_{arm_key}"] for r in rows_out]
-                by_arm_corr[arm_key][g_key][d_key] = correlations(grounding_vec, ds_vec)
-                by_arm_bins[arm_key][g_key][d_key] = bin_compare(
-                    grounding_vec, ds_vec, threshold=HIGH_THRESHOLD,
-                )
+                paired = [
+                    (r[f"{g_key}_{arm_key}"], r[f"{d_key}_{arm_key}"])
+                    for r in rows_out
+                    if r.get(f"{g_key}_{arm_key}") is not None
+                    and r.get(f"{d_key}_{arm_key}") is not None
+                ]
+                if paired:
+                    grounding_vec = [p[0] for p in paired]
+                    ds_vec = [p[1] for p in paired]
+                    by_arm_corr[arm_key][g_key][d_key] = correlations(grounding_vec, ds_vec)
+                    by_arm_bins[arm_key][g_key][d_key] = bin_compare(
+                        grounding_vec, ds_vec, threshold=HIGH_THRESHOLD,
+                    )
+                else:
+                    by_arm_corr[arm_key][g_key][d_key] = {
+                        "n": 0,
+                        "spearman_rho": float("nan"),
+                        "spearman_p": float("nan"),
+                        "pearson_r": float("nan"),
+                        "pearson_p": float("nan"),
+                    }
+                    by_arm_bins[arm_key][g_key][d_key] = {
+                        "threshold": HIGH_THRESHOLD,
+                        "n_high": 0,
+                        "n_low": 0,
+                        "mean_high": 0.0,
+                        "mean_low": 0.0,
+                        "mean_diff_high_minus_low": 0.0,
+                        "mannwhitney_U": 0.0,
+                        "mannwhitney_p_two_sided": 1.0,
+                        "rank_biserial_r": 0.0,
+                    }
 
     # Coverage of the low-grounding bin per (arm, grounding) — informative
-    # for the caveats section.
+    # for the caveats section. Null values (NLI on un-sampled qids) are
+    # skipped, so the lex / ngram counts are over all 6,980 qids and the
+    # NLI count is over the sampled subset only.
     low_counts: dict[str, dict[str, int]] = {
         arm_key: {
             g_key: sum(
                 1
                 for r in rows_out
-                if r[f"{g_key}_{arm_key}"] < HIGH_THRESHOLD
+                if r.get(f"{g_key}_{arm_key}") is not None
+                and r[f"{g_key}_{arm_key}"] < HIGH_THRESHOLD
             )
             for g_key, _ in GROUNDING_METRICS
         }
