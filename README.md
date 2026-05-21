@@ -87,6 +87,27 @@ The repo has two parallel tracks:
 - Numbers are **upper-bounded** by qrels-anchoring (every dev relevant doc is
   in the pool by construction). The valid comparison is *dense vs BM25 on the
   same sample*, not against the W2 full-corpus number.
+- **W4 follow-ups (teacher-feedback round 2, ddl scope):**
+  - *W4-B — same-tier encoder horizontal* on the identical 50 k sample
+    ([`scripts/run_w4b_encoder_horizontal.py`](scripts/run_w4b_encoder_horizontal.py)).
+    Three small encoders evaluated head-to-head:
+
+    | Encoder | MRR@10 | nDCG@10 | Recall@100 | ms/passage |
+    |---|---:|---:|---:|---:|
+    | `all-MiniLM-L6-v2` (baseline) | 0.8830 | 0.9041 | 0.9946 | 16.2 |
+    | `all-MiniLM-L12-v2` | 0.8933 | 0.9131 | 0.9955 | 31.3 |
+    | **`BAAI/bge-small-en-v1.5`** | **0.9021** | **0.9196** | **0.9967** | 34.4 |
+
+    bge-small lifts MRR@10 by **+0.019** over the W4 baseline at ~2× the
+    CPU encoding cost. ANCE / MS MARCO-tuned encoders deferred.
+  - *W4-A — density sensitivity* with the W4-B winner (bge-small) at
+    three sample sizes
+    ([`scripts/run_w4a_density_sweep.py`](scripts/run_w4a_density_sweep.py)).
+    As the sample grows (relevant-doc density drops), dense's advantage
+    over BM25-on-sample grows **monotonically**: Δ MRR@10
+    +0.166 (49.6 % density, 15 k) → +0.188 (24.8 %, 30 k) → +0.207
+    (14.9 %, 50 k). True 1 / 5 / 10 % density cells need 70 k–700 k
+    samples (dev/small has ~7 437 unique relevants) and are deferred.
 
 ### Week 5 — Cross-encoder reranking &nbsp;&nbsp;✅ done
 
@@ -769,23 +790,29 @@ Current limitations to be aware of:
 
 ## 8. Next
 
-- **W5 follow-ups (in progress / queued).**
-  *W5-A*: rerank the W2 full-corpus BM25 top-100 with the same
-  `ms-marco-MiniLM-L-6-v2` and compare ΔMRR@10 / ΔnDCG@10 head-to-head
-  with the existing W5 dense+rerank. The cleaner question: does the
-  cross-encoder *recover more* from a weaker first stage? Driver:
-  the existing `experiments/run_reranker.py` with
-  `--input-run outputs/week02_bm25/run.tsv`; summary table:
-  [`scripts/compare_rerank_first_stages.py`](scripts/compare_rerank_first_stages.py).
-  *W5-B*: K ∈ {50, 100, 200} sweep on both first stages for the
-  performance–latency Pareto.
-- **W4 follow-ups.** *W4-B*: head-to-head on the same 50 k
-  qrels-anchored sample for `bge-small-en-v1.5`, `all-MiniLM-L12-v2`,
-  and the existing `all-MiniLM-L6-v2` baseline — pick the best
-  same-tier general-purpose encoder before scaling. *W4-A*: relevant-
-  document-density sensitivity (1 % / 5 % / 10 %) with the W4-B winner
-  vs BM25 on the same sample, to track how the BM25 ↔ dense gap shifts
-  as the pool dilutes.
+- **W5 follow-ups (one shipped, one queued).**
+  *W5-A* — **shipped**: BM25 top-100 reranked with the same
+  `ms-marco-MiniLM-L-6-v2`. Headline finding (constrained recovery
+  rate Δ / (Recall@100 − first_stage)): BM25 41.1 %, Dense 42.4 % on
+  MRR@10 — **the reranker recovers the same fraction of available
+  headroom on both first stages**; the larger absolute Δ on BM25 is
+  entirely explained by BM25's lower Recall@100 ceiling. Summary at
+  `outputs/week05_rerank_first_stage_compare/`.
+  *W5-B* — **queued for the post-deadline run**: K ∈ {50, 100, 200}
+  perf–latency Pareto on both first stages (1 000-q subsample for
+  K=50/200, K=100 reuses W5-A / W5 full-dev).
+- **W7-B — generator capacity, not decode budget.** **Queued** for
+  the post-deadline run. The W6 closure (`max_new_tokens=64→128` on
+  full dev/small) plus the W7 ceiling (~99 % extractiveness on both
+  arms) imply generator-side work should target either *richer
+  prompt formats that demand reasoning* (multi-passage synthesis,
+  citation-aware decoding) or *a different model* — not the decode
+  budget. The W7-B driver
+  ([`scripts/run_w7b_generator_comparison.py`](scripts/run_w7b_generator_comparison.py))
+  runs T5-base on both BM25 and reranked top-3 and re-scores every
+  W7 metric, so the load-bearing question — does the W7-A NLI sign
+  flip (Δ = −0.145, the only Δ in the project that reverses sign)
+  hold at higher capacity? — is one command away.
 - **W7-B — generator capacity, not decode budget.** The W6 closure
   closure (`max_new_tokens=64→128`, full dev/small) plus the W7
   ceiling (~99 % extractiveness on both arms) together imply
