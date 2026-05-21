@@ -70,6 +70,17 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--model-name", type=str, default="t5-base")
     p.add_argument("--max-new-tokens", type=int, default=64)
     p.add_argument(
+        "--num-eval-queries",
+        type=int,
+        default=9999,
+        help=(
+            "Number of queries per generation arm. Default 9999 covers "
+            "full dev/small (mutually restricted on the BM25 and rerank "
+            "qid sets). Pass a small value (e.g. 50) for a smoke test "
+            "that exercises the full pipeline without paying full cost."
+        ),
+    )
+    p.add_argument(
         "--nli-n-pairs", type=int, default=3000,
         help="Paired-qid subsample for NLI grounding (matches the T5-small W7-A run).",
     )
@@ -117,7 +128,7 @@ def step_generate_t5_base(args: argparse.Namespace) -> dict[str, str]:
         str(PROJECT_ROOT / "experiments/run_generation_baseline.py"),
         "--model-name", args.model_name,
         "--max-new-tokens", str(args.max_new_tokens),
-        "--num-eval-queries", "9999",
+        "--num-eval-queries", str(args.num_eval_queries),
     ]
     run_subproc(
         common + [
