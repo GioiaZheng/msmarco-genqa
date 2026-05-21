@@ -613,7 +613,8 @@ python experiments/run_dense_retrieval.py
 python -m src.reporting.build_report --week week04
 ```
 
-First run: ~15 min to encode the 50k sampled passages, ~20 s for FAISS search.
+First run: ~13.5 min to encode the 50k sampled passages (810 s on a 6-core
+MacBook CPU, batch 32; `all-MiniLM-L12-v2` takes ~26 min), ~20 s for FAISS search.
 Subsequent runs reuse the cached FAISS index. Tunable knobs:
 - `dense.model_name` (e.g. `sentence-transformers/all-MiniLM-L6-v2`,
   `sentence-transformers/msmarco-MiniLM-L6-cos-v5`)
