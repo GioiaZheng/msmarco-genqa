@@ -52,21 +52,27 @@ logger = logging.getLogger("run_w4a_density_sweep")
 # The reuse_existing baseline (50k sample) is keyed on the chosen encoder.
 # When --encoder is passed we recompute the baseline pointer.
 def build_cells(baseline_dir: str) -> list[dict[str, Any]]:
+    # The "% density" label is computed in extract() from the actual
+    # `n_qrels_doc_ids_in_sample / sample_size` ratio recorded in
+    # metrics.json. dev/small has ~7,437 unique relevant doc ids, so the
+    # achievable density range for these sample sizes is **15 % to 50 %**,
+    # *not* the 1/5/10 % the teacher originally asked for. True low-density
+    # cells (1 %, 5 %, 10 %) need 70k–700k samples and are deferred.
     return [
         {
-            "label": "~10 % density (sample 15k)",
+            "label": "sample 15k",
             "sample_size": 15000,
             "output_dir": "outputs/week04_density_sweep/sample_15k",
             "reuse_existing": None,
         },
         {
-            "label": "~5 % density (sample 30k)",
+            "label": "sample 30k",
             "sample_size": 30000,
             "output_dir": "outputs/week04_density_sweep/sample_30k",
             "reuse_existing": None,
         },
         {
-            "label": "~3 % density (sample 50k, baseline)",
+            "label": "sample 50k (baseline)",
             "sample_size": 50000,
             "output_dir": baseline_dir,
             "reuse_existing": f"{baseline_dir}/metrics.json",
@@ -170,14 +176,16 @@ def extract(cell: dict[str, Any]) -> dict[str, Any]:
     m = load_metrics(cell)
     dense = m.get("metrics", {}).get("dense", {})
     bm25_sample = m.get("metrics", {}).get("bm25_sample", {}) or {}
-    # Number of relevants actually landing in the sample — recorded by
-    # qrels-anchored sampling as n_qrels_doc_ids_in_sample.
+    # n_qrels_doc_ids_in_sample lives under the "sample" block; older
+    # search paths kept for backwards-compat.
+    sample_block = m.get("sample") or {}
     n_rel = (
-        m.get("config", {}).get("dense", {}).get("n_qrels_doc_ids_in_sample")
+        sample_block.get("n_qrels_doc_ids_in_sample")
+        or m.get("config", {}).get("dense", {}).get("n_qrels_doc_ids_in_sample")
         or m.get("n_qrels_doc_ids_in_sample")
         or 0
     )
-    sample_size = cell["sample_size"]
+    sample_size = sample_block.get("size") or cell["sample_size"]
     density = float(n_rel) / float(sample_size) if sample_size else 0.0
     return {
         "label": cell["label"],
