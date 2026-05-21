@@ -1,0 +1,2042 @@
+% =============================================================================
+% MS MARCO Generative QA — Internship Report
+% Author : GioiaZheng  <gioia.zheng.stud@gmail.com>
+% Date   : 2026-05-21
+% Build  : latexmk -pdf report.tex   (or:  see Makefile)
+% =============================================================================
+
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding & language ----------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+% Allow line breaks inside long \texttt{} paths so the per-output
+% directory names in the appendices don't push the right margin.
+\usepackage{seqsplit}
+\usepackage[htt]{hyphenat}
+% Slightly more open vertical rhythm than article's default; paragraphs
+% separated by a blank line rather than indentation (engineering-report style).
+\usepackage{parskip}
+\setlength{\parskip}{0.45em plus 0.15em minus 0.10em}
+\renewcommand{\baselinestretch}{1.05}
+% Section header polish: smaller sans-serif headings, slightly tighter
+% spacing above so a section doesn't push its first paragraph too far down.
+\usepackage[explicit]{titlesec}
+\titleformat{\section}{\Large\bfseries\sffamily}{\thesection}{0.6em}{#1}
+\titleformat{\subsection}{\large\bfseries\sffamily}{\thesubsection}{0.55em}{#1}
+\titleformat{\subsubsection}{\normalsize\bfseries\sffamily}{\thesubsubsection}{0.5em}{#1}
+\titlespacing*{\section}{0pt}{1.4em plus 0.4em}{0.6em}
+\titlespacing*{\subsection}{0pt}{1.0em plus 0.3em}{0.4em}
+\titlespacing*{\subsubsection}{0pt}{0.8em plus 0.2em}{0.3em}
+% Tighter table rule spacing.
+\renewcommand{\arraystretch}{1.12}
+% Global mild sloppiness: lets TeX stretch lines a little to avoid
+% overfull boxes on lines with long unbreakable tokens (code paths,
+% URLs, citation clusters).  Standard remedy in IEEE / ACM templates.
+\setlength{\emergencystretch}{2.2em}
+
+% --- Page geometry & headers ------------------------------------------------
+\usepackage[a4paper,margin=2.4cm,headheight=14pt]{geometry}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,LO]{\small\nouppercase{\leftmark}}
+\fancyhead[RE,RO]{\small\itshape MS~MARCO Generative QA --- Internship Report}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+% Clean "plain" page style for the first page of each \section
+% (otherwise fancyhdr puts the section header on every page including
+% the title page of each chapter, which looks busy).
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \fancyfoot[C]{\small\thepage}%
+  \renewcommand{\headrulewidth}{0pt}%
+}
+% Drop "Section" prefix in the running header — just the title.
+\renewcommand{\sectionmark}[1]{\markboth{\thesection~~#1}{}}
+
+% --- Math & tables ----------------------------------------------------------
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{makecell}
+\usepackage{longtable}
+
+% --- Figures ----------------------------------------------------------------
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+\usepackage{float}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf,labelsep=period}
+\usepackage{subcaption}
+
+% --- Code listings (lightweight) --------------------------------------------
+\usepackage{xcolor}
+\definecolor{codebg}{HTML}{F6F8FA}
+\definecolor{codekey}{HTML}{0F62FE}
+\definecolor{codecmt}{HTML}{6A737D}
+\definecolor{codestr}{HTML}{0A7F32}
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  keywordstyle=\color{codekey}\bfseries,
+  commentstyle=\color{codecmt}\itshape,
+  stringstyle=\color{codestr},
+  showstringspaces=false,
+  breaklines=true,
+  breakatwhitespace=true,
+  frame=single,
+  framesep=4pt,
+  framerule=0pt,
+  columns=fullflexible,
+  keepspaces=true,
+  xleftmargin=4pt,
+  xrightmargin=4pt,
+  belowskip=4pt,
+  aboveskip=4pt,
+}
+\lstdefinelanguage{plainshell}{
+  morecomment=[l]{\#},
+  morestring=[b]",
+}
+
+% --- Bibliography -----------------------------------------------------------
+\usepackage[backend=biber,
+            style=numeric-comp,
+            sorting=none,
+            maxbibnames=99,
+            giveninits=true,
+            doi=false,isbn=false,url=false,eprint=false]{biblatex}
+\addbibresource{references.bib}
+
+% --- Hyperlinks (must be last among ref packages) ---------------------------
+\usepackage[hidelinks,
+            colorlinks=true,
+            linkcolor=blue!55!black,
+            citecolor=blue!55!black,
+            urlcolor=blue!55!black,
+            bookmarksnumbered=true,
+            bookmarksopen=true,
+            pdfpagelabels=true]{hyperref}
+\usepackage[noabbrev,capitalize]{cleveref}
+
+% --- PDF metadata -----------------------------------------------------------
+\hypersetup{
+  pdftitle={MS MARCO Generative QA: A Reproducible Retrieve--Rerank--Generate
+            Pipeline with a Grounding Audit},
+  pdfauthor={GioiaZheng},
+  pdfsubject={Internship Report --- 12-week project},
+  pdfkeywords={MS MARCO; BM25; dense retrieval; cross-encoder reranking;
+               retrieval-augmented generation; BERTScore; NLI;
+               extractive QA; paired bootstrap}
+}
+
+% --- Convenience macros -----------------------------------------------------
+\newcommand{\dataset}{MS~MARCO}
+\newcommand{\devsmall}{\textit{dev/small}}
+\newcommand{\fdev}{6\,980}
+\newcommand{\msmarco}{MS~MARCO}
+\newcommand{\F}{F\textsubscript{1}}
+\newcommand{\Tokenf}{Token-\F}
+\newcommand{\rougel}{ROUGE-L}
+\newcommand{\bertscore}{BERTScore}
+\newcommand{\mrr}{MRR@10}
+\newcommand{\ndcg}{nDCG@10}
+\newcommand{\recallH}{Recall@100}
+\newcommand{\recallK}{Recall@1000}
+\newcommand{\bmtwofive}{BM25}
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{TODO:} #1}}
+\newcommand{\delt}{$\Delta$}
+\newcommand{\code}[1]{\texttt{#1}}
+% Breakable arrow for prose pipelines (retrieve -> rerank -> generate).
+% \to inside $...$ is a math-mode token and prevents line breaks; this
+% version inserts a small skip with an explicit \allowbreak on either side.
+\newcommand{\barrow}{\,\allowbreak\ensuremath{\rightarrow}\allowbreak\,}
+
+% =============================================================================
+\begin{document}
+
+% --- Cover -------------------------------------------------------------------
+\thispagestyle{empty}
+\begin{titlepage}
+  \centering
+  \vspace*{2.0cm}
+  {\large\scshape NLP Algorithm Engineer Internship\par}
+  \vspace{0.3em}
+  {\normalsize\itshape Microsoft\par}
+  \vspace{1.1cm}
+  \rule{\linewidth}{0.6pt}\par
+  \vspace{0.7cm}
+  {\LARGE\bfseries MS~MARCO Generative QA:\\[0.3em]
+   A Reproducible Retrieve--Rerank--Generate Pipeline\\[0.2em]
+   with a Grounding Audit\par}
+  \vspace{0.7cm}
+  \rule{\linewidth}{0.6pt}\par
+  \vspace{2.0cm}
+  {\large GioiaZheng\\[0.2em]
+   \href{mailto:gioia.zheng.stud@gmail.com}{gioia.zheng.stud@gmail.com}\par}
+  \vspace{0.6cm}
+  {\large Project repository:\\
+   \href{https://github.com/GioiaZheng/msmarco-genqa}{\texttt{github.com/GioiaZheng/msmarco-genqa}}\par}
+  \vfill
+  \begin{center}
+    \begin{tabular}{rl}
+      Role    & NLP Algorithm Engineer Intern \\
+      Mentor  & Tyler \\
+      Date    & 2026-05-21 \\
+      Period  & 2026-03-06 -- 2026-05-21 (11 weeks elapsed) \\
+      Scope   & single-machine, CPU-only, English passage retrieval + QA \\
+    \end{tabular}
+  \end{center}
+  \vspace*{1.3cm}
+\end{titlepage}
+
+% --- Abstract ----------------------------------------------------------------
+\newpage
+\thispagestyle{empty}
+\section*{Abstract}
+
+This report documents an eleven-week internship project that
+reproduces and analyses a complete \emph{retrieve--rerank--generate}
+question-answering pipeline on the \msmarco{} Passage Ranking
+benchmark~\cite{bajaj2016msmarco,nguyen2016msmarcoqa}.  Each stage is
+implemented from open-source components on a single laptop, with no
+GPU, no fine-tuning, and no proprietary services: \bmtwofive{}
+first-stage retrieval~\cite{robertson2009bm25,lu2024bm25s} over the
+8.8~million-passage corpus; a dense \texttt{Sentence-Transformers}
+baseline with FAISS exact search~\cite{reimers2019sbert,johnson2019faiss}
+on a qrels-anchored 50k sample; a cross-encoder
+reranker~\cite{nogueira2019passage,wang2020minilm} over the top-100
+candidates; and a frozen T5-small~\cite{raffel2020t5} acting as a
+retrieval-augmented generator~\cite{lewis2020rag} on the top-3
+retrieved passages.
+
+The single load-bearing empirical result is a paired comparison on
+all \fdev{} \devsmall{} queries: replacing \bmtwofive{} with the
+cross-encoder-reranked dense top-3 as the upstream passage source ---
+without touching the generator --- approximately doubles every
+surface-form generation metric (\Tokenf{} $0.197 \to 0.368$, \rougel{}
+$0.193 \to 0.368$), with 95\,\% paired-bootstrap
+confidence intervals~\cite{koehn2004bootstrap} strictly above zero on
+all four metrics.  A DistilBERT-based \bertscore{}
+proxy~\cite{zhang2020bertscore,sanh2019distilbert} on a 3\,000-pair
+subsample recovers the same paired $\Delta$ ($+0.173$), ruling out a
+surface-form artefact.  A targeted decoding-budget sweep
+($\code{max\_new\_tokens}=64\!\to\!128$) and a 40-query regression
+failure taxonomy together \emph{falsify} the hypothesis that
+generator truncation drives the residual regression bucket: the
+generator is hitting end-of-sequence naturally on this prompt format.
+
+A subsequent grounding audit calibrates the headline result.  Lexical
+content-token grounding ($0.997$) and 3-gram grounding ($0.99$) sit
+at the ceiling on both arms, showing that T5-small under the
+\texttt{question: \ldots\ context: \ldots} prompt is performing
+\emph{extractive} rather than truly generative QA: the rerank gain is
+almost entirely downstream of retrieval.  An NLI-entailment grounding
+proxy~\cite{he2023debertav3,williams2018mnli} produces the only
+paired metric in the project whose sign reverses ($\Delta\!=\!-0.145$,
+95\,\% CI $[-0.160,-0.130]$), most likely as an artefact of
+fragmentary midword-cut outputs that defeat sentence-level NLI rather
+than as a true semantic regression.
+
+The report covers, in order: the dataset characterisation, the four
+modelling stages, two layers of post-hoc evaluation (semantic proxy
+\& grounding), an honest comparison between the initial 12-week
+project plan and what actually shipped, and the engineering
+scaffolding (reproducibility manifests, paired-bootstrap confidence
+intervals, deterministic seeds) that lets every number in this
+document be regenerated from one command per week.
+
+\vspace{2em}
+\noindent\textit{Keywords.}~~MS~MARCO; passage retrieval; \bmtwofive{};
+dense retrieval; cross-encoder reranking; retrieval-augmented
+generation; \bertscore{}; NLI grounding; paired bootstrap;
+extractive QA.
+
+\newpage
+\tableofcontents
+\clearpage
+\listoftables
+\listoffigures
+\clearpage
+
+% =============================================================================
+\clearpage\section{Introduction}
+\label{sec:intro}
+
+\subsection{Background and objectives}
+
+The internship brief was to build a complete
+\emph{retrieve--generate} question-answering pipeline on the
+\msmarco{} corpus, exploring how each stage of the pipeline
+contributes to end-to-end answer quality~\cite{bajaj2016msmarco,lewis2020rag}.
+\msmarco{} is a natural target dataset for this exercise: its
+queries originate from real Bing user traffic, its
+relevance judgements are human-annotated, and its v2.1 Q\&A flavour
+ships human-written answers that allow surface-form generation
+evaluation~\cite{nguyen2016msmarcoqa}.
+
+The brief named twelve weekly milestones spanning EDA, sparse
+retrieval, generation baselines, dense retrieval, reranking,
+generator fine-tuning, hallucination mitigation, long-document
+processing, system integration and acceleration, and a final
+write-up.  In practice the project ran for eleven weeks on a
+single-user, CPU-only Apple Silicon laptop, with no fine-tuning at
+any stage.  \Cref{sec:plan-vs-actual} compares the plan to the actual
+deliverables and explains the deviations.
+
+\subsection{Methodological commitments}
+
+Three principles shaped every decision the project made:
+
+\begin{enumerate}
+  \item \textbf{Honest baselines before optimisation.}  Every week
+        produces a numerically reproducible \emph{baseline} ---
+        \bmtwofive{} MRR, generation \Tokenf{} on a fixed query set,
+        reranking $\Delta$\mrr{} versus a precisely identified first
+        stage --- before any tuning is considered.  The 200-query
+        subsample baselines are clearly labelled as such; the
+        load-bearing claims are restricted to the full \fdev{}
+        \devsmall{} numbers.
+  \item \textbf{Paired statistical tests on every comparison.}  When
+        the question is ``did X help on top of Y?'' the report
+        always answers it on \emph{the same query ids}, with a paired
+        bootstrap~\cite{koehn2004bootstrap} reporting a 95\,\%
+        confidence interval on the per-query $\Delta$, not just a
+        point estimate.  When the sample is too small for that ---
+        e.g.\ the 200-query smoke-test scale --- the report says so
+        and labels the number as illustrative.
+  \item \textbf{Calibrate metrics before celebrating them.}  Surface-
+        form metrics (\rougel{}, BLEU, EM, \Tokenf{}) under-credit
+        valid paraphrases~\cite{lin2004rouge,papineni2002bleu}; a
+        BERTScore semantic proxy~\cite{zhang2020bertscore} and a
+        grounding audit (\Cref{sec:w7}) check whether the headline
+        gain is real, an artefact of overlap, or a side-effect of
+        the generator's output shape.  Two of the three checks
+        confirm the gain; one (the NLI proxy of \Cref{sec:w7-nli})
+        flips sign, and the report devotes
+        \Cref{sec:discussion-nli-flip} to that disagreement rather
+        than burying it.
+\end{enumerate}
+
+\subsection{Contributions}
+
+This report contributes the following:
+
+\begin{itemize}
+  \item A single-machine, CPU-only reproduction of the standard
+        \msmarco{} Passage retrieval\barrow{}reranking\barrow{}RAG-generation
+        pipeline, with the \bmtwofive{} first-stage MRR@10 within
+        $\sim\!0.014$ of the published Anserini/Lucene reference
+        baseline~\cite{lin2021pyserini} on the same data
+        (\Cref{sec:w2}).
+  \item A \emph{paired} full-dev comparison of generation quality
+        under \bmtwofive{} versus cross-encoder-reranked retrieval
+        (\Cref{sec:gen-x-retrieval}), with 95\,\% paired-bootstrap
+        confidence intervals strictly above zero on all four
+        surface-form metrics and a \bertscore{} proxy that recovers
+        the same $\Delta$.
+  \item A two-step \emph{falsification} of the most plausible
+        explanation for the residual regression bucket
+        (\Cref{sec:w6-closure}): the decoding-budget closure run and
+        the grounding-ceiling reading together rule out
+        \texttt{max\_new\_tokens} as the bottleneck.
+  \item A grounding audit (\Cref{sec:w7}) that calibrates the rerank
+        gain as a \emph{retrieval} gain almost entirely downstream of
+        passage selection, and isolates a sign-reversing NLI
+        anomaly (\Cref{sec:w7-nli}) most plausibly attributable to
+        fragmentary outputs rather than true semantic drift.
+  \item A reproducibility scaffold (per-run manifests with git
+        commit, dependency hashes, command line, and per-output
+        SHA-256s; deterministic seeds throughout; a single config
+        file driving all four runners) sufficient to re-derive every
+        number in this report from one command per week on a
+        comparable single-machine setup.
+\end{itemize}
+
+\subsection{Roadmap}
+
+\Cref{sec:relwork} surveys the related work that anchors the design
+choices.  \Cref{sec:dataset} characterises the \msmarco{} subset
+actually used.  \Cref{sec:method} steps through the four modelling
+stages (W1--W5) in implementation order.  \Cref{sec:results} is the
+central empirical chapter, presenting the W2--W5 retrieval numbers,
+the load-bearing W3 paired generation comparison, the W5-A
+first-stage head-to-head, the W6 evaluation layer, and the W7
+grounding audit.  \Cref{sec:discussion} discusses what the
+combination of W6 closure and W7 grounding actually means about
+where the gain comes from, treats the NLI sign flip on its own
+terms, and compares ship versus plan.  \Cref{sec:limitations} states
+the limitations.  \Cref{sec:conclusion} concludes.
+Appendices cover the configuration, full bucket tables, the
+question-form breakdown, and the reproducibility scaffolding.
+
+% =============================================================================
+\clearpage\section{Related Work}
+\label{sec:relwork}
+
+\paragraph{The \dataset{} ecosystem.}  \dataset{} is among the
+largest publicly available collections of \emph{real-user} search
+queries with human-judged relevance and human-written
+answers~\cite{bajaj2016msmarco,nguyen2016msmarcoqa}.  Its Passage
+Ranking corpus contains 8.8M passages with one or two relevance
+judgements per dev query; the Q\&A v2.1 split layered on top supplies
+free-form answers that make end-to-end generation tractable to
+evaluate.  The benchmark has been the de-facto target for
+mid-2010s-to-2020s information retrieval research; published
+\bmtwofive{} baselines in the
+Anserini/Lucene/Pyserini~\cite{lin2021pyserini} stack report
+\mrr{}~$\approx 0.184$ on \devsmall{}.  This project's \bmtwofive{}
+number (\mrr{}~$=0.170$, \Cref{sec:w2}) is within tokenizer-induced
+distance of that reference.
+
+\paragraph{Sparse retrieval.}  \bmtwofive{} remains the canonical
+sparse first-stage retriever~\cite{robertson2009bm25}.  This project
+uses \texttt{bm25s}~\cite{lu2024bm25s}, a pure-Python re-implementation
+of the BM25 scoring formula with eager sparse scoring that achieves
+Lucene-comparable throughput on commodity CPUs without requiring a
+JVM; the trade-off is a different default tokenizer, which is the
+main attributable source of the $\sim\!0.014$ MRR gap relative to
+the Lucene-tokenizer reference baseline.
+
+\paragraph{Dense retrieval.}  Sentence-level dense
+retrievers~\cite{reimers2019sbert} encode queries and passages into a
+shared embedding space.  ANCE~\cite{xiong2021ance} and subsequent
+\msmarco{}-tuned encoders established that dense retrieval can
+substantially outperform \bmtwofive{} on this benchmark.  This project
+uses a \emph{generic} (non-domain-tuned)
+\texttt{all-MiniLM-L6-v2}~\cite{wang2020minilm} encoder as the W4
+baseline, deliberately leaving the \msmarco{}-tuned variant
+(\texttt{msmarco-MiniLM-L6-cos-v5}) and a stronger generic encoder
+(BGE small~\cite{xiao2024bge}) for the W4-B follow-up.  Exact
+similarity search is via FAISS \texttt{IndexFlatIP}~\cite{johnson2019faiss}
+on L2-normalised embeddings (cosine similarity); no approximate
+nearest-neighbour index is used, since the
+50k-passage sampled setting fits in memory.
+
+\paragraph{Reranking.}  Cross-encoders applied to (query, passage)
+pairs and trained on relevance labels --- the architecture introduced
+by Nogueira and Cho~\cite{nogueira2019passage} --- give the highest
+known single-stage reranking quality on \msmarco{}.  The reranker used
+throughout this project is \texttt{cross-encoder/ms-marco-MiniLM-L-6-v2},
+a small distilled cross-encoder~\cite{wang2020minilm} trained on
+\msmarco{} qrels.  Reranking depth is fixed to $K\!=\!100$ throughout
+the report; the K-sweep (\{50, 100, 200\}) is queued as W5-B
+(\Cref{sec:plan-vs-actual}).
+
+\paragraph{Retrieval-augmented generation.}  RAG~\cite{lewis2020rag}
+folds retrieved passages into the prompt of an encoder--decoder
+language model.  This project's RAG generator is the smallest
+T5~\cite{raffel2020t5} checkpoint (\texttt{t5-small}), used as a
+frozen pretrained model with the canonical T5 extractive-QA prompt
+shape (\code{question:~<q>~context:~<p1>~<p2>~<p3>}; see
+\Cref{sec:w3} for the verbatim form).
+The choice of T5-small is deliberate: it caps the absolute generation
+quality but lets the entire pipeline run end-to-end on CPU within a
+few hours per full-dev sweep, which is what makes the paired
+statistical comparisons of \Cref{sec:gen-x-retrieval} possible at all.
+
+\paragraph{Generation evaluation.}  Surface-form metrics ---
+\rougel{}~\cite{lin2004rouge} and
+BLEU~\cite{papineni2002bleu} --- under-credit valid paraphrases.
+\bertscore{}~\cite{zhang2020bertscore} replaces n-gram overlap with
+contextualised-embedding cosine similarity at the token level.  This
+project uses BERTScore with a DistilBERT~\cite{sanh2019distilbert}
+backbone as a \emph{semantic proxy} (deliberately not the canonical
+\texttt{roberta-large} citation-grade scorer), reserving the heavier
+encoder for a follow-up.  The grounding audit of \Cref{sec:w7}
+borrows from the faithfulness-evaluation literature on natural
+language generation~\cite{ji2023hallucination,honovich2022true},
+specifically the practice of using a small NLI cross-encoder
+~\cite{he2023debertav3,williams2018mnli} to score
+\emph{entailment(passages $\to$ prediction)}.
+
+\paragraph{Statistical testing.}  Every paired comparison in this
+report uses Koehn's paired bootstrap~\cite{koehn2004bootstrap}
+(10\,000 resamples, seed 42, percentile interval); structural
+feature comparisons between regression and non-regression queries
+use Mann--Whitney U with rank-biserial effect
+size~\cite{mannwhitney1947}.  This is deliberate: with sample sizes
+in the thousands but per-query metrics that are highly non-normal
+(bimodal at 0/1 for exact-match, heavy-tailed for BLEU on short
+outputs), only resampling-based intervals are credible.
+
+% =============================================================================
+\clearpage\section{Dataset and Exploratory Data Analysis}
+\label{sec:dataset}
+
+\subsection{Datasets used}
+
+The project consumes two distinct slices of \msmarco{}:
+
+\begin{itemize}
+  \item \textbf{\msmarco{} Passage Ranking} (the retrieval corpus): 8.8M
+        English passages, $\sim\!400$~bytes median length.  All
+        retrieval baselines (W2 \bmtwofive{}, W4 dense, W5 rerank, and
+        the W3 generator's upstream context) index this corpus.  Used
+        the official \texttt{ir\_datasets}
+        loader~\cite{macavaney2021irdatasets} for both the corpus and
+        the \devsmall{} relevance judgements.
+  \item \textbf{\msmarco{} Q\&A v2.1 validation split}: $\sim\!101$k
+        queries, each with up to ten candidate passages and one or
+        more human-written reference answers.  W1 (EDA) uses the
+        first 5\,000 rows of this split; W3 generation evaluation
+        uses the references attached to the \fdev{} \devsmall{}
+        queries on which \bmtwofive{} and the reranker both produce a
+        top-3 (\Cref{sec:gen-x-retrieval}).
+\end{itemize}
+
+\subsection{Query and passage shape}
+
+\Cref{fig:query-length,fig:passage-length} report the empirical
+length distributions on the W1 5\,000-row validation sample.
+Queries are short (median $\approx\!6$ tokens; the long tail beyond
+$\sim\!15$ tokens is small), consistent with web-search behaviour;
+passages are roughly $10\times$ longer (median $\approx\!50$
+tokens), short enough that the W3 generator can fit three of them
+into a T5-small 512-token input window without per-passage
+truncation in the common case.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.78\linewidth]{query_length_distribution.png}
+  \caption{Query-length distribution on the W1 5\,000-row \msmarco{}
+  Q\&A v2.1 validation sample.  Median $\approx\!6$ tokens; the
+  $\geq\!15$-token tail is small.  Sets the sizing target for the
+  W3 RAG prompt budget.}
+  \label{fig:query-length}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.78\linewidth]{passage_length_distribution.png}
+  \caption{Passage-length distribution on the same W1 sample,
+  clipped at 200 tokens.  Median $\approx\!50$ tokens; the floor at
+  one sentence is an artefact of \msmarco{}'s snippet extraction.}
+  \label{fig:passage-length}
+\end{figure}
+
+\subsection{Query-type composition}
+
+\msmarco{} ships a five-way \texttt{query\_type} label
+(\texttt{DESCRIPTION}, \texttt{NUMERIC}, \texttt{ENTITY},
+\texttt{LOCATION}, \texttt{PERSON}) and a separate (noisier)
+free-form answer field.  On the \fdev{} \devsmall{} queries that the
+load-bearing W3 comparison uses, the proportions are
+\texttt{DESCRIPTION}~53\,\%, \texttt{NUMERIC}~24\,\%,
+\texttt{ENTITY}~9\,\%, \texttt{LOCATION}~7\,\%, \texttt{PERSON}~7\,\%
+(see \Cref{tab:bucket-by-type} in \Cref{sec:gen-x-retrieval}).
+
+\Cref{fig:query-type,fig:answer-by-type} show the W1 distributional
+read on the validation sample.  Two observations end up shaping
+later weeks:
+
+\begin{enumerate}
+  \item \texttt{DESCRIPTION} and \texttt{NUMERIC} dominate.
+        Description answers are long, free-form, and reward
+        paraphrase --- which makes surface-form metrics
+        (\rougel{}, BLEU, EM) systematically pessimistic on this
+        class and motivates the W6 \bertscore{} proxy
+        (\Cref{sec:w6-bertscore}).  Numeric answers are short and
+        rely on lexical surface match in the passage, so the
+        bucket analysis of \Cref{tab:bucket-by-type} can use them
+        as a sanity-check direction (numeric should gain
+        \emph{less} from semantic-aware reranking than description
+        does).
+  \item A non-trivial fraction of queries has no answer (or an
+        empty / ``no\_answer'' string).  These must be filtered for
+        any supervised fine-tuning of the generator; the project
+        does not run SFT, so the no-answer rows are simply scored
+        through (the generator emits something, the reference is
+        empty, and the metric for that row is 0).  This is honest
+        but conservative.
+\end{enumerate}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.78\linewidth]{query_type_distribution.png}
+  \caption{\msmarco{} \texttt{query\_type} label distribution on the
+  W1 validation sample.  \texttt{DESCRIPTION} dominates;
+  \texttt{LOCATION} and \texttt{PERSON} are smaller buckets.}
+  \label{fig:query-type}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.78\linewidth]{answer_type_by_query_type.png}
+  \caption{Answer-type composition stratified by \texttt{query\_type}.
+  \texttt{DESCRIPTION} queries skew toward long free-form answers;
+  \texttt{NUMERIC} queries skew toward short / single-word.}
+  \label{fig:answer-by-type}
+\end{figure}
+
+\subsection{Relevance-judgement sparsity}
+
+A subtle but consequential property of the \devsmall{} qrels:
+$\geq\!95\,\%$ of dev queries have exactly one marked-relevant
+passage in the 8.8M-passage corpus, and \emph{none} are negatively
+labelled.  This shapes the W4 sampling design (\Cref{sec:w4}): a
+uniform random 50k sample from 8.8M would leave almost no relevant
+doc in the pool, so the project uses a \emph{qrels-anchored} sample
+in which every dev relevant doc id is unconditionally included
+alongside random distractors.  The trade-off, spelled out in
+\Cref{sec:w4-sampling-caveat}, is that absolute dense/rerank metrics
+on this sampled setting are upper-bounded by construction; the
+\emph{within-sample} $\Delta$ between dense and \bmtwofive{} remains
+the meaningful quantity.
+
+% =============================================================================
+\clearpage\section{Methodology}
+\label{sec:method}
+
+This section describes the four modelling stages (W2--W5) and the
+two post-hoc analysis layers (W6--W7) in implementation order.  All
+of W2--W5 ship as scripted command-line entrypoints under
+\texttt{experiments/run\_*.py}, driven by a single configuration
+file at \texttt{configs/baseline.yaml}; all of W6--W7 are analysis
+scripts under \texttt{scripts/*.py} that read W3's already-on-disk
+paired predictions and write JSON / Markdown summaries beneath
+\texttt{outputs/week06\_*/} and \texttt{outputs/week07\_*/}.
+\Cref{sec:reproducibility} documents the reproducibility scaffold.
+
+\subsection{W2 --- Sparse retrieval (\bmtwofive{})}
+\label{sec:w2}
+
+\paragraph{Setup.}  The first stage is \bmtwofive{} via
+\texttt{bm25s}~\cite{lu2024bm25s} on the full 8.8M \msmarco{}
+Passage corpus, with the canonical Robertson hyperparameters
+($k_1=1.5$, $b=0.75$) and the package-default English tokenizer and
+stopword list.  Index construction and query execution run
+sequentially on a six-core Apple Silicon CPU; the index is persisted
+to \texttt{data/processed/bm25\_index\_msmarco/} ($\approx\!2.1$~GiB)
+and reused across runs.  Top-1000 candidates per query are written
+to disk in TREC \texttt{run.tsv} format.
+
+\paragraph{Retrieve pass.}  The retrieve pass over \fdev{}
+\devsmall{} queries is checkpointed every 200 queries
+(\texttt{retrieval.chunk\_size}) into the same \texttt{run.tsv}
+target, so an interrupted run can resume at the next chunk boundary
+via \texttt{--resume} without rebuilding the index or repeating
+already-completed queries.  This is the only operational nicety the
+project needs at retrieval scale: a single \bmtwofive{} sweep takes
+$\sim\!70$~minutes on the laptop, well below the cost of the
+downstream reranker, but a kill-9 mid-sweep without checkpointing
+costs the full hour.
+
+\paragraph{Evaluation.}  Retrieval metrics are computed in
+\texttt{src/evaluation/retrieval.py} from the run file and the
+\devsmall{} qrels.  \mrr{} follows the standard \msmarco{}
+definition (reciprocal rank of the first relevant document in the
+top-$10$, zero if none); \recallH{} and \recallK{} are computed at
+$K\!\in\!\{100,1000\}$; \ndcg{} uses binary gain.
+
+\subsection{W3 --- RAG generation baseline}
+\label{sec:w3}
+
+\paragraph{Generator.}  A frozen T5-small~\cite{raffel2020t5}
+checkpoint, used out-of-the-box via Hugging Face
+Transformers~\cite{wolf2020transformers}.  No fine-tuning at any
+point.  The prompt is the canonical T5-style extractive-QA shape:
+\begin{center}
+  \verb|question: <q> context: <p1> <p2> <p3>|
+\end{center}
+where $p_1\ldots p_3$ are the top-3 passages from the upstream
+retriever, ordered by descending retriever score.  Decoding uses the
+T5 defaults with \texttt{max\_input\_length=512},
+\texttt{max\_new\_tokens=64}; the latter is the parameter that the
+W6 closure run of \Cref{sec:w6-closure} sweeps.
+
+\paragraph{Two retrieval sources, same generator.}  The
+\texttt{run\_generation\_baseline.py} runner is intentionally
+\emph{retrieval-source agnostic}: it consumes any TREC-format
+\texttt{run.tsv} and folds the top-$K$ passages into the prompt.
+The headline W3 comparison (\Cref{sec:gen-x-retrieval}) runs the
+generator twice with exactly the same configuration, switching only
+the upstream run between (i) the W2 \bmtwofive{} run and (ii) the W5
+cross-encoder-reranked dense run, and uses the runner's
+\texttt{--restrict-to-run} flag to constrain both passes to the
+\emph{intersection} of query ids covered by both upstream runs ---
+\fdev{} queries in total, verified by query-id set-difference equal
+to $\emptyset$.
+
+\paragraph{Generation metrics.}  Four surface-form metrics: \rougel{}
+via the official \texttt{rouge\_score} implementation
+~\cite{lin2004rouge}, BLEU via the HF \texttt{evaluate} wrapper
+around \texttt{sacrebleu}~\cite{papineni2002bleu}, exact-match, and
+\Tokenf{} (lowercased, whitespace-tokenised set $F_1$).  When a
+query has multiple reference answers, every metric is computed as
+\emph{best-of-N over references}, which is the convention the
+\msmarco{} Q\&A reference scripts use and what makes per-query
+scores comparable across queries with one versus three references.
+
+\subsection{W4 --- Dense retrieval (sampled)}
+\label{sec:w4}
+
+\paragraph{Encoder \& index.}  The W4 dense retriever uses
+\texttt{sentence-transformers/all-MiniLM-L6-v2}~\cite{reimers2019sbert,wang2020minilm}
+--- a generic semantic-similarity encoder, deliberately
+\emph{not} \msmarco{}-tuned --- to embed both queries and passages
+into a 384-dimensional space.  Embeddings are L2-normalised and
+indexed with FAISS \texttt{IndexFlatIP}~\cite{johnson2019faiss}, so
+inner-product search is exact cosine similarity.  No approximate
+nearest-neighbour structure is used.
+
+\paragraph{Why a sampled corpus.}
+\label{sec:w4-sampling-caveat}
+Encoding the full 8.8M passage corpus on a six-core CPU laptop is
+prohibitive (estimated $\sim\!40$~hours at the W4 encode throughput
+of $16$ ms / passage).  The W4 baseline therefore runs on a
+\emph{50\,000-passage sample}.  A uniform random sample at this size
+would put $\sim\!4\!\times\!10^{-4}\!\cdot\!8.8\textrm{M}\!\approx\!50$
+relevant docs in the pool against $\sim\!17\,000$ dev relevance
+judgements, so both retrievers would score near zero and the
+comparison would be meaningless.  The project therefore uses a
+\emph{qrels-anchored sample}: every \devsmall{} relevant doc id
+(7\,437 unique docs) is included unconditionally, and the remaining
+$\sim\!42\,500$ slots are filled with uniform random distractors
+from the full corpus's doc\_id pool (seed 42).
+
+\paragraph{Caveat.}  This sampling design \emph{inflates} the
+absolute MRR / \ndcg{} / Recall of both retrievers, because the
+relevant document is always present in the pool by construction.
+The legitimate comparison is \emph{dense vs.\ \bmtwofive{} on the
+same sample} (a same-pool head-to-head) --- which is exactly what
+\Cref{tab:w4-results} reports.  Absolute W4 numbers are \emph{not}
+directly comparable to the W2 full-corpus \bmtwofive{} number.
+
+\paragraph{\bmtwofive{} on the same sample.}  To make the head-to-
+head fair, the runner also rebuilds a \bmtwofive{} index on the same
+50k-passage sample (\texttt{data/processed/bm25\_sample\_index\_50k/})
+with identical hyperparameters and re-evaluates it on the same query
+set.  This is the \bmtwofive{} number in \Cref{tab:w4-results}, not
+the W2 full-corpus baseline.
+
+\subsection{W5 --- Cross-encoder reranking}
+\label{sec:w5}
+
+\paragraph{Reranker.}  The reranker is
+\texttt{cross-encoder/ms-marco-MiniLM-L-6-v2}~\cite{nogueira2019passage,wang2020minilm},
+a small distilled \msmarco{}-trained cross-encoder.  It scores
+$(\text{query}, \text{passage})$ pairs jointly --- as opposed to the
+W4 bi-encoder which encodes them independently --- producing a
+relevance score for each of the top-$K$ candidates from the first
+stage.
+
+\paragraph{Depth.}  Throughout the report, $K\!=\!100$
+(\texttt{reranker.rerank\_top\_k}).  The choice is empirically
+motivated and operationally pragmatic: $K\!=\!100$ is the standard
+\msmarco{} reranking depth in the literature and balances rerank
+quality against wall-clock cost, which is linear in $K$.  The
+K-sweep ($\{50, 100, 200\}$) is queued as W5-B and explicitly
+de-scoped per the project's reduced-scope deadline
+(\Cref{sec:plan-vs-actual}).
+
+\paragraph{Two arms.}  Two W5 runs are reported: one over the W4
+dense top-100 (\Cref{sec:w5-dense-rerank}, the canonical setup) and
+one over the W2 \bmtwofive{} top-100 (\Cref{sec:w5a}, the W5-A
+head-to-head against the dense arm).  Both use the same reranker
+checkpoint, the same depth, and the same evaluation pass.
+
+\paragraph{Cost.}  The W5 dense+rerank full-dev run takes
+$\approx\!4$~h~$37$~min on a 6-core MacBook CPU
+(538\,000 (query, passage) pairs at $\sim\!32$~pairs/s, peak RSS
+$\sim\!3.3$~GiB); the W5-A \bmtwofive{}+rerank arm takes
+$\approx\!3$~h~$43$~min.  The cross-encoder is by far the slowest
+stage in the pipeline.
+
+\subsection{W6 --- Evaluation layer}
+\label{sec:w6-method}
+
+W6 layers two post-hoc analyses on the already-on-disk W3 paired
+predictions, neither of which requires re-running W3 or W5:
+
+\paragraph{Semantic-proxy \bertscore{}.}  A DistilBERT-based
+\bertscore{}~\cite{zhang2020bertscore,sanh2019distilbert} is
+computed on a 3\,000-pair subsample of the shared qid set
+(seed 42 deterministic), with
+\texttt{rescale\_with\_baseline=True} and multi-reference max-$F_1$
+per query.  This is a deliberate \emph{proxy}: the canonical
+\texttt{roberta-large} \bertscore{} is reserved for a follow-up
+(citation-grade, $\sim\!$hours of CPU on full dev).  The proxy's
+sole purpose is to answer ``does the rerank $\Delta$ also show up in
+a semantic-similarity scorer?''
+
+\paragraph{Regression failure taxonomy.}  A 40-query seeded triage
+(seed 42) over the \emph{regression bucket} of \Cref{sec:gen-x-retrieval}
+--- 233 queries on which the reranker brought the relevant passage
+into the generator's top-3 \emph{yet} \Tokenf{} dropped versus
+\bmtwofive{}.  Labels are produced by a deterministic five-way rule
+cascade (\texttt{scripts/regression\_failure\_taxonomy.py}); first
+match wins.  Categories: \texttt{truncation\_short},
+\texttt{truncation\_midword}, \texttt{topic\_drift},
+\texttt{extractive\_passage\_bias}, \texttt{semantic\_mismatch} ---
+the last is the residual catch-all.
+
+\paragraph{Decoding-budget closure.}  A targeted full-dev sweep at
+\texttt{max\_new\_tokens=128} (vs.\ the canonical 64), holding the
+generator, prompts, retrieval inputs, and seed fixed.  Outputs are
+written to fresh \texttt{\_mnt128} directories; the canonical
+\texttt{\_full} predictions are untouched.  Same paired-bootstrap CI
+machinery is then applied to the new predictions.
+
+\paragraph{W6-A/B/C breakdowns.}  Three offline analyses on the
+per-query metric tables: (A) a syntactic question-form tagger over
+all \fdev{} queries (who / what / when / where / why / how / which
+/ yes\_no / other), (B) per-form \Tokenf{} / \rougel{} / EM /
+\mrr{} / \ndcg{} $\Delta$ with paired-bootstrap CIs, and (C) a
+Mann--Whitney U comparison~\cite{mannwhitney1947} of five structural
+features between regression and non-regression queries.
+
+\subsection{W7 --- Grounding audit}
+\label{sec:w7-method}
+
+W7 is the project's faithfulness layer.  The leading question is:
+\emph{is T5-small extracting content from the retrieved passages, or
+generating from its parametric memory and happening to overlap?}
+
+\paragraph{Lexical content-token grounding.}  For each prediction,
+compute the fraction of unique non-stopword tokens in the prediction
+(lowercased) that appear anywhere in the union of the prompt's
+top-3 passages.  A local 85-word stopword list keeps the metric
+self-contained.  A score of $1.0$ means every distinct content word
+the model emitted is present in one of the passages it was
+conditioned on; the metric is bag-of-content-tokens.
+
+\paragraph{3-gram grounding.}  Tighter than the lexical metric:
+fraction of the prediction's contiguous 3-grams (case-folded,
+stopwords retained --- order is the signal) that appear as a
+contiguous span in at least one passage.  Catches ``the model strung
+together the right words in the wrong order'' cases the bag-of-
+content-tokens score misses.
+
+\paragraph{NLI-entailment grounding (W7-A).}  An NLI cross-encoder
+(\texttt{cross-encoder/nli-deberta-v3-small}~\cite{he2023debertav3,williams2018mnli})
+scores \emph{entailment}$(\text{passages} \to \text{prediction})$ on
+the same 3\,000-paired-qid subsample used by the W6 \bertscore{}
+proxy.  Same paired-bootstrap-CI machinery.  This is the semantic-
+faithfulness companion to the two lexical grounding metrics.
+
+\paragraph{Edge cases.}  Predictions with no content tokens score
+lexical $1.0$ vacuously; predictions shorter than $n\!=\!3$ tokens
+score 3-gram $1.0$ vacuously.  Both counts are reported per arm so
+the convention cannot silently inflate the headline number; in
+practice the vacuous shape is identical on both arms, so the paired
+$\Delta$ is unaffected.
+
+% =============================================================================
+\clearpage\section{Results}
+\label{sec:results}
+
+This section reports results in the order in which they were
+produced: the per-stage retrieval baselines (W2 / W4 / W5,
+\Cref{sec:w2-results,sec:w4-results,sec:w5-dense-rerank}), the
+paired generation comparison that constitutes the principal
+empirical finding (\Cref{sec:gen-x-retrieval}), the first-stage
+$\times$ reranker head-to-head (W5-A, \Cref{sec:w5a}), and the
+two post-hoc calibration layers --- semantic-proxy evaluation
+(\Cref{sec:w6}) and grounding audit (\Cref{sec:w7}).
+\Cref{sec:discussion} integrates the findings.
+
+\subsection{W2: \bmtwofive{} baseline (full corpus)}
+\label{sec:w2-results}
+
+\Cref{tab:w2-results} reports the W2 \bmtwofive{} numbers on the full
+8.8M-passage corpus and \fdev{} \devsmall{} queries, against the
+published Anserini/Lucene reference.
+
+\begin{table}[H]
+  \centering
+  \caption{W2 --- \bmtwofive{} on the full \msmarco{} Passage corpus,
+  \fdev{} \devsmall{} queries.  Reference: published Anserini/Lucene
+  \mrr{}~$\approx 0.184$~\cite{lin2021pyserini}.  The $\sim\!0.014$
+  gap is attributable to tokenizer differences between Lucene's
+  \texttt{EnglishAnalyzer} and the \texttt{bm25s} package
+  default.}
+  \label{tab:w2-results}
+  \begin{tabular}{lr}
+    \toprule
+    Metric        & Value \\
+    \midrule
+    \mrr{}        & 0.1703 \\
+    \ndcg{}       & 0.2138 \\
+    \recallH{}    & 0.6212 \\
+    \recallK{}    & 0.8154 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The \recallH{}~$=0.621$ number deserves attention because it caps
+what any reranker on top of \bmtwofive{} can achieve in \mrr{} /
+\ndcg{}: on $\sim\!38\,\%$ of \devsmall{} queries, the relevant
+passage is not in the \bmtwofive{} top-100 \emph{at all}.  This
+recall ceiling is what makes the constrained-recovery comparison in
+\Cref{sec:w5a} non-trivial.
+
+\subsection{W4: Dense vs.\ \bmtwofive{} on the same sample}
+\label{sec:w4-results}
+
+\Cref{tab:w4-results} reports the W4 dense baseline against
+\bmtwofive{} rebuilt on the \emph{same} qrels-anchored 50k sample.
+Both columns evaluate on the same \fdev{} queries.
+
+\begin{table}[H]
+  \centering
+  \caption{W4 --- dense vs.\ \bmtwofive{} on the same
+  qrels-anchored 50k passage sample, \fdev{} \devsmall{} queries.
+  Encoder: \texttt{sentence-transformers/all-MiniLM-L6-v2} (generic,
+  not \msmarco{}-tuned).  Index: FAISS \texttt{IndexFlatIP} over
+  L2-normalised embeddings.  Absolute numbers are upper-bounded by
+  the qrels-anchored sampling design (\Cref{sec:w4-sampling-caveat});
+  the meaningful comparison is the same-sample $\Delta$.}
+  \label{tab:w4-results}
+  \begin{tabular}{lrrr}
+    \toprule
+    Metric        & \bmtwofive{} (sample) & Dense (sample) & $\Delta$ (dense $-$ \bmtwofive{}) \\
+    \midrule
+    \mrr{}        & 0.6948 & 0.8830 & $+0.1882$ \\
+    \ndcg{}       & 0.7270 & 0.9041 & $+0.1771$ \\
+    \recallH{}    & 0.9338 & 0.9946 & $+0.0608$ \\
+    \recallK{}    & 0.9686 & 0.9991 & $+0.0305$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Two observations:
+
+\begin{enumerate}
+  \item Dense wins on every metric on the same pool.  The
+        \mrr{}~$\Delta\!=\!+0.19$ is the largest single-step gain in
+        the pipeline; consistent with the literature that generic
+        dense encoders close most of the semantic-matching gap that
+        \bmtwofive{} leaves open, even without
+        \msmarco{}-specific tuning.
+  \item Dense \recallH{}~$=0.9946$ is effectively at the ceiling on
+        this sampled setting.  From W5 onward, recall is no longer
+        the bottleneck; the reranker's job is to tighten
+        \emph{local ordering} (rank-1 vs.\ rank-3 vs.\ rank-10) given
+        that the relevant passage is already in the top-100.
+\end{enumerate}
+
+\subsection{W5: Cross-encoder reranking on the dense top-100}
+\label{sec:w5-dense-rerank}
+
+\Cref{tab:w5-results} reports the W5 cross-encoder reranking of the
+W4 dense top-100, on the full \fdev{} \devsmall{} queries.
+
+\begin{table}[H]
+  \centering
+  \caption{W5 --- cross-encoder reranking of the W4 dense top-100,
+  \fdev{} \devsmall{} queries.  Reranker: \texttt{cross-encoder/
+  ms-marco-MiniLM-L-6-v2} at depth $K\!=\!100$.  Recall@100 is
+  unchanged by construction (the reranker is order-only).  The
+  earlier 1\,000-query subsample produced consistent deltas
+  (MRR $\Delta\!=\!+0.0435$, nDCG $\Delta\!=\!+0.0398$), so the
+  full-dev gain is not a subsample artefact.}
+  \label{tab:w5-results}
+  \begin{tabular}{lrrr}
+    \toprule
+    Metric        & Dense (W4) & Dense $+$ CE rerank & $\Delta$ \\
+    \midrule
+    \mrr{}        & 0.8830 & 0.9304 & $\mathbf{+0.0474}$ \\
+    \ndcg{}       & 0.9041 & 0.9434 & $+0.0393$ \\
+    \recallH{}    & 0.9946 & 0.9946 & $\phantom{+}0.0000$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The reranker buys $\sim\!+0.05$ MRR even with recall saturated: it
+is doing exactly what \Cref{sec:w4-results} predicted it should ---
+moving the relevant passage from rank 2--3 to rank 1.  Wall-clock
+cost: $\approx 4$~h~$37$~min on the laptop;
+peak RSS $\approx 3.3$~GiB.  The cross-encoder is the slowest stage
+in the pipeline by approximately two orders of magnitude.
+
+\subsection{Headline: Generation $\times$ retrieval source}
+\label{sec:gen-x-retrieval}
+
+This is the load-bearing result of the project.  The question:
+\emph{does feeding cross-encoder-reranked top-K passages back into
+the T5-small generator actually improve answer quality?}  The
+comparison is paired by design: same T5-small, same prompt, same
+top-3 passage count, same seed, same query ids --- only the
+upstream retrieval source changes.  Both runs are mutually
+restricted via \texttt{--restrict-to-run} so the two prediction
+sets cover the \emph{exact same} \fdev{} query ids (verified by
+qid set-difference equal to $\emptyset$).
+
+\paragraph{Surface-form metrics.}  \Cref{tab:w3-headline} reports
+the four corpus-level surface-form metrics, paired across the two
+arms.
+
+\begin{table}[H]
+  \centering
+  \caption{Headline W3 paired generation comparison on the full
+  \fdev{} shared qid set.  Same T5-small, same prompt, same top-3
+  passage count; only the upstream retrieval source differs.}
+  \label{tab:w3-headline}
+  \begin{tabular}{lrrrr}
+    \toprule
+    Retrieval $\to$ T5-small & \rougel{} & BLEU & EM & \Tokenf{} \\
+    \midrule
+    \bmtwofive{} top-3       & 0.1859 & 0.0717 & 0.0135 & 0.1966 \\
+    Reranked top-3           & \textbf{0.3621} & \textbf{0.2922} & \textbf{0.0606} & \textbf{0.3677} \\
+    $\Delta$ (rerank $-$ \bmtwofive{}) & $\mathbf{+0.1763}$ & $\mathbf{+0.2206}$ & $\mathbf{+0.0471}$ & $\mathbf{+0.1711}$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\textbf{Reranking the first stage roughly doubles every
+surface-form generation metric on full \devsmall{}.}
+
+\paragraph{Paired-bootstrap confidence intervals.}  Per-query scores
+for \rougel{} and BLEU here come from \texttt{rouge\_score.RougeScorer}
+and NLTK \texttt{sentence\_bleu} (smoothing method 1) so the
+per-query means differ slightly from the HF corpus-level numbers
+above; what matters is that all four 95\,\% CIs lie strictly above
+zero, with negligible overlap (\Cref{tab:w3-ci}).
+
+\begin{table}[H]
+  \centering
+  \caption{W3 paired-bootstrap 95\,\% CI on $\Delta$ (rerank $-$
+  \bmtwofive{}).  $n\!=\!\fdev$, 10\,000 resamples, seed 42, percentile
+  interval.  Two-sided $p$ from the bootstrap is $<\!0.001$ in every
+  case.}
+  \label{tab:w3-ci}
+  \begin{tabular}{lrrrr}
+    \toprule
+    Metric            & \bmtwofive{} (per-q mean) & Reranked & $\Delta$ & 95\,\% CI on $\Delta$ \\
+    \midrule
+    \rougel{}         & 0.1934 & 0.3677 & $+0.1742$ & $[+0.1663,\,+0.1820]$ \\
+    BLEU (sentence)   & 0.0423 & 0.1754 & $+0.1330$ & $[+0.1265,\,+0.1395]$ \\
+    Exact-Match       & 0.0135 & 0.0606 & $+0.0471$ & $[+0.0417,\,+0.0527]$ \\
+    \Tokenf{}         & 0.1966 & 0.3677 & $+0.1711$ & $[+0.1632,\,+0.1789]$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+These CIs are $\sim\!6\times$ tighter than an earlier
+200-query subsample comparison (n=200 vs.\ n=\fdev{}), and the
+full-dev $\Delta$ point estimates all sit inside the 200-query CIs
+--- so the original direction-and-magnitude claim survives the move
+to full \devsmall{} intact, with the level numbers naturally
+deflating to the harder full benchmark.
+
+\paragraph{Retrieval-flag mechanism.}  The structural mechanism is
+visible in a single retrieval flag: the rate of having $\geq\!1$
+relevance-judged passage in the generator's top-3 jumps from
+$\mathbf{20.8\,\%}$ (\bmtwofive{}) to $\mathbf{96.9\,\%}$ (reranked)
+over the \fdev{} paired queries.  The reranker's job is precisely
+to put the right passage in the generator's prompt; once it does,
+T5-small (which we will see in \Cref{sec:w7} is extracting almost
+all of its content from the prompt) reflects that.
+
+\paragraph{Per-query outcome distribution.}  Per-query \Tokenf{}
+splits 4\,015 strict improvements / 1\,766 regressions / 1\,199
+ties --- i.e.\ a \emph{net} $+2\,249$ / \fdev{} queries
+($\approx\!32\,\%$) strictly improved by feeding reranked passages,
+with the regressions mostly clustered around already-easy queries
+where \bmtwofive{} happened to surface a usable passage.  Of those
+1\,766 strict per-query regressions, \textbf{233} fall into the
+narrower \emph{regression bucket} on which \Cref{sec:w6} runs its
+failure taxonomy: queries where the reranker actually brought the
+relevant passage into the top-3 \emph{and} the generator's
+\Tokenf{} dropped versus \bmtwofive{}.  The distinction matters
+because the broader 1\,766 count contains retrieval-equivalent
+queries on which the generator simply produced a different surface
+form; the narrower 233 are the queries that ``should have'' worked
+on retrieval grounds but didn't.
+
+\paragraph{Bucket analysis by query type.}  \Cref{tab:bucket-by-type}
+breaks the per-query \Tokenf{} $\Delta$ down by \msmarco{}
+\texttt{query\_type}.
+
+\begin{table}[H]
+  \centering
+  \caption{W3 paired \Tokenf{} broken down by \msmarco{}
+  \texttt{query\_type}.  Same \fdev{} queries throughout.}
+  \label{tab:bucket-by-type}
+  \begin{tabular}{lrrrr}
+    \toprule
+    \texttt{query\_type} & $n$ & \bmtwofive{} & Reranked & $\Delta$ \\
+    \midrule
+    DESCRIPTION & 3\,725 & 0.1889 & 0.3939 & $\mathbf{+0.2050}$ \\
+    ENTITY      &   631  & 0.1765 & 0.3186 & $+0.1421$ \\
+    LOCATION    &   498  & 0.2495 & 0.3928 & $+0.1433$ \\
+    NUMERIC     & 1\,665 & 0.1997 & 0.3235 & $+0.1238$ \\
+    PERSON      &   461  & 0.2186 & 0.3557 & $+0.1371$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\texttt{DESCRIPTION} (53\,\% of the eval set) benefits most;
+\texttt{NUMERIC} benefits least.  This direction is consistent with
+the intuition that short numeric answers depend on lexical surface
+match with the passage --- so semantic-aware reranking of nearly-
+identical passages buys less than it does for long descriptive
+answers where the right passage materially changes the available
+phrasing.
+
+\subsubsection{W4-B preliminary: encoder horizontal}
+\label{sec:w4b}
+
+Two follow-up encoder runs on the \emph{same} qrels-anchored 50k
+sample, identical FAISS \texttt{IndexFlatIP} setup, evaluated on the
+same \fdev{} queries (\Cref{tab:w4b}).  Both finished
+inside the report's cutoff window; the BGE result in particular is
+preliminary in the sense that it has not yet been propagated through
+the W5 reranking and W3 generation stages.
+
+\begin{table}[H]
+  \centering
+  \caption{W4-B preliminary --- encoder horizontal on the same
+  qrels-anchored 50k sample, \fdev{} \devsmall{} queries.  The
+  \bmtwofive{}-on-sample column is identical across rows (same
+  index, same queries).  Numbers are upper-bounded by the
+  qrels-anchored sampling design; the meaningful read is the
+  same-sample $\Delta$ between encoders.}
+  \label{tab:w4b}
+  \begin{tabular}{lrrrr}
+    \toprule
+    Encoder                             & \mrr{} & \ndcg{} & \recallH{} & $\Delta\mrr{}$ vs.\ baseline \\
+    \midrule
+    \texttt{all-MiniLM-L6-v2} (W4)      & 0.8830 & 0.9041  & 0.9946 & ---                          \\
+    \texttt{all-MiniLM-L12-v2}          & 0.8933 & 0.9131  & 0.9955 & $+0.0103$                    \\
+    \texttt{BAAI/bge-small-en-v1.5}     & \textbf{0.9021} & \textbf{0.9196} & \textbf{0.9967} & $\mathbf{+0.0191}$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+BGE-small-en-v1.5~\cite{xiao2024bge} is the best of the three
+generic encoders tried so far on this sample, by $+0.019$ \mrr{}
+over the W4 MiniLM-L6 baseline.  Whether the additional gain
+survives cross-encoder reranking (the dense\barrow{}rerank pipeline
+already saturates \recallH{}) is the W5\barrow{}W3 propagation
+question and is left to the post-deadline follow-up.
+
+\subsubsection{W4-A preliminary: density sensitivity}
+\label{sec:w4a}
+
+A complementary axis varies the pool size (relevant-doc density)
+holding the encoder fixed at the W4 baseline.  \Cref{tab:w4a}
+reports the 15\,000-sample point that finished before the report
+cutoff; the 30\,000 and the full original 50\,000 are the other
+two anchor points and the 30\,000 run is still encoding at write
+time.
+
+\begin{table}[H]
+  \centering
+  \caption{W4-A preliminary --- relevant-doc-density sensitivity
+  with the W4 baseline encoder
+  (\texttt{all-MiniLM-L6-v2}).  Same \fdev{} queries throughout;
+  the qrels-anchored sample design keeps every dev relevant doc in
+  the pool by construction at every sample size, so what changes
+  across rows is the \emph{distractor density}, not the recall
+  ceiling.}
+  \label{tab:w4a}
+  \begin{tabular}{lrrrr}
+    \toprule
+    Sample size      & Dense \mrr{} & Dense \ndcg{} & \bmtwofive{}-sample \mrr{} & $\Delta_{\mathrm{dense-BM25}}$ \\
+    \midrule
+    15\,000          & 0.9470 & 0.9567 & 0.7806 & $+0.1665$ \\
+    50\,000 (W4)     & 0.8830 & 0.9041 & 0.6948 & $+0.1882$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Two observations:
+
+\begin{enumerate}
+  \item Absolute MRR drops monotonically as the pool grows, on
+        both arms.  This is the expected direction --- more
+        distractors per relevant doc.
+  \item The \emph{gap} between dense and \bmtwofive{} widens with
+        pool size ($+0.167$ at 15k, $+0.188$ at 50k).  Dense
+        retrieval is more robust to distractor dilution than
+        \bmtwofive{} is on this corpus.
+\end{enumerate}
+
+The 30\,000-sample run is in progress and is the next anchor
+point; it should bisect the 15k\barrow{}50k gap and confirm
+monotonicity.  A full $\{1\,000\,000, 8\,800\,000\}$ extension
+(``what does the gap look like at the real corpus size?'') is
+explicitly out of scope on this hardware budget.
+
+\paragraph{Qualitative example.}  Query \texttt{1043064}
+(\emph{``what is the chemical formula for oxygen tetrafluoride?''}).
+\bmtwofive{} top-3 leads the generator to emit \emph{``Li\textsubscript{2}O''};
+reranked top-3 leads it to emit \emph{``N\textsubscript{2}F\textsubscript{4}''}
+--- the correct reference.  The retriever, not the generator,
+changed.
+
+\subsection{W5-A: First-stage $\times$ reranker head-to-head}
+\label{sec:w5a}
+
+A natural follow-up to \Cref{sec:w5-dense-rerank}: does the same
+cross-encoder recover \emph{more} from a weaker first stage?
+\Cref{tab:w5a-results} runs the identical reranker over the W2
+\bmtwofive{} top-100 (full 8.8M corpus) and over the W4 dense
+top-100 (50k sample), reporting absolute $\Delta$ and the
+\emph{constrained recovery rate} $\Delta\,/\,(\recallH{} - \text{first-stage})$
+that controls for each arm's recall ceiling.
+
+\begin{table}[H]
+  \centering
+  \caption{W5-A --- same cross-encoder applied to two first stages
+  of very different starting strength.  ``Constrained recovery'' is
+  $\Delta\,/\,(\recallH{} - \text{first-stage})$, which controls for
+  the fact that a reranker can only re-order what the first stage
+  returned into the top-100.  Same \fdev{} queries on both arms.}
+  \label{tab:w5a-results}
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{}lrrrrr@{}}
+    \toprule
+    First stage           & \mrr{} (FS) & \mrr{} ($+$CE) & $\Delta_\mathrm{MRR}$ & Recov.\,\mrr{} & Recov.\,\ndcg{} \\
+    \midrule
+    \bmtwofive{} (8.8M)   & 0.1703      & 0.3554         & $+0.1851$             & 41.1\,\%        & 46.1\,\%        \\
+    Dense L6 (50k)        & 0.8830      & 0.9304         & $+0.0474$             & 42.4\,\%        & 43.4\,\%        \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The absolute $\Delta$ favours the \bmtwofive{} arm by a factor of
+nearly four (more room to recover), but the \emph{constrained
+recovery rate} comes in essentially tied: $\sim\!42\,\%$ for MRR,
+$\sim\!44\,\%$ for nDCG, on both arms.  The cleanest reading is
+that the cross-encoder closes a fixed \emph{fraction} of the
+ordering gap relative to the recall ceiling of its first stage,
+regardless of whether that first stage is sparse or dense.
+
+\paragraph{Caveat.}  The two arms are not on the same corpus: the
+\bmtwofive{} arm runs on the full 8.8M-passage corpus, while the
+dense arm runs on the 50k qrels-anchored sample
+(\Cref{sec:w4-sampling-caveat}).  Absolute MRR levels are therefore
+not comparable across arms, only the within-arm $\Delta$ and the
+recovery rate.
+
+\subsection{W6: Evaluation layer}
+\label{sec:w6}
+
+\subsubsection{Semantic-proxy \bertscore{}}
+\label{sec:w6-bertscore}
+
+The four surface-form metrics in \Cref{tab:w3-ci} are all overlap-
+or n-gram-based; T5-small's tendency to emit verbose extractive
+outputs is a known source of mis-credit for surface-form
+metrics~\cite{lin2004rouge,papineni2002bleu}.  The load-bearing
+question of W6 is therefore: does the rerank $\Delta$ also show up
+in a \emph{semantic} similarity scorer?
+
+\Cref{tab:w6-bertscore} reports the DistilBERT-based \bertscore{}
+proxy on a 3\,000-pair subsample of the shared qid set, with the
+same paired-bootstrap-CI machinery as \Cref{tab:w3-ci}.
+
+\begin{table}[H]
+  \centering
+  \caption{W6 --- DistilBERT \bertscore{} proxy~\cite{zhang2020bertscore,sanh2019distilbert}
+  on a 3\,000-pair subsample of the W3 \fdev{} shared qid set.
+  \texttt{rescale\_with\_baseline=True}, multi-reference max-$F_1$,
+  paired bootstrap 10\,000 resamples seed 42, 95\,\% percentile
+  interval.  Per-query: rerank strictly better 64.8\,\%, tie
+  5.7\,\%, \bmtwofive{} strictly better 29.5\,\%.}
+  \label{tab:w6-bertscore}
+  \begin{tabular}{lrrrrr}
+    \toprule
+    Metric                       & \bmtwofive{} & Rerank & $\Delta$ & 95\,\% CI on $\Delta$ & $p$ (two-sided) \\
+    \midrule
+    \bertscore{}-$F_1$ (proxy)   & 0.2192       & 0.3920 & $\mathbf{+0.1728}$ & $[+0.1608,\,+0.1850]$ & $<0.001$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The semantic-proxy $\Delta$ ($+0.1728$) lands within $\pm 0.002$ of
+the surface-form \Tokenf{} $\Delta$ ($+0.1711$) and the \rougel{}
+$\Delta$ ($+0.1742$).  \textbf{The rerank gain is therefore not a
+surface-form artefact.}  This is the result that justifies acting on
+the surface-form CIs of \Cref{tab:w3-ci} without first running the
+canonical \texttt{roberta-large} \bertscore{}.  The
+\texttt{roberta-large} pass on full dev is reserved as a paper-
+writing follow-up (citation-grade scorer, $\sim\!$hours of CPU); it
+will refine the absolute level number but is not expected to change
+the qualitative direction.
+
+\subsubsection{Regression failure taxonomy}
+\label{sec:w6-taxonomy}
+
+\Cref{tab:w6-taxonomy} reports the 40-query seeded triage of the
+233-strong regression bucket (\Cref{sec:gen-x-retrieval}).
+
+\begin{table}[H]
+  \centering
+  \caption{W6 --- regression failure taxonomy on a 40-query seeded
+  sample (seed 42) of the 233-strong regression bucket.  Labels are
+  a deterministic five-way rule cascade; first-match wins.
+  \texttt{semantic\_mismatch} is the residual catch-all.}
+  \label{tab:w6-taxonomy}
+  \begin{tabular}{lrr}
+    \toprule
+    Failure mode                & Count & Share \\
+    \midrule
+    \texttt{truncation\_midword}      & 22 & 55.0\,\% \\
+    \texttt{truncation\_short} ($\leq\!3$ tok) & 14 & 35.0\,\% \\
+    \texttt{topic\_drift}             &  2 &  5.0\,\% \\
+    \texttt{extractive\_passage\_bias} & 2 &  5.0\,\% \\
+    \texttt{semantic\_mismatch}       &  0 &  0.0\,\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+$\mathbf{90\,\%}$ of the sample is generator-side truncation, not
+retrieval or semantic failure.  Example (qid 49802,
+\emph{``belizean cuisine''}): \bmtwofive{} produced a 24-token
+descriptive paragraph; the reranked-arm prediction was the two
+tokens \emph{``Belizean cuisine''} --- a passage title.  The
+reranker is doing its job (richer passages); the generator's
+extractive behaviour turns the richer context into less overlap-
+matching output on this slice of queries.
+
+At the time of the W6 report this observation pointed at the
+\texttt{max\_new\_tokens=64} cap as the cheapest intervention.  The
+closure run of \Cref{sec:w6-closure} \emph{falsifies} that reading.
+
+\subsubsection{Decoding-budget closure: \texttt{mnt=64 $\to$ 128}}
+\label{sec:w6-closure}
+
+Same generator, same prompts, same retrieval inputs, same seed; the
+\texttt{max\_new\_tokens} cap is the only thing that changes
+(64 $\to$ 128).  \Cref{tab:w6-closure} reports the relevant signals.
+
+\begin{table}[H]
+  \centering
+  \caption{W6 decoding-budget closure --- same paired W3 comparison
+  re-run with \texttt{max\_new\_tokens}~=~128.  Compared to the
+  canonical \texttt{mnt=64} run on the same data.  None of the four
+  surface-form deltas move by more than $0.005$; the regression
+  bucket shrinks by 2 queries; the 40-query truncation share moves
+  $2.5$~p.p.}
+  \label{tab:w6-closure}
+  \begin{tabular}{lrr}
+    \toprule
+    Signal                              & \texttt{mnt}~=~64 & \texttt{mnt}~=~128 \\
+    \midrule
+    \Tokenf{} $\Delta$                  & $+0.1711$ & $+0.1706$ \\
+    \rougel{} $\Delta$                  & $+0.1742$ & $+0.1736$ \\
+    BLEU $\Delta$                       & $+0.1330$ & $+0.1325$ \\
+    EM $\Delta$                         & $+0.0471$ & $+0.0471$ \\
+    Regression bucket size              & 233       & 231       \\
+    Truncation share (40-query triage)  & 90.0\,\%  & 87.5\,\%  \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\textbf{The W6 budget-cap hypothesis is falsified.}  T5-small is
+hitting end-of-sequence \emph{naturally} on this prompt format;
+the mid-word-ending output style observed in
+\Cref{sec:w6-taxonomy} is intrinsic to the model on this prompt
+shape, not a symptom of the 64-token cap.  Generator-side follow-up
+work therefore has to target either prompt format (multi-passage
+synthesis, citation-aware decoding) or the model itself
+(T5-base or larger, instruction-tuned variants), not the
+\texttt{max\_new\_tokens} knob.
+
+\subsubsection{W6-A/B/C breakdowns}
+\label{sec:w6-followups}
+
+Three offline analyses on the per-query metrics; no new generation
+or reranking required.
+
+\paragraph{W6-A --- question-form tagging.}  A nine-way syntactic
+tagger over all \fdev{} \devsmall{} queries (who / what / when /
+where / why / how / which / yes\_no / other).  Complementary to the
+\msmarco{} native \texttt{query\_type} label of
+\Cref{tab:bucket-by-type}: the two are correlated but not
+redundant (e.g.\ ``who'' selects exclusively for \texttt{PERSON};
+``where'' selects almost exclusively for \texttt{LOCATION}; ``what''
+spans every \texttt{query\_type}).
+
+\paragraph{W6-B --- rerank $\Delta$ by question-form.}
+\Cref{tab:w6b} reports per-form $\Delta$ \Tokenf{} with
+paired-bootstrap CIs.
+
+\begin{table}[H]
+  \centering
+  \caption{W6-B --- rerank $\Delta$ \Tokenf{} by question-form on
+  the full \fdev{} shared qid set, with paired-bootstrap 95\,\% CI
+  (10\,000 resamples, seed 42).}
+  \label{tab:w6b}
+  \begin{tabular}{lrrr}
+    \toprule
+    Form    & $n$  & $\Delta$ \Tokenf{} & 95\,\% CI \\
+    \midrule
+    who     &  273 & $+0.1472$ & $[+0.1059,\,+0.1886]$ \\
+    what    & 2\,751 & $+0.2097$ & $[+0.1964,\,+0.2232]$ \\
+    when    &  189 & $+0.1207$ & $[+0.0813,\,+0.1590]$ \\
+    where   &  283 & $+0.1774$ & $[+0.1427,\,+0.2157]$ \\
+    why     &   75 & $+0.2267$ & $[+0.1509,\,+0.3082]$ \\
+    how     &  837 & $+0.1520$ & $[+0.1321,\,+0.1737]$ \\
+    which   &  120 & $+0.0250$ & $[-0.0281,\,+0.0773]$ \\
+    yes\_no &  480 & $+0.0680$ & $[+0.0455,\,+0.0913]$ \\
+    other   & 1\,972 & $+0.1643$ & $[+0.1497,\,+0.1801]$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\textbf{\texttt{which} (n=120) is the only question form whose
+95\,\% CI on $\Delta$ \Tokenf{} includes zero} ($\Delta\!=\!+0.025$,
+$p\!=\!0.33$), \emph{despite} a retrieval-side $\Delta$ \mrr{} of
+$+0.71$ on the same subset.  Mechanism (hypothesised, not
+confirmed): \texttt{which} queries are typically selection-style
+(``which of X, Y, or Z is \ldots'') and require the generator to
+choose among items the passage lists; reranking surfaces the right
+passage but doesn't help the frozen extractive generator make the
+selection.  The remaining factual wh-forms (what / where / why /
+how / who) all see CIs strictly above zero in the $+0.12$ to
+$+0.23$ range.
+
+\paragraph{W6-C --- structural profile of regression queries.}
+Mann--Whitney U~\cite{mannwhitney1947} on five structural features
+between the 233-query regression bucket and the 6\,747 non-regression
+queries.  Four of the five features (query length in tokens,
+query length in chars, number of qrels per query, \bmtwofive{}
+top-3 average passage length) show no detectable difference at any
+meaningful effect size.  The only signal: regression-arm top-3
+passage lengths are marginally shorter
+($\Delta\,\mathrm{median}\!=\!-2.7$ tokens, $p\!=\!0.0073$, rank-
+biserial $r\!=\!-0.103$).  This is consistent with the
+\Cref{sec:w6-taxonomy} truncation finding: shorter passages give
+T5-small less material to extract.  See
+\Cref{fig:w6c-query-length,fig:w6c-n-qrels,fig:w6c-top3-passage}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.62\linewidth]{w6c_regression_vs_other_query_length.png}
+  \caption{W6-C --- query-length distribution, regression bucket
+  (n=233) vs.\ rest (n=6\,747).  Indistinguishable; Mann--Whitney
+  $p\!=\!0.96$, effect size $r\!=\!-0.002$.}
+  \label{fig:w6c-query-length}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.62\linewidth]{w6c_regression_vs_other_n_qrels.png}
+  \caption{W6-C --- number of relevance judgements per query.  A
+  very small downward shift in the regression bucket
+  ($p\!=\!0.009$, effect size $r\!=\!-0.040$); not meaningfully
+  different from zero.}
+  \label{fig:w6c-n-qrels}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.62\linewidth]{w6c_regression_vs_other_top3_passage_length.png}
+  \caption{W6-C --- average rerank top-3 passage length.  The only
+  feature with a detectable effect: regression-arm top-3 passages
+  are $\sim\!2.7$ tokens shorter at the median
+  ($p\!=\!0.0073$, $r\!=\!-0.103$).  Consistent with
+  \Cref{tab:w6-taxonomy}: shorter passages give T5-small less to
+  extract.}
+  \label{fig:w6c-top3-passage}
+\end{figure}
+
+\subsection{W7: Grounding audit}
+\label{sec:w7}
+
+The W6 closure (\Cref{sec:w6-closure}) ruled out the decode budget
+as the bottleneck.  W7 answers the question the closure left open:
+\emph{what is T5-small actually doing on this prompt format ---
+extracting from the passages, or generating from parametric
+memory?}
+
+\subsubsection{Lexical and 3-gram grounding}
+
+\Cref{tab:w7-lex-ngram} reports both lexical and 3-gram grounding
+on the full \fdev{} paired qid set.
+
+\begin{table}[H]
+  \centering
+  \caption{W7 --- lexical and 3-gram grounding on the full \fdev{}
+  paired qid set.  Paired bootstrap 10\,000 resamples, seed 42,
+  95\,\% percentile interval.  Both arms sit at the ceiling.}
+  \label{tab:w7-lex-ngram}
+  \begin{tabular}{lrrrrr}
+    \toprule
+    Metric             & \bmtwofive{} & Rerank & $\Delta$ & 95\,\% CI & $p$ \\
+    \midrule
+    Lexical content-token & 0.9972 & 0.9977 & $+0.0005$ & $[-0.0003,\,+0.0014]$ & $0.24$ \\
+    3-gram                & 0.9873 & 0.9905 & $+0.0032$ & $[+0.0015,\,+0.0050]$ & $<\!0.001$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\textbf{Both arms sit at the ceiling.}  Almost every content word
+T5-small emits is already in the prompt.  3-gram grounding is
+slightly higher on the reranked arm
+(reranking surfaces passages with phrasings closer to the gold
+answer), but the $\Delta$ is $+0.003$ in absolute terms and both
+arms remain $\sim\!99\,\%$.
+
+\paragraph{Implication.}  T5-small on the
+\texttt{question:\ \ldots\ context:\ \ldots} prompt is performing
+\emph{extractive} QA, not generative QA.  The W3 surface-form
+$\Delta$ of \Cref{tab:w3-headline} is therefore almost entirely
+\emph{downstream of retrieval}: the reranker puts the right words
+into the prompt and the generator copies them.  This is a
+\emph{calibration} of the headline result rather than a
+contradiction --- the surface-form $\Delta$s are real, but the
+mechanism is ``better passages\barrow{}better extractive output'',
+not ``better passages\barrow{}better neural reasoning''.
+
+\paragraph{Edge cases (reported separately).}  $\sim\!10\,\%$ of
+predictions per arm are $<\!3$ tokens (the \texttt{truncation\_short}
+/ \texttt{extractive\_passage\_bias} pattern from
+\Cref{sec:w6-taxonomy}), scoring 3-gram grounding as $1.0$
+vacuously.  Lexical-vacuous predictions are negligible
+($<\!0.3\,\%$).  Counts are identical-shape on both arms, so the
+paired $\Delta$ is unaffected.
+
+\subsubsection{W7-A --- NLI-entailment grounding}
+\label{sec:w7-nli}
+
+\Cref{tab:w7-nli} reports an NLI-entailment proxy
+($\text{entailment}(\text{passages} \to \text{prediction})$,
+\code{cross-\allowbreak encoder/\allowbreak nli-\allowbreak deberta-v3-small}~\cite{he2023debertav3,williams2018mnli})
+on the same 3\,000-paired-qid subsample as the W6 \bertscore{}
+proxy.
+
+\begin{table}[H]
+  \centering
+  \caption{W7-A --- NLI-entailment grounding on the same 3\,000-
+  paired-qid subsample (seed 42) used by the W6 \bertscore{} proxy.
+  Same paired-bootstrap CI convention.  This is the only paired
+  metric in the entire project whose $\Delta$ reverses sign relative
+  to the W3/W5/W6 surface-form story.}
+  \label{tab:w7-nli}
+  \begin{tabular}{lrrrrr}
+    \toprule
+    Metric    & \bmtwofive{} & Rerank & $\Delta$ & 95\,\% CI on $\Delta$ & $p$ \\
+    \midrule
+    NLI grounding & 0.2270   & 0.0821 & $\mathbf{-0.1448}$ & $[-0.1597,\,-0.1297]$ & $<\!0.001$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The NLI $\Delta$ is negative and strictly excludes zero.  Section
+\Cref{sec:discussion-nli-flip} discusses the most plausible
+mechanism and how to disambiguate.
+
+\subsubsection{W7-C --- grounding $\leftrightarrow$ downstream
+correlation}
+
+Per-query Spearman / Pearson correlations between each grounding
+metric and downstream \Tokenf{} / \bertscore{}-$F_1$, with the
+high-vs-low ($\geq\!0.9$) bin Mann--Whitney as a second cut.
+
+\textbf{Direction is uniformly positive but magnitudes are small.}
+Every binned cell has high-grounding $-$ low-grounding $>\!0$;
+absolute differences sit between $0.04$ and $0.10$ on the
+\Tokenf{} / \bertscore{} scale.  Per-query Spearman / Pearson
+correlations are near zero (\textbar$\rho$\textbar~$<\!0.05$ in
+every cell), entirely because both arms sit at the lex / 3-gram
+ceiling on $\geq\!99\,\%$ of queries.  The signal is in the
+\emph{level}, not the per-query rank.
+
+\subsubsection{W7-D --- low-grounding case study}
+
+Of the 197 rerank-arm queries with $\mathrm{lex}\!<\!0.9$ OR
+$\mathrm{ngram}\!<\!0.9$, 30 are sampled (seed 42) and labelled by
+a coarse five-way rule cascade.  \Cref{tab:w7d} reports the
+counts.
+
+\begin{table}[H]
+  \centering
+  \caption{W7-D --- low-grounding case study on a 30-query seeded
+  triage (seed 42) of the 197 rerank-arm queries with
+  lex $<\!0.9$ or 3-gram $<\!0.9$.  Categories applied in
+  declaration order; first match wins.
+  \texttt{parametric\_or\_external} would flag genuine
+  hallucinations.}
+  \label{tab:w7d}
+  \begin{tabular}{lrr}
+    \toprule
+    Label                       & Count & Share \\
+    \midrule
+    \texttt{paraphrase\_reorder}     & 23 & 77\,\% \\
+    \texttt{partial\_external}       &  7 & 23\,\% \\
+    \texttt{parametric\_or\_external} & 0 &  0\,\% \\
+    \texttt{prediction\_too\_short}  &  0 &  0\,\% \\
+    \texttt{residual}                &  0 &  0\,\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The 23 \texttt{paraphrase\_reorder} cases have all the content
+words in the prompt; only the order or phrasing changes.  The 7
+\texttt{partial\_external} cases are almost entirely
+tokenisation / morphology artefacts: \emph{``350oF''} vs.\
+\emph{``350$^\circ$F''}, \emph{``competed''} vs.\ \emph{``compete''}.
+\textbf{Zero genuine hallucinations} (\texttt{parametric\_or\_external})
+in the sample.  This reinforces the W7 headline: T5-small on this
+prompt format is doing extractive QA even on its worst-grounded
+outputs.
+
+% =============================================================================
+\clearpage\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Where does the rerank gain come from?}
+\label{sec:discussion-where}
+
+Combining \Cref{sec:gen-x-retrieval} with \Cref{sec:w7}, the answer
+is unambiguous: the headline doubling of W3 surface-form metrics is
+\textbf{a retrieval effect, not a generation effect}.  T5-small on
+this prompt format does not invent content; it copies content from
+the prompt.  The reranker's job is to ensure that the content the
+generator copies is the \emph{right} content.  Two pieces of
+evidence converge:
+
+\begin{enumerate}
+  \item The retrieval-flag rate of having $\geq\!1$
+        relevance-judged passage in the top-3 jumps from 20.8\,\%
+        to 96.9\,\% across the two arms (\Cref{sec:gen-x-retrieval}).
+        This is the proximate mechanism.
+  \item Lexical content-token grounding sits at $\sim\!0.997$ on
+        both arms (\Cref{tab:w7-lex-ngram}).  Whatever content
+        words T5-small emits, $\sim\!99.7\,\%$ of them are already
+        in the prompt.  There is no slack for ``the generator
+        thought of something better'' to account for any meaningful
+        portion of the W3 $\Delta$.
+\end{enumerate}
+
+This reading has direct consequences for where further work should
+go.  Decoding-budget interventions are ruled out by
+\Cref{sec:w6-closure}; generator output-style interventions
+(\Cref{sec:w7-nli}) are constrained by the ceiling effect; prompt-
+format and generator-capacity interventions become the natural next
+axes.  \Cref{sec:plan-vs-actual} records the W7-B (T5-base swap)
+follow-up that is queued in the project's reduced-scope plan.
+
+\subsection{The W7-A NLI sign flip}
+\label{sec:discussion-nli-flip}
+
+\Cref{tab:w7-nli} is the only paired metric in this project whose
+$\Delta$ reverses sign relative to the otherwise-consistent W3/W5/W6
+story: a robust $-0.145$, with a 95\,\% CI that strictly excludes
+zero.  Three candidate explanations are worth taking seriously.
+
+\paragraph{(i) Output-shape artefact (currently the best-supported).}
+The 40-query taxonomy (\Cref{tab:w6-taxonomy}) and the W7-D case
+study (\Cref{tab:w7d}) jointly show that the reranked-arm
+predictions contain more fragmentary / mid-word-cut / title-style
+outputs than the \bmtwofive{}-arm predictions.  A sentence-level
+NLI cross-encoder cannot \emph{entail} a fragmentary hypothesis ---
+it requires syntactically complete propositions on both sides.  So
+even when the rerank-arm prediction is lexically faithful (it
+copies content tokens from the right passage), the NLI scorer
+correctly returns low entailment because the prediction \emph{as
+a sentence} is incomplete.  Under this account, the NLI flip is a
+metric--model mismatch on a particular output style, not a
+semantic regression.
+
+\paragraph{(ii) True semantic regression on some slice.}  It is
+also possible that the reranker, by surfacing tighter / more on-
+topic passages, paradoxically encourages T5-small to extract
+title-style or list-style fragments instead of the descriptive
+paragraphs that would actually be reference-equivalent.  Under this
+account the NLI flip is real: rerank-arm predictions are, on a
+semantic-faithfulness scale, worse despite being lexically tighter.
+This is harder to rule out from the existing data because the W7
+binned analysis shows a small positive correlation between
+grounding and downstream metrics (\Cref{sec:w7}), but the
+sentence-completeness confound is unresolved.
+
+\paragraph{(iii) NLI checkpoint artefact.}  The NLI cross-encoder
+in W7-A is \texttt{cross-encoder/nli-deberta-v3-small} ---
+distilled, MNLI-trained~\cite{he2023debertav3,williams2018mnli}.
+It is not domain-adapted to \msmarco{}-style passages and could
+behave differently from a larger NLI scorer on the project's
+characteristic short-passage / short-prediction inputs.
+
+\paragraph{How to disambiguate.}  The cleanest test is a generator
+swap: rerun the W3 paired comparison with T5-base (or an
+instruction-tuned small model) in place of T5-small, holding
+everything else fixed, and recompute the NLI proxy.  If the NLI
+$\Delta$ moves toward zero or flips back positive without changing
+the surface-form $\Delta$ much, account~(i) is supported.  If it
+stays negative at the same magnitude, account~(ii) becomes the
+working hypothesis.  This is the planned W7-B follow-up, deferred
+to the post-deadline T5-base run (\Cref{sec:plan-vs-actual}).
+
+\subsection{Plan vs.\ actual}
+\label{sec:plan-vs-actual}
+
+The project's initial 12-week plan named the milestones in
+\Cref{tab:plan-vs-actual}.  Eleven calendar weeks elapsed; the
+table records what shipped, what was substituted, and what was
+de-scoped.
+
+\small
+\begin{longtable}{@{}p{1.15cm}p{3.0cm}p{8.0cm}p{2.4cm}@{}}
+\toprule
+\textbf{Week} & \textbf{Plan} & \textbf{Actual} & \textbf{Status} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Week} & \textbf{Plan} & \textbf{Actual} & \textbf{Status} \\
+\midrule
+\endhead
+W1 & EDA & EDA on the QA v2.1 validation 5k-row sample
+     (\Cref{sec:dataset}) & shipped \\
+W2 & \bmtwofive{} baseline & Full 8.8M-corpus \bmtwofive{} retrieve
+     +  MRR/Recall (\Cref{sec:w2-results}) & shipped \\
+W3 & RAG baseline (T5/BART/Phi + top-3) & T5-small RAG generator on
+     the W2 top-3, 200-query sample baseline + the load-bearing
+     paired full-dev comparison (\Cref{sec:gen-x-retrieval}) & shipped \\
+W4 & Dense retrieval, ideally ANCE & Generic \texttt{all-MiniLM-L6-v2}
+     on a 50k qrels-anchored sample with FAISS \texttt{IndexFlatIP}
+     (\Cref{sec:w4-results}); ANCE / \msmarco{}-tuned encoders
+     reserved for W4-B & shipped (smaller scope) \\
+W5 & Cross-encoder rerank & \texttt{ms-marco-MiniLM-L-6-v2} over
+     dense top-100, full-dev (\Cref{sec:w5-dense-rerank}) +
+     \bmtwofive{}-top-100 arm (\Cref{sec:w5a}) & shipped \\
+W6 & Generator fine-tuning & \emph{Substituted}: evaluation layer
+     (\bertscore{} proxy + failure taxonomy + decode-budget closure;
+     \Cref{sec:w6}).  The W3 paired comparison made evaluation
+     calibration the higher-leverage axis than SFT, and the W6
+     closure + W7 grounding together explain why SFT is unlikely
+     to be the bottleneck. & substituted \\
+W7 & Hallucination \& citation & \emph{Substituted}: grounding audit
+     (lexical / 3-gram / NLI; \Cref{sec:w7}).  Same goal
+     (faithfulness), more direct measurement.  Span-level citation
+     linking is in the explicit out-of-scope list. & substituted \\
+W8 & Long-document handling & \emph{De-scoped} due to the project's
+     2026-05-22 deadline and the choice to prioritise the W6/W7
+     analyses on the already-shipped passage-level pipeline.
+     The infrastructure (sliding-window prompt assembly) exists in
+     the runner; the long-doc benchmark pass does not. & de-scoped \\
+W9 & Integration \& acceleration (ONNX, quantisation) & Engineering
+     scaffolding shipped (manifests, lockfile, CI, lint;
+     \Cref{sec:reproducibility}); ONNX / quantisation
+     not pursued on the CPU-only laptop where wall-clock cost is
+     already dominated by the cross-encoder. & partial \\
+W10 & Final evaluation & The headline paired comparison serves as
+     the final evaluation; no CodaLab submission. & redirected \\
+W11 & Research paper & This report. & shipped \\
+W12 & Presentation & Out of report scope. & --- \\
+\bottomrule
+\caption{Plan vs.\ actual.  ``Substituted'' indicates that the
+planned milestone was replaced by an evidence-driven alternative
+that addressed the same underlying goal; ``de-scoped'' indicates
+work that was cut, not redirected.}
+\label{tab:plan-vs-actual} \\
+\end{longtable}
+\normalsize
+
+The two W6 / W7 substitutions are the project's main methodological
+deviation from the plan.  The reasoning was empirical: once the W3
+paired comparison shipped, evaluation calibration --- ``do these
+deltas hold up under a semantic-similarity scorer?'', ``where do
+the remaining regressions come from?'' --- gave a clearer story
+than SFT would have, and the W6 closure run then made that story
+\emph{actionable} by ruling out the most plausible cheap
+intervention (the decoding budget).  The W7 grounding audit then
+calibrated the headline result honestly: most of the gain is
+retrieval, the generator is extractive, and the only sign-
+reversing metric (\Cref{sec:w7-nli}) is plausibly an output-shape
+artefact that a generator swap could disambiguate.
+
+% =============================================================================
+\clearpage\section{Limitations}
+\label{sec:limitations}
+
+\paragraph{No fine-tuning anywhere.}  No SFT pass on
+$(\text{question}, \text{gold passage}, \text{answer})$ triples has
+been run.  Every model is used as a generic pretrained checkpoint:
+T5-small for generation, \texttt{all-MiniLM-L6-v2} for dense
+retrieval, \texttt{ms-marco-MiniLM-L-6-v2} for the cross-encoder
+(\msmarco{}-trained, but as-is).  The absolute level numbers
+(\rougel{}~$\approx\!0.18$ on \bmtwofive{}, $\approx\!0.36$ on
+reranked) are therefore modest; the load-bearing claim is the
+paired $\Delta$ between rows, which is statistically robust on
+$n\!=\!\fdev{}$.
+
+\paragraph{W4 / W5 numbers are on a qrels-anchored sample.}  The W4
+50k sample includes every \devsmall{} relevant doc by construction
+(\Cref{sec:w4-sampling-caveat}), inflating absolute MRR / Recall
+on the sampled setting.  The legitimate comparison is within-
+sample (dense vs.\ \bmtwofive{} on the same pool), not against the
+W2 full-corpus number.  This caveat is propagated to the W5 dense+
+rerank numbers, which inherit the same sampling.
+
+\paragraph{\bmtwofive{} tokenizer mismatch with Anserini.}  The W2
+\mrr{}~$=0.170$ versus reference $\approx 0.184$ is mostly
+attributable to tokenizer differences between \texttt{bm25s} default
+and Lucene \texttt{EnglishAnalyzer}.  Acceptable for a single-
+machine pure-Python pipeline, but it does mean the project's
+\bmtwofive{} number cannot be directly compared to published
+Lucene-tokenizer baselines without bracketing for the tokenizer gap.
+
+\paragraph{Generation metrics are dominated by surface form.}  The
+W6 \bertscore{} proxy (\Cref{sec:w6-bertscore}) and the W7
+grounding metrics (\Cref{sec:w7}) partially close the surface-form
+gap, but the canonical \texttt{roberta-large} \bertscore{} on full
+dev/small is still open.
+
+\paragraph{The W7-A NLI sign flip is unresolved.}  Section
+\Cref{sec:discussion-nli-flip} identifies three candidate
+mechanisms; existing data cannot fully discriminate among them.
+A T5-base / instruction-tuned-small generator swap is the
+disambiguating experiment.
+
+\paragraph{\devsmall{} only, single seed for the distractor sample.}
+No held-out test split.  The distractor sample is deterministic
+(seed 42) but not averaged across multiple seeds.
+
+\paragraph{CPU-only.}  All numbers in this report were produced on
+a six-core Apple Silicon laptop.  No GPU.  This is by design --- the
+single-machine constraint is what makes the project's reproducibility
+claim (one command per week regenerates every number) tractable ---
+but it caps the kinds of generators that can be evaluated within
+the deadline.
+
+% =============================================================================
+\clearpage\section{Conclusion}
+\label{sec:conclusion}
+
+The principal empirical claim of this report is the following.
+On \msmarco{} Passage \devsmall{} (\fdev{} queries), replacing
+the upstream retriever from \bmtwofive{} with a cross-encoder-
+reranked dense top-3 --- holding the generator, the prompt, and
+the random seed fixed --- approximately doubles every
+surface-form generation metric, with 95\,\% paired-bootstrap
+confidence intervals strictly above zero on all four metrics
+(\Cref{tab:w3-ci}).  The effect is corroborated by a
+\bertscore{} semantic-similarity proxy at essentially the same
+magnitude (\Cref{tab:w6-bertscore}).  However, the grounding
+audit of \Cref{sec:w7} shows that both arms operate at the
+$\sim\!99\,\%$ lexical and 3-gram grounding ceiling: under this
+prompt format T5-small is performing extractive QA, and the
+observed gain is almost entirely attributable to retrieval
+rather than to generation.
+
+The methodological contribution of the project lies in the
+discipline of treating every cross-stage comparison as a paired
+statistical test and of calibrating each surface-form metric
+against a semantic-similarity proxy and a grounding metric before
+accepting it as evidence.  Three readings that would have appeared
+plausible from the W3 surface-form numbers alone are rejected on
+this basis: that the residual regression bucket is driven by the
+decoding budget (falsified in \Cref{sec:w6-closure}), that
+reranking materially improves grounding (\Cref{tab:w7-lex-ngram}
+shows both arms at the lexical ceiling), and that the rerank
+$\Delta$ is uniformly positive across metric families
+(\Cref{tab:w7-nli} shows the NLI proxy reversing sign).
+
+The most informative follow-up experiment is a generator-capacity
+swap (T5-base or an instruction-tuned small model) on the same
+prompts and the same retrieval inputs.  Such an experiment
+simultaneously tests whether the surface-form $\Delta$ extends
+with capacity, whether the NLI sign flip persists under a more
+verbose generator, and whether the lexical-grounding ceiling
+moves.  Each outcome is independently informative for the design
+of CPU-tractable open-domain QA pipelines on this benchmark.
+
+% =============================================================================
+\clearpage
+\section*{Acknowledgements}
+\addcontentsline{toc}{section}{Acknowledgements}
+
+The author thanks the project mentor, Tyler, for guidance on
+problem framing and methodology throughout the internship period.
+
+The project depends entirely on open-source artefacts: \msmarco{}
+itself~\cite{bajaj2016msmarco,nguyen2016msmarcoqa},
+the Pyserini / Anserini ecosystem and the \texttt{bm25s}
+re-implementation~\cite{lin2021pyserini,lu2024bm25s}, FAISS for
+exact dense search~\cite{johnson2019faiss}, the Sentence-Transformers
+and Hugging Face Transformers
+ecosystems~\cite{reimers2019sbert,wolf2020transformers}, the
+\texttt{ir\_datasets} loader~\cite{macavaney2021irdatasets}, the T5
+and BART pretrained models~\cite{raffel2020t5,lewis2020bart}, the
+\texttt{cross-encoder/ms-marco-MiniLM-L-6-v2} reranker, the
+DistilBERT and DeBERTa~v3
+encoders~\cite{sanh2019distilbert,he2023debertav3}, and the
+\texttt{rouge\_score} / \texttt{sacrebleu} / \texttt{evaluate}
+metric libraries~\cite{lin2004rouge,papineni2002bleu}.
+
+\clearpage
+% --- References --------------------------------------------------------------
+\printbibliography[heading=bibintoc,title={References}]
+
+% =============================================================================
+\clearpage
+\appendix
+
+\section{Configuration and reproducibility}
+\label{sec:reproducibility}
+
+\subsection{One config, one runner per week}
+
+All four W2--W5 runners are driven by a single configuration file
+at \texttt{configs/baseline.yaml}; the W6/W7 analysis scripts read
+the on-disk W3 paired predictions directly.  \Cref{tab:repro-cmds}
+records the canonical command for each stage.
+
+\begin{table}[H]
+  \centering\small
+  \caption{One canonical command per stage.  All commands assume
+  the project root as working directory and \texttt{pip install -e
+  .} has registered the \texttt{src} package.}
+  \label{tab:repro-cmds}
+  \begin{tabularx}{\linewidth}{l>{\ttfamily\raggedright\arraybackslash}X}
+    \toprule
+    Stage & \normalfont Command \\
+    \midrule
+    W2  & python experiments/run\_retrieval.py \\
+    W3  & python experiments/run\_generation\_baseline.py \\
+    W4  & python experiments/run\_dense\_retrieval.py \\
+    W5  & python experiments/run\_reranker.py \\
+    W3 paired    & python scripts/run\_full\_generation\_and\_analysis.py \\
+    W5-A         & python scripts/compare\_rerank\_first\_stages.py \\
+    W6 BERTScore & python scripts/bertscore\_paired\_eval.py \\
+    W6 taxonomy  & python scripts/regression\_failure\_taxonomy.py \\
+    W6 closure   & python scripts/run\_full\_generation\_and\_analysis.py \mbox{--max-new-tokens}~128 \mbox{--out-suffix}~\_mnt128 \\
+    W6-A/B/C     & scripts/tag\_query\_forms.py \ /\ analyze\_rerank\_by\_query\_form.py \ /\ regression\_query\_profile.py \\
+    W7 grounding & python scripts/grounding\_audit.py \\
+    W7-A NLI     & same script with \mbox{--nli-n-pairs}~3000 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Manifests}
+
+Every runner writes \texttt{outputs/<week>/manifest.json} alongside
+\texttt{metrics.json}.  The manifest records: the current git
+commit (and a ``dirty'' flag if any tracked file was modified at
+launch time), the command line, the configuration file SHA-256,
+the requirements/lockfile/pyproject SHA-256s, and a per-output
+SHA-256 (truncated) for every file the runner emits.  This is
+sufficient to verify that a re-run produced byte-identical outputs,
+or to identify exactly which input changed if the outputs differ.
+
+\subsection{Determinism}
+
+Seed 42 is used everywhere a random choice enters: the W4
+qrels-anchored distractor sample, the W6 BERTScore subsample
+selection, the W6 regression-bucket triage sample, the W7-D
+low-grounding case-study sample, and the 10\,000-resample paired
+bootstrap throughout.  This is documented in the per-script CLI
+help and in the per-week reports' ``Reproduce'' sections.
+
+\subsection{What is and isn't committed}
+
+The project's \texttt{CLAUDE.md} codifies the policy:
+\texttt{outputs/}, \texttt{data/}, and \texttt{.claude/} are
+gitignored; the only experimental artefacts that ever enter git
+are source code (under \texttt{src/}, \texttt{experiments/},
+\texttt{scripts/}, \texttt{tests/}), \texttt{README.md}, the report
+\emph{templates} under \texttt{reports/templates/}, and the final
+\emph{viewable} report PDFs under \texttt{reports/generated/}.
+This keeps the repository small and decouples regenerable
+artefacts (every \texttt{metrics.json}, every \texttt{run.tsv})
+from the source of truth.
+
+\subsection{Engineering scaffolding}
+
+\begin{itemize}
+  \item \textbf{Tests.}  78 unit tests under \texttt{tests/}; runs
+        in $<\!10$~s on the laptop; no network, no heavy deps.
+        Slow tests gated behind \texttt{@pytest.mark.slow}.
+  \item \textbf{Lint.}  \texttt{ruff} with the \texttt{F} and
+        \texttt{W} rule sets enabled (pyflakes + whitespace); style
+        rules deliberately disabled for the first pass.
+  \item \textbf{CI.}  \texttt{.github/workflows/ci.yml} runs pytest
+        + ruff on every push / PR to \texttt{main}.  Does not
+        download \msmarco{} data or run the slow tests.
+  \item \textbf{Lockfile.}  \texttt{requirements-lock.txt} is a
+        pip-freeze snapshot of the author's macOS CPU-only dev
+        environment.  Hash pinning and transitive closure are
+        explicitly listed as TODO; the lockfile is calibrated for
+        ``can I rebuild this on a comparable machine?'', not
+        ``bit-identical builds on arbitrary infrastructure''.
+\end{itemize}
+
+\section{Full bucket counts and W6 analysis tables}
+\label{sec:appendix-buckets}
+
+\Cref{tab:buckets-full} reports the five-way bucket counts on the
+full \fdev{} W3 paired comparison.  The classification is from
+\texttt{scripts/analyze\_generation\_rerank.py}: each query is
+assigned exactly one bucket based on (i) whether the reranker
+brought a relevance-judged passage into the generator's top-3 and
+(ii) whether the generator's \Tokenf{} improved, stayed equal,
+or worsened.
+
+\begin{table}[H]
+  \centering
+  \caption{Five-way bucket counts on the full \fdev{} W3 paired
+  comparison.  \texttt{rerank\_fixed\_generation\_improved} is the
+  ``both retrieval and generator improved'' headline bucket;
+  \texttt{regression} is the narrower 233-strong bucket
+  (\Cref{sec:w6-taxonomy} runs its taxonomy on this slice).}
+  \label{tab:buckets-full}
+  \begin{tabular}{lr}
+    \toprule
+    Bucket                                                       & Count \\
+    \midrule
+    \texttt{rerank\_fixed\_generation\_still\_failing}           & 2\,684 \\
+    \texttt{rerank\_fixed\_generation\_improved}                 & 2\,184 \\
+    \texttt{no\_signal}                                          & 1\,593 \\
+    \texttt{retrieval\_equivalent\_generation\_differs}          &   286 \\
+    \texttt{regression}                                          &   233 \\
+    \midrule
+    Total                                                        & 6\,980 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Glossary of cross-references}
+\label{sec:appendix-glossary}
+
+\begingroup
+\sloppy
+\emergencystretch=3em
+\hbadness=99999
+\begin{itemize}
+  \item \textbf{W2:} \bmtwofive{} retrieval, full corpus.  Output:
+        \texttt{outputs/week02\_bm25/}.
+  \item \textbf{W3:} RAG generation baseline (T5-small over top-3).
+        Output:
+        \code{outputs/week03\_\allowbreak generation\_\allowbreak \{bm25,reranked\}\_\allowbreak full/}.
+  \item \textbf{W4:} dense retrieval, 50k qrels-anchored sample.
+        Output: \texttt{outputs/week04\_dense/}.
+  \item \textbf{W5:} cross-encoder rerank over dense top-100.
+        Output: \texttt{outputs/week05\_reranker\_full/}.
+  \item \textbf{W5-A:} same reranker over \bmtwofive{} top-100.
+        Output:
+        \code{outputs/week05\_\allowbreak rerank\_\allowbreak first\_\allowbreak stage\_\allowbreak compare/}.
+  \item \textbf{W6:} \bertscore{} proxy + regression failure
+        taxonomy + decode-budget closure.  Outputs:
+        \code{outputs/week06\_\allowbreak bertscore\_\allowbreak proxy/},
+        \code{outputs/week06\_\allowbreak analysis/},
+        \code{outputs/week06\_\allowbreak taxonomy\_\allowbreak mnt128/}.
+  \item \textbf{W6-A/B/C:} question-form tagging,
+        per-form $\Delta$, regression structural profile.
+        Outputs: \code{outputs/week06\_\allowbreak querytype/},
+        \code{outputs/week06\_\allowbreak rerank\_\allowbreak by\_\allowbreak form/},
+        \code{outputs/week06\_\allowbreak regression\_\allowbreak features/}.
+  \item \textbf{W7:} lexical + 3-gram grounding audit; W7-A adds
+        the NLI proxy; W7-C grounding $\leftrightarrow$ downstream
+        correlation; W7-D low-grounding case study.  Outputs:
+        \code{outputs/week07\_\allowbreak grounding/},
+        \code{outputs/week07\_\allowbreak grounding\_\allowbreak correlation/},
+        \code{outputs/week07\_\allowbreak low\_\allowbreak grounding\_\allowbreak cases/}.
+\end{itemize}
+\endgroup
+
+\end{document}

@@ -1,0 +1,284 @@
+% -----------------------------------------------------------------------------
+% References for the MS MARCO Generative QA internship report.
+% Entries are grouped by topic in declaration order; cite keys are stable.
+% -----------------------------------------------------------------------------
+
+% --- Dataset ----------------------------------------------------------------
+
+@article{bajaj2016msmarco,
+  title   = {{MS MARCO}: A Human Generated MAchine Reading COmprehension Dataset},
+  author  = {Bajaj, Payal and Campos, Daniel and Craswell, Nick and Deng, Li and
+             Gao, Jianfeng and Liu, Xiaodong and Majumder, Rangan and
+             McNamara, Andrew and Mitra, Bhaskar and Nguyen, Tri and
+             Rosenberg, Mir and Song, Xia and Stoica, Alina and Tiwary, Saurabh
+             and Wang, Tong},
+  journal = {arXiv preprint arXiv:1611.09268},
+  year    = {2016}
+}
+
+@inproceedings{nguyen2016msmarcoqa,
+  title     = {{MS MARCO}: A Human-Generated MAchine Reading COmprehension Dataset},
+  author    = {Nguyen, Tri and Rosenberg, Mir and Song, Xia and Gao, Jianfeng
+               and Tiwary, Saurabh and Majumder, Rangan and Deng, Li},
+  booktitle = {NeurIPS Workshop on Cognitive Computation: Integrating Neural and
+               Symbolic Approaches},
+  year      = {2016}
+}
+
+% --- Sparse retrieval -------------------------------------------------------
+
+@article{robertson2009bm25,
+  title   = {The Probabilistic Relevance Framework: {BM25} and Beyond},
+  author  = {Robertson, Stephen and Zaragoza, Hugo},
+  journal = {Foundations and Trends in Information Retrieval},
+  volume  = {3},
+  number  = {4},
+  pages   = {333--389},
+  year    = {2009},
+  doi     = {10.1561/1500000019}
+}
+
+@inproceedings{lin2021pyserini,
+  title     = {{Pyserini}: A {P}ython Toolkit for Reproducible Information
+               Retrieval Research with Sparse and Dense Representations},
+  author    = {Lin, Jimmy and Ma, Xueguang and Lin, Sheng-Chieh and
+               Yang, Jheng-Hong and Pradeep, Ronak and Nogueira, Rodrigo},
+  booktitle = {SIGIR},
+  year      = {2021}
+}
+
+@misc{lu2024bm25s,
+  title         = {{BM25S}: Orders of magnitude faster lexical search via eager
+                   sparse scoring},
+  author        = {L{\`u}, Xing Han},
+  year          = {2024},
+  eprint        = {2407.03618},
+  archiveprefix = {arXiv}
+}
+
+% --- Dense retrieval --------------------------------------------------------
+
+@inproceedings{reimers2019sbert,
+  title     = {{Sentence-BERT}: Sentence Embeddings using {S}iamese
+               {BERT}-Networks},
+  author    = {Reimers, Nils and Gurevych, Iryna},
+  booktitle = {EMNLP-IJCNLP},
+  year      = {2019}
+}
+
+@inproceedings{xiong2021ance,
+  title     = {Approximate Nearest Neighbor Negative Contrastive Learning for
+               Dense Text Retrieval},
+  author    = {Xiong, Lee and Xiong, Chenyan and Li, Ye and Tang, Kwok-Fung and
+               Liu, Jialin and Bennett, Paul N. and Ahmed, Junaid and Overwijk, Arnold},
+  booktitle = {ICLR},
+  year      = {2021}
+}
+
+@article{johnson2019faiss,
+  title   = {Billion-scale similarity search with {GPUs}},
+  author  = {Johnson, Jeff and Douze, Matthijs and J{\'e}gou, Herv{\'e}},
+  journal = {IEEE Transactions on Big Data},
+  year    = {2019}
+}
+
+@misc{xiao2024bge,
+  title         = {{C-Pack}: Packaged Resources To Advance General {C}hinese
+                   Embedding},
+  author        = {Xiao, Shitao and Liu, Zheng and Zhang, Peitian and
+                   Muennighoff, Niklas},
+  year          = {2024},
+  eprint        = {2309.07597},
+  archiveprefix = {arXiv}
+}
+
+% --- Reranking --------------------------------------------------------------
+
+@article{nogueira2019passage,
+  title   = {Passage Re-ranking with {BERT}},
+  author  = {Nogueira, Rodrigo and Cho, Kyunghyun},
+  journal = {arXiv preprint arXiv:1901.04085},
+  year    = {2019}
+}
+
+@inproceedings{wang2020minilm,
+  title     = {{MiniLM}: Deep Self-Attention Distillation for Task-Agnostic
+               Compression of Pre-Trained Transformers},
+  author    = {Wang, Wenhui and Wei, Furu and Dong, Li and Bao, Hangbo and
+               Yang, Nan and Zhou, Ming},
+  booktitle = {NeurIPS},
+  year      = {2020}
+}
+
+% --- Generation / RAG -------------------------------------------------------
+
+@article{raffel2020t5,
+  title   = {Exploring the Limits of Transfer Learning with a Unified
+             Text-to-Text Transformer},
+  author  = {Raffel, Colin and Shazeer, Noam and Roberts, Adam and
+             Lee, Katherine and Narang, Sharan and Matena, Michael and
+             Zhou, Yanqi and Li, Wei and Liu, Peter J.},
+  journal = {Journal of Machine Learning Research},
+  volume  = {21},
+  number  = {140},
+  pages   = {1--67},
+  year    = {2020}
+}
+
+@inproceedings{lewis2020bart,
+  title     = {{BART}: Denoising Sequence-to-Sequence Pre-training for Natural
+               Language Generation, Translation, and Comprehension},
+  author    = {Lewis, Mike and Liu, Yinhan and Goyal, Naman and
+               Ghazvininejad, Marjan and Mohamed, Abdelrahman and Levy, Omer
+               and Stoyanov, Veselin and Zettlemoyer, Luke},
+  booktitle = {ACL},
+  year      = {2020}
+}
+
+@inproceedings{lewis2020rag,
+  title     = {Retrieval-Augmented Generation for Knowledge-Intensive {NLP}
+               Tasks},
+  author    = {Lewis, Patrick and Perez, Ethan and Piktus, Aleksandra and
+               Petroni, Fabio and Karpukhin, Vladimir and Goyal, Naman and
+               K{\"u}ttler, Heinrich and Lewis, Mike and Yih, Wen-tau and
+               Rockt{\"a}schel, Tim and Riedel, Sebastian and Kiela, Douwe},
+  booktitle = {NeurIPS},
+  year      = {2020}
+}
+
+% --- Evaluation metrics -----------------------------------------------------
+
+@inproceedings{lin2004rouge,
+  title     = {{ROUGE}: A Package for Automatic Evaluation of Summaries},
+  author    = {Lin, Chin-Yew},
+  booktitle = {Text Summarization Branches Out},
+  year      = {2004}
+}
+
+@inproceedings{papineni2002bleu,
+  title     = {{BLEU}: a Method for Automatic Evaluation of Machine Translation},
+  author    = {Papineni, Kishore and Roukos, Salim and Ward, Todd and
+               Zhu, Wei-Jing},
+  booktitle = {ACL},
+  year      = {2002}
+}
+
+@article{jarvelin2002ndcg,
+  title   = {Cumulated gain-based evaluation of {IR} techniques},
+  author  = {J{\"a}rvelin, Kalervo and Kek{\"a}l{\"a}inen, Jaana},
+  journal = {ACM Transactions on Information Systems (TOIS)},
+  volume  = {20},
+  number  = {4},
+  pages   = {422--446},
+  year    = {2002}
+}
+
+@inproceedings{zhang2020bertscore,
+  title     = {{BERTScore}: Evaluating Text Generation with {BERT}},
+  author    = {Zhang, Tianyi and Kishore, Varsha and Wu, Felix and
+               Weinberger, Kilian Q. and Artzi, Yoav},
+  booktitle = {ICLR},
+  year      = {2020}
+}
+
+@inproceedings{koehn2004bootstrap,
+  title     = {Statistical Significance Tests for Machine Translation Evaluation},
+  author    = {Koehn, Philipp},
+  booktitle = {EMNLP},
+  year      = {2004}
+}
+
+@article{mannwhitney1947,
+  title   = {On a test of whether one of two random variables is stochastically
+             larger than the other},
+  author  = {Mann, Henry B. and Whitney, Donald R.},
+  journal = {The Annals of Mathematical Statistics},
+  volume  = {18},
+  number  = {1},
+  pages   = {50--60},
+  year    = {1947}
+}
+
+% --- Encoders for proxy / NLI scoring ---------------------------------------
+
+@inproceedings{sanh2019distilbert,
+  title     = {{DistilBERT}, a distilled version of {BERT}: smaller, faster,
+               cheaper and lighter},
+  author    = {Sanh, Victor and Debut, Lysandre and Chaumond, Julien and
+               Wolf, Thomas},
+  booktitle = {NeurIPS EMC$^2$ Workshop},
+  year      = {2019}
+}
+
+@inproceedings{he2023debertav3,
+  title     = {{DeBERTaV3}: Improving {DeBERTa} using {ELECTRA}-Style
+               Pre-training with Gradient-Disentangled Embedding Sharing},
+  author    = {He, Pengcheng and Gao, Jianfeng and Chen, Weizhu},
+  booktitle = {ICLR},
+  year      = {2023}
+}
+
+@inproceedings{williams2018mnli,
+  title     = {A Broad-Coverage Challenge Corpus for Sentence Understanding
+               through Inference},
+  author    = {Williams, Adina and Nangia, Nikita and Bowman, Samuel},
+  booktitle = {NAACL},
+  year      = {2018}
+}
+
+@inproceedings{devlin2019bert,
+  title     = {{BERT}: Pre-training of Deep Bidirectional Transformers for
+               Language Understanding},
+  author    = {Devlin, Jacob and Chang, Ming-Wei and Lee, Kenton and
+               Toutanova, Kristina},
+  booktitle = {NAACL},
+  year      = {2019}
+}
+
+% --- Tools / libraries ------------------------------------------------------
+
+@inproceedings{wolf2020transformers,
+  title     = {{HuggingFace}'s Transformers: State-of-the-Art Natural Language
+               Processing},
+  author    = {Wolf, Thomas and Debut, Lysandre and Sanh, Victor and
+               Chaumond, Julien and Delangue, Clement and Moi, Anthony and
+               Cistac, Pierric and Rault, Tim and Louf, R{\'e}mi and
+               Funtowicz, Morgan and Davison, Joe and Shleifer, Sam and
+               von Platen, Patrick and Ma, Clara and Jernite, Yacine and
+               Plu, Julien and Xu, Canwen and Le Scao, Teven and Gugger, Sylvain
+               and Drame, Mariama and Lhoest, Quentin and Rush, Alexander M.},
+  booktitle = {EMNLP: System Demonstrations},
+  year      = {2020}
+}
+
+@inproceedings{macavaney2021irdatasets,
+  title     = {Simplified Data Wrangling with {ir\_datasets}},
+  author    = {MacAvaney, Sean and Yates, Andrew and Feldman, Sergey and
+               Downey, Doug and Cohan, Arman and Goharian, Nazli},
+  booktitle = {SIGIR},
+  year      = {2021}
+}
+
+% --- Hallucination / faithfulness context -----------------------------------
+
+@article{ji2023hallucination,
+  title   = {Survey of Hallucination in Natural Language Generation},
+  author  = {Ji, Ziwei and Lee, Nayeon and Frieske, Rita and Yu, Tiezheng and
+             Su, Dan and Xu, Yan and Ishii, Etsuko and Bang, Ye Jin and
+             Madotto, Andrea and Fung, Pascale},
+  journal = {ACM Computing Surveys},
+  volume  = {55},
+  number  = {12},
+  pages   = {1--38},
+  year    = {2023}
+}
+
+@inproceedings{honovich2022true,
+  title     = {{TRUE}: Re-evaluating Factual Consistency Evaluation},
+  author    = {Honovich, Or and Aharoni, Roee and Herzig, Jonathan and
+               Taitelbaum, Hagai and Kukliansy, Doron and Cohen, Vered and
+               Scialom, Thomas and Szpektor, Idan and Hassidim, Avinatan and
+               Matias, Yossi},
+  booktitle = {NAACL},
+  year      = {2022}
+}

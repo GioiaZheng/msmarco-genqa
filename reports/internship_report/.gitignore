@@ -1,0 +1,17 @@
+# LaTeX intermediate artefacts — regenerable from report.tex / references.bib
+# via `make pdf` (or `latexmk -pdf report.tex`).  Only the .tex source, the
+# .bib, the figures/, and the final report.pdf are tracked.
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.xdv
