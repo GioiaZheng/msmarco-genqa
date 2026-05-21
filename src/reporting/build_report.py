@@ -647,7 +647,17 @@ def build_week06(out_dir: Path) -> str:
 
     # Headline / counts
     n_shared = summary.get("n_shared_qids", 0)
-    n_regression = (summary.get("headline") or {}).get("n_strict_regressions", 0)
+    # The {{n_regression}} placeholder is used in the W6 template to describe
+    # the *regression bucket* (relevant passage in top-3 under rerank, but
+    # generator F1 dropped vs BM25) — i.e. `buckets.regression` (= 233 on
+    # full dev/small). The older `headline.n_strict_regressions` (= 1766) is
+    # the broader per-query "rerank F1 < BM25 F1" count and does NOT match
+    # what the prose says; pulling it here mislabelled the bucket size in
+    # every W6 report through 2026-05-20.
+    n_regression = (summary.get("buckets") or {}).get(
+        "regression",
+        (summary.get("headline") or {}).get("n_strict_regressions", 0),
+    )
 
     # BERTScore proxy
     bs_boot = bert.get("bootstrap", {}) or {}
