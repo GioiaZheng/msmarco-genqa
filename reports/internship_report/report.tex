@@ -1030,10 +1030,25 @@ baseline at each size.
   \end{tabular}
 \end{table}
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.78\linewidth]{w4a_density_curve.png}
+  \caption{W4-A --- \mrr{} vs.\ qrel-density on the same three
+  qrels-anchored samples as \Cref{tab:w4a-density}.  Encoder:
+  \texttt{BAAI/bge-small-en-v1.5}.  Density decreases left-to-right
+  (50k sample on the left at $\sim\!15\,\%$, 15k sample on the
+  right at $\sim\!50\,\%$).  The dense-vs-\bmtwofive{} gap widens
+  monotonically as density drops --- which is the load-bearing
+  read; absolute \mrr{} levels are inflated by the qrels-anchored
+  sampling design (\Cref{sec:w4-sampling-caveat}) on every row.}
+  \label{fig:w4a-density-curve}
+\end{figure}
+
 \paragraph{Read.}  As the sample grows (density drops), dense's
 advantage over \bmtwofive{} grows monotonically: $+0.166 \to +0.188
-\to +0.207$.  This is consistent with the literature claim that
-\bmtwofive{} is competitive at high relevant-density and loses
+\to +0.207$ (\Cref{fig:w4a-density-curve} shows the two arms
+diverging visibly).  This is consistent with the literature claim
+that \bmtwofive{} is competitive at high relevant-density and loses
 headroom to a generic dense encoder as the distractor mass dilutes
 the pool.  The trend is informative even though the absolute
 density range (15\,\%--50\,\%) is much higher than the 1/5/10\,\%
