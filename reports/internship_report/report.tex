@@ -75,36 +75,12 @@
 \captionsetup{font=small,labelfont=bf,labelsep=period}
 \usepackage{subcaption}
 
-% --- Code listings (lightweight) --------------------------------------------
+% --- Colour (used by \todo and hyperref colorlinks) -------------------------
 \usepackage{xcolor}
-\definecolor{codebg}{HTML}{F6F8FA}
-\definecolor{codekey}{HTML}{0F62FE}
-\definecolor{codecmt}{HTML}{6A737D}
-\definecolor{codestr}{HTML}{0A7F32}
-\usepackage{listings}
-\lstset{
-  basicstyle=\ttfamily\footnotesize,
-  backgroundcolor=\color{codebg},
-  keywordstyle=\color{codekey}\bfseries,
-  commentstyle=\color{codecmt}\itshape,
-  stringstyle=\color{codestr},
-  showstringspaces=false,
-  breaklines=true,
-  breakatwhitespace=true,
-  frame=single,
-  framesep=4pt,
-  framerule=0pt,
-  columns=fullflexible,
-  keepspaces=true,
-  xleftmargin=4pt,
-  xrightmargin=4pt,
-  belowskip=4pt,
-  aboveskip=4pt,
-}
-\lstdefinelanguage{plainshell}{
-  morecomment=[l]{\#},
-  morestring=[b]",
-}
+
+% --- Diagrams (pipeline schematic, forest plot) -----------------------------
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,fit,backgrounds}
 
 % --- Bibliography -----------------------------------------------------------
 \usepackage[backend=biber,
@@ -131,7 +107,7 @@
   pdftitle={MS MARCO Generative QA: A Reproducible Retrieve--Rerank--Generate
             Pipeline with a Grounding Audit},
   pdfauthor={GioiaZheng},
-  pdfsubject={Internship Report --- 12-week project},
+  pdfsubject={Internship Report --- 11-week project (12-week plan)},
   pdfkeywords={MS MARCO; BM25; dense retrieval; cross-encoder reranking;
                retrieval-augmented generation; BERTScore; NLI;
                extractive QA; paired bootstrap}
@@ -165,36 +141,59 @@
 % --- Cover -------------------------------------------------------------------
 \thispagestyle{empty}
 \begin{titlepage}
+  % Cover-local hyperref override: black, non-coloured links read as
+  % typography on the cover rather than as hyperlinks.
+  \hypersetup{linkcolor=black,urlcolor=black,citecolor=black,filecolor=black}
   \centering
-  \vspace*{2.0cm}
+  \vspace*{1.4cm}
+
+  % --- Top affiliation strip
   {\large\scshape NLP Algorithm Engineer Internship\par}
-  \vspace{0.3em}
-  {\normalsize\itshape Microsoft\par}
-  \vspace{1.1cm}
-  \rule{\linewidth}{0.6pt}\par
-  \vspace{0.7cm}
-  {\LARGE\bfseries MS~MARCO Generative QA:\\[0.3em]
-   A Reproducible Retrieve--Rerank--Generate Pipeline\\[0.2em]
+  \vspace{0.35em}
+  {\small\itshape Microsoft\par}
+
+  \vspace{2.6cm}
+
+  % --- Title block ----------------------------------------------------------
+  \rule{\linewidth}{1.2pt}\par
+  \vspace{1.05cm}
+  {\Huge\bfseries MS\,MARCO Generative QA\par}
+  \vspace{0.55cm}
+  {\Large\itshape A Reproducible Retrieve--Rerank--Generate Pipeline\\[0.25em]
    with a Grounding Audit\par}
-  \vspace{0.7cm}
-  \rule{\linewidth}{0.6pt}\par
-  \vspace{2.0cm}
-  {\large GioiaZheng\\[0.2em]
-   \href{mailto:gioia.zheng.stud@gmail.com}{gioia.zheng.stud@gmail.com}\par}
-  \vspace{0.6cm}
-  {\large Project repository:\\
-   \href{https://github.com/GioiaZheng/msmarco-genqa}{\texttt{github.com/GioiaZheng/msmarco-genqa}}\par}
+  \vspace{1.05cm}
+  \rule{\linewidth}{1.2pt}\par
+
+  \vspace{2.8cm}
+
+  % --- Author ---------------------------------------------------------------
+  {\Large\bfseries Gioia Zheng\par}
+  \vspace{0.35em}
+  {\normalsize\href{mailto:gioia.zheng.stud@gmail.com}%
+    {\texttt{gioia.zheng.stud@gmail.com}}\par}
+
   \vfill
-  \begin{center}
-    \begin{tabular}{rl}
-      Role    & NLP Algorithm Engineer Intern \\
-      Mentor  & Tyler \\
-      Date    & 2026-05-21 \\
-      Period  & 2026-03-06 -- 2026-05-21 (11 weeks elapsed) \\
-      Scope   & single-machine, CPU-only, English passage retrieval + QA \\
-    \end{tabular}
-  \end{center}
-  \vspace*{1.3cm}
+
+  % --- Metadata block (framed, tighter alignment) ---------------------------
+  {\renewcommand{\arraystretch}{1.30}%
+   \begin{tabular}{@{}r@{\hskip 1.4em}l@{}}
+     \toprule
+     \textbf{Role}    & NLP Algorithm Engineer Intern \\
+     \textbf{Mentor}  & Tyler \\
+     \textbf{Period}  & 2026-03-06\,--\,2026-05-21 \quad{\small(11 weeks elapsed; 12-week plan)} \\
+     \textbf{Scope}   & Single-machine, CPU-only; English passage retrieval + QA \\
+     \textbf{Date}    & 2026-05-21 \\
+     \bottomrule
+   \end{tabular}\par}
+
+  \vspace{1.4cm}
+
+  % --- Repository footer ----------------------------------------------------
+  {\small\textsc{Project repository}\\[0.15em]
+   \href{https://github.com/GioiaZheng/msmarco-genqa}%
+    {\texttt{github.com/GioiaZheng/msmarco-genqa}}\par}
+
+  \vspace{0.6cm}
 \end{titlepage}
 
 % --- Abstract ----------------------------------------------------------------
@@ -374,8 +373,11 @@ combination of W6 closure and W7 grounding actually means about
 where the gain comes from, treats the NLI sign flip on its own
 terms, and compares ship versus plan.  \Cref{sec:limitations} states
 the limitations.  \Cref{sec:conclusion} concludes.
-Appendices cover the configuration, full bucket tables, the
-question-form breakdown, and the reproducibility scaffolding.
+The question-form breakdown is reported inline with the rest of W6
+(\Cref{tab:w6b}).  Appendices cover the configuration and
+reproducibility scaffolding (\Cref{sec:reproducibility}), the full
+five-way bucket counts (\Cref{sec:appendix-buckets}), and a
+short glossary of cross-references (\Cref{sec:appendix-glossary}).
 
 % =============================================================================
 \clearpage\section{Related Work}
@@ -604,6 +606,48 @@ scripts under \texttt{scripts/*.py} that read W3's already-on-disk
 paired predictions and write JSON / Markdown summaries beneath
 \texttt{outputs/week06\_*/} and \texttt{outputs/week07\_*/}.
 \Cref{sec:reproducibility} documents the reproducibility scaffold.
+
+\Cref{fig:pipeline} sketches the end-to-end flow and the place each
+stage occupies in it.
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[
+    every node/.style={font=\small\sffamily, align=center},
+    stage/.style={rectangle, draw, thick, rounded corners=2.5pt,
+                  minimum width=23mm, minimum height=13mm,
+                  inner sep=2pt, fill=blue!4},
+    aux/.style={rectangle, draw, dashed, rounded corners=2.5pt,
+                minimum width=23mm, minimum height=11mm,
+                inner sep=2pt, fill=gray!4},
+    flow/.style={-{Stealth[length=2mm]}, thick},
+    side/.style={-{Stealth[length=1.5mm]}, dashed, gray!70!black},
+    edgelbl/.style={font=\scriptsize\itshape, gray!50!black, inner sep=1pt},
+  ]
+    \node[stage]                              (q)   {Query\\\scriptsize $n\!=\!\fdev{}$};
+    \node[stage, right=8mm of q]              (fs)  {First stage\\\textbf{W2}~BM25\\\textbf{W4}~Dense};
+    \node[stage, right=8mm of fs]             (ce)  {\textbf{W5}\\CE rerank};
+    \node[stage, right=8mm of ce]             (gen) {\textbf{W3}\\T5-small RAG};
+    \node[stage, right=8mm of gen]            (ans) {Answer};
+
+    \draw[flow] (q)   -- (fs);
+    \draw[flow] (fs)  -- node[above, edgelbl] {top-100} (ce);
+    \draw[flow] (ce)  -- node[above, edgelbl] {top-3}   (gen);
+    \draw[flow] (gen) -- (ans);
+
+    \node[aux, below=10mm of gen]             (eval)
+      {\textbf{W6}~semantic proxy\\\textbf{W7}~grounding audit};
+    \draw[side] (gen.south) -- (eval.north);
+  \end{tikzpicture}
+  \caption{End-to-end pipeline.  Solid boxes are the four modelling
+  stages of \Cref{sec:method}; the dashed box is the post-hoc
+  evaluation layer (\Cref{sec:w6,sec:w7}), which consumes the
+  already-on-disk W3 paired predictions and does not re-run any
+  modelling stage.  W2 and W4 are interchangeable first stages
+  feeding into the same downstream pipeline; the W3 paired
+  comparison of \Cref{sec:gen-x-retrieval} switches between them.}
+  \label{fig:pipeline}
+\end{figure}
 
 \subsection{W2 --- Sparse retrieval (\bmtwofive{})}
 \label{sec:w2}
@@ -923,6 +967,81 @@ Two observations:
         that the relevant passage is already in the top-100.
 \end{enumerate}
 
+\subsection{W4-B: encoder horizontal on the W4 sample}
+\label{sec:w4b}
+
+\Cref{tab:w4b-encoders} compares three same-tier general-purpose
+encoders on the identical W4 50k qrels-anchored sample.  All three
+runs share the same sample selection, same BM25-on-sample baseline,
+and the same evaluation pool, so the comparison is apples-to-apples.
+
+\begin{table}[H]
+  \centering
+  \caption{W4-B --- same-tier dense encoders on the W4 50k
+  qrels-anchored sample.  Encoding throughput (ms/passage) measured
+  on a single CPU process. Best per column in \textbf{bold}.}
+  \label{tab:w4b-encoders}
+  \begin{tabular}{lrrrrr}
+    \toprule
+    Encoder & \mrr{} & \ndcg{} & \recallH{} & \recallK{} & ms/passage \\
+    \midrule
+    \texttt{all-MiniLM-L6-v2} (W4 baseline) & 0.8830 & 0.9041 & 0.9946 & 0.9991 & \textbf{16.2} \\
+    \texttt{all-MiniLM-L12-v2}              & 0.8933 & 0.9131 & 0.9955 & \textbf{0.9996} & 31.3 \\
+    \texttt{BAAI/bge-small-en-v1.5}         & \textbf{0.9021} & \textbf{0.9196} & \textbf{0.9967} & 0.9994 & 34.4 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Read.}  bge-small-en-v1.5 lifts \mrr{} by $+0.019$ over
+the W4 baseline at $\sim\!2\!\times$ encoding cost (CPU,
+ms/passage).  MiniLM-L12 sits in the middle on both axes
+($+0.010$ \mrr{} for the same $\sim\!2\!\times$ cost as bge-small).
+The throughput / quality trade is close to linear in this tier;
+none of the three encoders dominates strictly.  The W4-A density
+sweep (\Cref{sec:w4a}) uses bge-small as the encoder.
+
+\subsection{W4-A: density sensitivity of the dense vs.\ \bmtwofive{} gap}
+\label{sec:w4a}
+
+The W4 50k baseline is one point on a wider trade-off:
+\emph{how does the dense-vs-\bmtwofive{} gap shift as the sample
+dilutes?}  \Cref{tab:w4a-density} sweeps three sample sizes (15k,
+30k, 50k) with bge-small (W4-B winner) and the same BM25-on-sample
+baseline at each size.
+
+\begin{table}[H]
+  \centering
+  \caption{W4-A --- density sensitivity of the same-sample
+  BM25-vs-dense gap. Encoder: \texttt{BAAI/bge-small-en-v1.5}
+  (W4-B winner). Density is the share of the sample that is
+  relevant to $\geq\!1$ \devsmall{} query --- qrels-anchored
+  sampling unconditionally includes every dev relevant doc, then
+  fills with distractors, so density falls monotonically as the
+  sample grows.}
+  \label{tab:w4a-density}
+  \begin{tabular}{lrrrrr}
+    \toprule
+    Sample & Density & \bmtwofive{} \mrr{} & Dense \mrr{} & $\Delta$ (dense $-$ \bmtwofive{}) & Dense \recallH{} \\
+    \midrule
+    15k & 49.6\,\% & 0.7806 & 0.9470 & $+0.1664$ & 0.998 \\
+    30k & 24.8\,\% & 0.7349 & 0.9232 & $+0.1883$ & 0.998 \\
+    50k & 14.9\,\% & 0.6948 & 0.9021 & $\mathbf{+0.2074}$ & 0.997 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Read.}  As the sample grows (density drops), dense's
+advantage over \bmtwofive{} grows monotonically: $+0.166 \to +0.188
+\to +0.207$.  This is consistent with the literature claim that
+\bmtwofive{} is competitive at high relevant-density and loses
+headroom to a generic dense encoder as the distractor mass dilutes
+the pool.  The trend is informative even though the absolute
+density range (15\,\%--50\,\%) is much higher than the 1/5/10\,\%
+the project plan originally targeted --- those cells need 70k--700k
+samples to reach (dev/small has $\sim\!7{,}437$ unique relevant
+doc ids, so a true 1\,\% density needs a $\sim\!700{,}000$-passage
+sample) and are deferred.
+
 \subsection{W5: Cross-encoder reranking on the dense top-100}
 \label{sec:w5-dense-rerank}
 
@@ -1020,6 +1139,75 @@ zero, with negligible overlap (\Cref{tab:w3-ci}).
   \end{tabular}
 \end{table}
 
+\Cref{fig:headline-forest} renders the same four CIs as a forest
+plot.
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[
+    every node/.style={font=\small},
+    point/.style={fill=blue!55!black, circle, inner sep=1.4pt},
+    bar/.style={blue!55!black, line width=1pt},
+  ]
+    % Plot scale: value 0..0.22 maps to 0..12cm; \sx = 12/0.22 ~= 54.5
+    \def\sx{54.5}
+
+    % Y rows (top to bottom): ROUGE-L (4), BLEU (3), EM (2), Token-F1 (1)
+    % Faint horizontal guide rules
+    \foreach \y in {1,2,3,4} {
+      \draw[gray!15, line width=0.4pt] (0,\y) -- (12.5,\y);
+    }
+
+    % Vertical zero reference
+    \draw[dashed, gray!60] (0, 0.55) -- (0, 4.55);
+
+    % X-axis ticks
+    \draw[gray] (0, 0.55) -- (12.5, 0.55);
+    \foreach \v in {0.00, 0.05, 0.10, 0.15, 0.20} {
+      \pgfmathsetmacro{\xx}{\v * \sx}
+      \draw[gray] (\xx, 0.55) -- (\xx, 0.40);
+      \node[below=0.5mm, font=\scriptsize, gray!60!black]
+        at (\xx, 0.40) {\v};
+    }
+    \node[font=\small\itshape, gray!60!black] at (6.0, -0.15)
+      {$\Delta$ (reranked $-$ \bmtwofive{}),  $n\!=\!\fdev{}$};
+
+    % --- ROUGE-L: 0.1742, [0.1663, 0.1820]
+    \node[anchor=east, font=\small] at (-0.2, 4) {\rougel{}};
+    \draw[bar] (0.1663*\sx, 4) -- (0.1820*\sx, 4);
+    \node[point] at (0.1742*\sx, 4) {};
+    \node[anchor=west, font=\scriptsize, gray!60!black]
+      at (0.1820*\sx + 0.15, 4) {$+0.174$};
+
+    % --- BLEU (sentence): 0.1330, [0.1265, 0.1395]
+    \node[anchor=east, font=\small] at (-0.2, 3) {BLEU};
+    \draw[bar] (0.1265*\sx, 3) -- (0.1395*\sx, 3);
+    \node[point] at (0.1330*\sx, 3) {};
+    \node[anchor=west, font=\scriptsize, gray!60!black]
+      at (0.1395*\sx + 0.15, 3) {$+0.133$};
+
+    % --- EM: 0.0471, [0.0417, 0.0527]
+    \node[anchor=east, font=\small] at (-0.2, 2) {EM};
+    \draw[bar] (0.0417*\sx, 2) -- (0.0527*\sx, 2);
+    \node[point] at (0.0471*\sx, 2) {};
+    \node[anchor=west, font=\scriptsize, gray!60!black]
+      at (0.0527*\sx + 0.15, 2) {$+0.047$};
+
+    % --- Token-F1: 0.1711, [0.1632, 0.1789]
+    \node[anchor=east, font=\small] at (-0.2, 1) {\Tokenf{}};
+    \draw[bar] (0.1632*\sx, 1) -- (0.1789*\sx, 1);
+    \node[point] at (0.1711*\sx, 1) {};
+    \node[anchor=west, font=\scriptsize, gray!60!black]
+      at (0.1789*\sx + 0.15, 1) {$+0.171$};
+  \end{tikzpicture}
+  \caption{Headline W3 paired-bootstrap forest plot
+  (\Cref{tab:w3-ci}).  Dots: per-query mean $\Delta$ (reranked $-$
+  \bmtwofive{}); bars: 95\,\% percentile interval, 10\,000 resamples,
+  seed 42.  Dashed line at zero: all four intervals lie strictly
+  above it, two-sided bootstrap $p\!<\!0.001$ throughout.}
+  \label{fig:headline-forest}
+\end{figure}
+
 These CIs are $\sim\!6\times$ tighter than an earlier
 200-query subsample comparison (n=200 vs.\ n=\fdev{}), and the
 full-dev $\Delta$ point estimates all sit inside the 200-query CIs
@@ -1081,91 +1269,6 @@ match with the passage --- so semantic-aware reranking of nearly-
 identical passages buys less than it does for long descriptive
 answers where the right passage materially changes the available
 phrasing.
-
-\subsubsection{W4-B preliminary: encoder horizontal}
-\label{sec:w4b}
-
-Two follow-up encoder runs on the \emph{same} qrels-anchored 50k
-sample, identical FAISS \texttt{IndexFlatIP} setup, evaluated on the
-same \fdev{} queries (\Cref{tab:w4b}).  Both finished
-inside the report's cutoff window; the BGE result in particular is
-preliminary in the sense that it has not yet been propagated through
-the W5 reranking and W3 generation stages.
-
-\begin{table}[H]
-  \centering
-  \caption{W4-B preliminary --- encoder horizontal on the same
-  qrels-anchored 50k sample, \fdev{} \devsmall{} queries.  The
-  \bmtwofive{}-on-sample column is identical across rows (same
-  index, same queries).  Numbers are upper-bounded by the
-  qrels-anchored sampling design; the meaningful read is the
-  same-sample $\Delta$ between encoders.}
-  \label{tab:w4b}
-  \begin{tabular}{lrrrr}
-    \toprule
-    Encoder                             & \mrr{} & \ndcg{} & \recallH{} & $\Delta\mrr{}$ vs.\ baseline \\
-    \midrule
-    \texttt{all-MiniLM-L6-v2} (W4)      & 0.8830 & 0.9041  & 0.9946 & ---                          \\
-    \texttt{all-MiniLM-L12-v2}          & 0.8933 & 0.9131  & 0.9955 & $+0.0103$                    \\
-    \texttt{BAAI/bge-small-en-v1.5}     & \textbf{0.9021} & \textbf{0.9196} & \textbf{0.9967} & $\mathbf{+0.0191}$ \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-BGE-small-en-v1.5~\cite{xiao2024bge} is the best of the three
-generic encoders tried so far on this sample, by $+0.019$ \mrr{}
-over the W4 MiniLM-L6 baseline.  Whether the additional gain
-survives cross-encoder reranking (the dense\barrow{}rerank pipeline
-already saturates \recallH{}) is the W5\barrow{}W3 propagation
-question and is left to the post-deadline follow-up.
-
-\subsubsection{W4-A preliminary: density sensitivity}
-\label{sec:w4a}
-
-A complementary axis varies the pool size (relevant-doc density)
-holding the encoder fixed at the W4 baseline.  \Cref{tab:w4a}
-reports the 15\,000-sample point that finished before the report
-cutoff; the 30\,000 and the full original 50\,000 are the other
-two anchor points and the 30\,000 run is still encoding at write
-time.
-
-\begin{table}[H]
-  \centering
-  \caption{W4-A preliminary --- relevant-doc-density sensitivity
-  with the W4 baseline encoder
-  (\texttt{all-MiniLM-L6-v2}).  Same \fdev{} queries throughout;
-  the qrels-anchored sample design keeps every dev relevant doc in
-  the pool by construction at every sample size, so what changes
-  across rows is the \emph{distractor density}, not the recall
-  ceiling.}
-  \label{tab:w4a}
-  \begin{tabular}{lrrrr}
-    \toprule
-    Sample size      & Dense \mrr{} & Dense \ndcg{} & \bmtwofive{}-sample \mrr{} & $\Delta_{\mathrm{dense-BM25}}$ \\
-    \midrule
-    15\,000          & 0.9470 & 0.9567 & 0.7806 & $+0.1665$ \\
-    50\,000 (W4)     & 0.8830 & 0.9041 & 0.6948 & $+0.1882$ \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-Two observations:
-
-\begin{enumerate}
-  \item Absolute MRR drops monotonically as the pool grows, on
-        both arms.  This is the expected direction --- more
-        distractors per relevant doc.
-  \item The \emph{gap} between dense and \bmtwofive{} widens with
-        pool size ($+0.167$ at 15k, $+0.188$ at 50k).  Dense
-        retrieval is more robust to distractor dilution than
-        \bmtwofive{} is on this corpus.
-\end{enumerate}
-
-The 30\,000-sample run is in progress and is the next anchor
-point; it should bisect the 15k\barrow{}50k gap and confirm
-monotonicity.  A full $\{1\,000\,000, 8\,800\,000\}$ extension
-(``what does the gap look like at the real corpus size?'') is
-explicitly out of scope on this hardware budget.
 
 \paragraph{Qualitative example.}  Query \texttt{1043064}
 (\emph{``what is the chemical formula for oxygen tetrafluoride?''}).
@@ -1681,7 +1784,11 @@ table records what shipped, what was substituted, and what was
 de-scoped.
 
 \small
-\begin{longtable}{@{}p{1.15cm}p{3.0cm}p{8.0cm}p{2.4cm}@{}}
+\begin{longtable}{@{}
+    p{0.90cm}
+    >{\raggedright\arraybackslash}p{3.70cm}
+    >{\raggedright\arraybackslash}p{7.55cm}
+    >{\raggedright\arraybackslash}p{2.10cm}@{}}
 \toprule
 \textbf{Week} & \textbf{Plan} & \textbf{Actual} & \textbf{Status} \\
 \midrule
@@ -1699,8 +1806,12 @@ W3 & RAG baseline (T5/BART/Phi + top-3) & T5-small RAG generator on
      paired full-dev comparison (\Cref{sec:gen-x-retrieval}) & shipped \\
 W4 & Dense retrieval, ideally ANCE & Generic \texttt{all-MiniLM-L6-v2}
      on a 50k qrels-anchored sample with FAISS \texttt{IndexFlatIP}
-     (\Cref{sec:w4-results}); ANCE / \msmarco{}-tuned encoders
-     reserved for W4-B & shipped (smaller scope) \\
+     (\Cref{sec:w4-results}); same-tier encoder horizontal added
+     (\Cref{sec:w4b}: MiniLM-L12, bge-small-en-v1.5; bge-small wins
+     $+0.019$ \mrr{}) and density-sensitivity sweep added
+     (\Cref{sec:w4a}: 15k/30k/50k samples).  ANCE /
+     \msmarco{}-tuned encoders and true low-density cells
+     (1/5/10\,\%, needing 70k--700k samples) deferred & shipped \\
 W5 & Cross-encoder rerank & \texttt{ms-marco-MiniLM-L-6-v2} over
      dense top-100, full-dev (\Cref{sec:w5-dense-rerank}) +
      \bmtwofive{}-top-100 arm (\Cref{sec:w5a}) & shipped \\
@@ -1846,6 +1957,55 @@ verbose generator, and whether the lexical-grounding ceiling
 moves.  Each outcome is independently informative for the design
 of CPU-tractable open-domain QA pipelines on this benchmark.
 
+\subsection*{Future work}
+\label{sec:future-work}
+
+Consolidating the deferred items recorded throughout the report
+(\Cref{sec:plan-vs-actual}), the most immediately tractable
+follow-ups, in roughly descending expected information-gain order:
+
+\begin{itemize}
+  \item \textbf{W7-B --- T5-base generator swap.}  The disambiguating
+        experiment of \Cref{sec:discussion-nli-flip}: rerun the W3
+        paired comparison with T5-base (frozen, same prompt) and
+        recompute both the surface-form $\Delta$ and the NLI
+        grounding $\Delta$.  Resolves whether the W7-A sign flip
+        is an output-shape artefact or a genuine semantic
+        regression.
+  \item \textbf{W4-B propagation through W5\barrow{}W3.}  Propagate
+        the BGE-small-en-v1.5 encoder (\Cref{tab:w4b-encoders})
+        through the cross-encoder reranker and the generator and
+        re-run the paired generation comparison.  Tests whether the
+        $+0.019$ \mrr{} W4-B encoder gain survives the
+        \recallH{}-saturated rerank step into a downstream
+        \Tokenf{} $\Delta$.
+  \item \textbf{W5-B --- rerank-depth $K$ sweep.}  $K\!\in\!\{50,
+        100, 200\}$ with the same checkpoint, on a query-id
+        subsample sized for the project's CPU budget.  Quantifies
+        the marginal $\Delta$\mrr{} per additional reranked
+        candidate.
+  \item \textbf{Citation-grade BERTScore.}  Replace the W6
+        DistilBERT proxy with \texttt{roberta-large} \bertscore{}
+        on the full \fdev{} paired qid set.  Refines the absolute
+        level number; the W6 proxy already pins direction and
+        magnitude.
+  \item \textbf{ANCE / msmarco-tuned dense encoder} as a strict
+        upper-bound check on what \msmarco{}-specific tuning buys
+        on top of the generic encoders already tried.
+  \item \textbf{Long-document handling (W8).}  The sliding-window
+        prompt assembly exists in the W3 runner; the missing piece
+        is a benchmark pass on a long-doc slice.
+  \item \textbf{Prompt-format ablations.}  Citation-aware /
+        multi-passage-synthesis prompts to test whether the
+        $\sim\!0.997$ lexical-grounding ceiling (\Cref{tab:w7-lex-ngram})
+        can be moved off the floor of ``extract from a single
+        passage''.
+\end{itemize}
+
+The reproducibility scaffold (\Cref{sec:reproducibility}) is
+designed precisely so that each of these is one configuration edit
+and one runner invocation, not a re-implementation.
+
 % =============================================================================
 \clearpage
 \section*{Acknowledgements}
@@ -1861,8 +2021,8 @@ re-implementation~\cite{lin2021pyserini,lu2024bm25s}, FAISS for
 exact dense search~\cite{johnson2019faiss}, the Sentence-Transformers
 and Hugging Face Transformers
 ecosystems~\cite{reimers2019sbert,wolf2020transformers}, the
-\texttt{ir\_datasets} loader~\cite{macavaney2021irdatasets}, the T5
-and BART pretrained models~\cite{raffel2020t5,lewis2020bart}, the
+\texttt{ir\_datasets} loader~\cite{macavaney2021irdatasets}, the
+T5 pretrained model~\cite{raffel2020t5}, the
 \texttt{cross-encoder/ms-marco-MiniLM-L-6-v2} reranker, the
 DistilBERT and DeBERTa~v3
 encoders~\cite{sanh2019distilbert,he2023debertav3}, and the
