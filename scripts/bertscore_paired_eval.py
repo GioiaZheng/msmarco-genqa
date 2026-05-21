@@ -107,6 +107,17 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _relpath(p: Path) -> str:
+    """Render `p` relative to PROJECT_ROOT when it lives under the repo,
+    else return the absolute path. Matches the convention in
+    ``bootstrap_generation_comparison.py``; tolerates relative CLI input
+    like ``--bm25-dir outputs/...`` without raising."""
+    p = p.resolve()
+    if p.is_relative_to(PROJECT_ROOT):
+        return str(p.relative_to(PROJECT_ROOT))
+    return str(p)
+
+
 def load_predictions_ordered(path: Path) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     with open(path) as f:
@@ -240,12 +251,8 @@ def main() -> None:
             "roberta-large pass or T5-small SFT is warranted."
         ),
         "inputs": {
-            "bm25_predictions": str(
-                (args.bm25_dir / "predictions.jsonl").relative_to(PROJECT_ROOT)
-            ),
-            "reranked_predictions": str(
-                (args.reranked_dir / "predictions.jsonl").relative_to(PROJECT_ROOT)
-            ),
+            "bm25_predictions": _relpath(args.bm25_dir / "predictions.jsonl"),
+            "reranked_predictions": _relpath(args.reranked_dir / "predictions.jsonl"),
         },
         "subsample": {
             "n_total_shared_qids": n_total,
