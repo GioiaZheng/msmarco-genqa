@@ -187,13 +187,33 @@ def load_metrics(cell: dict[str, Any]) -> dict[str, Any]:
         return json.load(f)
 
 
+def _first_stage_block(
+    block: dict[str, Any], first_stage_label: str
+) -> dict[str, Any]:
+    """Return the first-stage metrics block, with a fallback for the
+    reranker's hard-coded ``"dense"`` placeholder.
+
+    ``run_reranker.py`` writes the first-stage block under the key
+    ``"dense"`` regardless of whether the actual input run was BM25 or
+    dense. The fallback mirrors the convention already used in
+    ``compare_rerank_first_stages.py``.
+    """
+    fs = block.get(first_stage_label)
+    if fs is not None:
+        return fs
+    for k, v in block.items():
+        if k != "rerank":
+            return v
+    return {}
+
+
 def aggregate(cells: list[dict[str, Any]]) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     for cell in cells:
         m = load_metrics(cell)
         block = m.get("metrics", {})
         rerank = block.get("rerank", {})
-        first = block.get(cell["first_stage"], {})
+        first = _first_stage_block(block, cell["first_stage"])
         wc = m.get("wall_clock_seconds", {})
         n_q = m.get("config", {}).get("eval_retrieval", {}).get("n_eval_queries")
         if n_q is None:
