@@ -126,6 +126,21 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--k-values",
+        nargs="+",
+        type=int,
+        default=None,
+        help=(
+            "Restrict to cells whose K is in this list. Cells outside the "
+            "filter are dropped from BOTH the run loop and the aggregation. "
+            "Use `--k-values 50 100` to score today's cheap subset and defer "
+            "the expensive K=200 cells; rerun later with the default to get "
+            "the full Pareto. Aggregation only reads metrics.json files that "
+            "already exist for cells in the filter, so a partial sweep is "
+            "honoured."
+        ),
+    )
+    p.add_argument(
         "--output-dir",
         type=Path,
         default=PROJECT_ROOT / "outputs/week05_k_sweep",
@@ -301,12 +316,21 @@ def main() -> None:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     args = parse_args()
+    cells = (
+        [c for c in CELLS if c["K"] in set(args.k_values)]
+        if args.k_values else CELLS
+    )
+    if args.k_values:
+        logger.info(
+            "Filter --k-values=%s → %d / %d cells in scope.",
+            args.k_values, len(cells), len(CELLS),
+        )
 
     if not args.skip_runs:
-        for cell in CELLS:
+        for cell in cells:
             run_one_cell(cell)
 
-    agg = aggregate(CELLS)
+    agg = aggregate(cells)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     fig_rel = plot_pareto(agg, args.figures_dir)
 

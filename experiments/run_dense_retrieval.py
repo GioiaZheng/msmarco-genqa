@@ -180,6 +180,13 @@ def main() -> None:
         dense_cfg["index_dir"] = (
             f"data/processed/dense_index_{safe}_n{sample_size}"
         )
+        # BM25-on-sample is a function of sample_size only (not model_name);
+        # auto-key the cache dir on sample_size whenever the dense override
+        # is in play so the W4-A density sweep doesn't collide with the W4
+        # baseline 50k BM25-sample index.
+        dense_cfg["bm25_sample_index_dir"] = (
+            f"data/processed/bm25_sample_index_n{sample_size}"
+        )
     if args.output_dir is not None:
         output_dir = (
             args.output_dir
