@@ -92,6 +92,25 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip the BM25-on-sample comparison (dense only).",
     )
+    parser.add_argument(
+        "--model-name",
+        type=str,
+        default=None,
+        help=(
+            "Override ``dense.model_name`` from the config. Used by the W4-B "
+            "same-tier encoder horizontal (bge-small-en-v1.5, "
+            "all-MiniLM-L12-v2, …)."
+        ),
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Override the output directory. Defaults to ``outputs/week04_dense``. "
+            "Pass a fresh path per-encoder so W4-B runs don't collide."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -149,7 +168,22 @@ def main() -> None:
 
     dense_cfg = cfg["dense"]
     sample_size = args.sample_size or int(dense_cfg["sample_size"])
-    output_dir = PROJECT_ROOT / dense_cfg["output_dir"]
+    # CLI overrides for the W4-B encoder horizontal: model_name + output dir.
+    # When --model-name is overridden, also key the cached FAISS index dir on
+    # the model so the W4-B runs don't overwrite the W4 baseline (MiniLM-L6)
+    # index with embeddings from a different encoder.
+    if args.model_name is not None:
+        dense_cfg["model_name"] = args.model_name
+        safe = args.model_name.replace("/", "_").replace(":", "_")
+        dense_cfg["index_dir"] = f"data/processed/dense_index_{safe}"
+    if args.output_dir is not None:
+        output_dir = (
+            args.output_dir
+            if args.output_dir.is_absolute()
+            else PROJECT_ROOT / args.output_dir
+        )
+    else:
+        output_dir = PROJECT_ROOT / dense_cfg["output_dir"]
     cache_dir = PROJECT_ROOT / cfg["data"].get("cache_dir", "data/raw")
     dense_index_dir = PROJECT_ROOT / dense_cfg["index_dir"]
     bm25_sample_index_dir = PROJECT_ROOT / dense_cfg.get(

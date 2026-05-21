@@ -126,6 +126,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "the manifest's argv record captures the override for provenance."
         ),
     )
+    parser.add_argument(
+        "--model-name",
+        type=str,
+        default=None,
+        help=(
+            "Override cfg['generation']['model_name'] (e.g. ``t5-base``, "
+            "``google/flan-t5-base``). Used by the W7-B generator horizontal."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -310,8 +319,9 @@ def main() -> None:
         top_doc_ids_per_query.append(top_ids)
 
     # ---- 4. Generate ----
+    gen_model_name = args.model_name or cfg["generation"].get("model_name", "t5-small")
     gen_cfg = RAGGenerationConfig(
-        model_name=cfg["generation"].get("model_name", "t5-small"),
+        model_name=gen_model_name,
         max_input_length=int(cfg["generation"].get("max_input_length", 512)),
         max_new_tokens=int(cfg["generation"].get("max_new_tokens", 64)),
         top_k_passages=top_k_passages,
