@@ -168,14 +168,18 @@ def main() -> None:
 
     dense_cfg = cfg["dense"]
     sample_size = args.sample_size or int(dense_cfg["sample_size"])
-    # CLI overrides for the W4-B encoder horizontal: model_name + output dir.
-    # When --model-name is overridden, also key the cached FAISS index dir on
-    # the model so the W4-B runs don't overwrite the W4 baseline (MiniLM-L6)
-    # index with embeddings from a different encoder.
+    # CLI overrides for the W4-B encoder horizontal + W4-A density sweep:
+    # model_name + output dir + auto-keyed FAISS index dir.
+    # The cached index is invalidated by EITHER a different encoder OR a
+    # different sample size, so we key the dir on (model_safe, sample_size)
+    # whenever --model-name is overridden. The W4 baseline (50k MiniLM-L6,
+    # written via the unmodified default code path) is left untouched.
     if args.model_name is not None:
         dense_cfg["model_name"] = args.model_name
         safe = args.model_name.replace("/", "_").replace(":", "_")
-        dense_cfg["index_dir"] = f"data/processed/dense_index_{safe}"
+        dense_cfg["index_dir"] = (
+            f"data/processed/dense_index_{safe}_n{sample_size}"
+        )
     if args.output_dir is not None:
         output_dir = (
             args.output_dir
