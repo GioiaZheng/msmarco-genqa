@@ -99,6 +99,27 @@ Sampled queries where the cross-encoder moved the relevant passage:
 
 - Rerank BM25 top-100 (W2 run) and compare the delta to the dense
   delta — does the reranker recover more from a weaker first stage?
+  **Delivered in W5-A; see §9.1.**
 - Hybrid first-stage (RRF over BM25 + dense) → rerank.
 - Connect the reranked top-K to the W3 RAG generator and measure
   whether better ordering improves answer quality.
+
+### 9.1 W5 follow-ups
+
+- *W5-A* — **done.** Cross-encoder rerank applied to the W2 BM25
+  full-corpus top-100; head-to-head with the existing W5 dense+rerank.
+  Numbers are not embedded here to keep the W5 snapshot stable; see
+  the README §1 Week 5 follow-ups bullet for the live writeup.
+  Headline: the naive recovery rate Δ / (1 − first_stage) makes Dense
+  look better (40.5 % vs 22.3 % on MRR@10), but the *constrained*
+  recovery Δ / (Recall@100 − first_stage) — which accounts for the
+  fact that BM25's full-corpus Recall@100 is only 0.62, so 38 % of
+  queries have no relevant doc for the reranker to promote at all —
+  comes in essentially tied (BM25 41.1 %, Dense 42.4 %). The reranker
+  does the same job on both first stages once the headroom is
+  matched. Driver: `scripts/compare_rerank_first_stages.py`. Output:
+  `outputs/week05_rerank_first_stage_compare/`.
+- *W5-B* — **queued (post-deadline).** Perf–latency Pareto over
+  K ∈ {50, 100, 200} on both first stages (1 000-query subsample for
+  K=50 and K=200, K=100 reuses the W5-A / W5 full-dev runs). Driver:
+  `scripts/run_w5b_k_sweep.py` with `--k-values`.

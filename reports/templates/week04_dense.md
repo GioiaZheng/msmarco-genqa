@@ -84,7 +84,29 @@ Concrete observations from this run (sampled, generic encoder, no fine-tune):
 ## 8. Next
 
 - Hybrid retrieval (BM25 + dense score fusion, e.g. RRF or weighted sum).
-- Cross-encoder reranking over the BM25 top-100 (`ms-marco-MiniLM-L-6-v2`).
+- Cross-encoder reranking over the BM25 top-100 (`ms-marco-MiniLM-L-6-v2`) —
+  delivered in W5-A; see §8.1.
 - Switch the encoder to a MS MARCO-tuned variant and re-run on the same sample.
 - Scale the sample to 200k–500k passages to track how the BM25 ↔ dense
   gap shifts as the pool grows (relevant doc density drops).
+
+### 8.1 W4 follow-ups (done; live in the README)
+
+After this snapshot was written, two offline follow-ups were layered on
+top of the same W4 sample. Numbers are not embedded here to keep the
+W4 snapshot stable; see README §1 Week 4 for the live writeup.
+
+- *W4-B* — same-tier encoder horizontal on the identical W4 50k
+  qrels-anchored sample
+  (`scripts/run_w4b_encoder_horizontal.py`, output
+  `outputs/week04_encoder_horizontal/`). Headline: `BAAI/bge-small-en-v1.5`
+  is the best small encoder by MRR@10 (+0.019 over the baseline
+  MiniLM-L6) at ~2× the CPU encoding cost.
+- *W4-A* — qrel-density sensitivity with bge-small (W4-B winner)
+  at three sample sizes (15k / 30k / 50k passages, density range
+  14.9 %–49.6 %; `scripts/run_w4a_density_sweep.py`, output
+  `outputs/week04_density_sweep/`, figure
+  `figures/w4a_density_curve.png`). As density drops, the dense vs
+  BM25-on-sample Δ MRR@10 grows monotonically: +0.166 → +0.188 →
+  +0.207. True 1 / 5 / 10 % density cells need 70k–700k samples
+  (dev/small has ~7,437 unique relevants) and are deferred.
