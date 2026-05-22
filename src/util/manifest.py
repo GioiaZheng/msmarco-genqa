@@ -36,6 +36,15 @@ from typing import Any, Iterable
 logger = logging.getLogger(__name__)
 
 
+class DirtyTreeError(RuntimeError):
+    """Raised by ``write_run_manifest`` when ``require_clean_tree=True`` and
+    the git working tree has uncommitted changes.
+
+    The recorded commit SHA alone is not sufficient to reproduce a run made
+    from a dirty tree, so canonical / headline runs may opt in to this check.
+    """
+
+
 # --------------------------------------------------------------------------- #
 # Git
 # --------------------------------------------------------------------------- #
@@ -178,6 +187,7 @@ def write_run_manifest(
     extra_outputs: Iterable[Path] = (),
     extra: dict[str, Any] | None = None,
     manifest_name: str = "manifest.json",
+    require_clean_tree: bool = False,
 ) -> Path:
     """Standardised manifest writer for the experiment runners.
 
@@ -196,6 +206,13 @@ def write_run_manifest(
       callers don't need to enumerate them.
     - All paths land in the manifest as repo-relative (privacy rule:
       we never paste absolute home paths into committed JSON).
+
+    Dirty-tree handling: if the git working tree has uncommitted changes,
+    the recorded commit SHA alone is not sufficient to reproduce the run.
+    By default this only emits a ``logger.warning``. Pass
+    ``require_clean_tree=True`` (from runners: ``--require-clean-tree``)
+    to refuse to write the manifest in that case — useful for canonical /
+    headline runs where the recorded provenance must be tight.
     """
     metrics_path = output_dir / "metrics.json"
 
@@ -220,4 +237,26 @@ def write_run_manifest(
         output_paths=outputs,
         extra=extra,
     )
-    return write_manifest(manifest, output_dir / manifest_name)
+
+    is_dirty = manifest["git"].get("dirty") is True
+    manifest_path = output_dir / manifest_name
+
+    if is_dirty and require_clean_tree:
+        raise DirtyTreeError(
+            f"refusing to write manifest at {manifest_path}: git working "
+            "tree has uncommitted changes and require_clean_tree=True. "
+            "Commit your changes and rerun, or omit --require-clean-tree."
+        )
+
+    path = write_manifest(manifest, manifest_path)
+
+    if is_dirty:
+        logger.warning(
+            "Wrote %s from a DIRTY git tree (commit %s + uncommitted "
+            "changes). The recorded commit alone is NOT sufficient to "
+            "reproduce this run.",
+            path,
+            manifest["git"].get("commit"),
+        )
+
+    return path

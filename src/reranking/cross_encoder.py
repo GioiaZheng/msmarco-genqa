@@ -49,11 +49,16 @@ class CrossEncoderReranker:
         device: str | None = None,
         batch_size: int = 64,
         max_length: int = 512,
+        revision: str | None = None,
     ):
         self.model_name = model_name
         self.device = device
         self.batch_size = batch_size
         self.max_length = max_length
+        # HF revision pin (40-hex SHA). ``None`` means "use whatever main
+        # is pointing at right now" — the historical behaviour. Configs
+        # produced after infra/reproducibility-round1 always set this.
+        self.revision = revision
         self._model = None  # sentence_transformers.CrossEncoder
 
     # ------------------------------------------------------------------ #
@@ -84,17 +89,21 @@ class CrossEncoderReranker:
                 self.device = "cpu"
 
         logger.info(
-            "Loading cross-encoder %s on %s (max_length=%d, batch_size=%d)",
+            "Loading cross-encoder %s (revision=%s) on %s "
+            "(max_length=%d, batch_size=%d)",
             self.model_name,
+            self.revision or "<unpinned>",
             self.device,
             self.max_length,
             self.batch_size,
         )
-        self._model = CrossEncoder(
-            self.model_name,
-            device=self.device,
-            max_length=self.max_length,
-        )
+        ce_kwargs: dict = {
+            "device": self.device,
+            "max_length": self.max_length,
+        }
+        if self.revision is not None:
+            ce_kwargs["revision"] = self.revision
+        self._model = CrossEncoder(self.model_name, **ce_kwargs)
 
     # ------------------------------------------------------------------ #
     # Scoring

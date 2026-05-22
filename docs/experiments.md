@@ -340,6 +340,19 @@ sufficient to re-identify the run six months later. See
 [`src/util/manifest.py`](../src/util/manifest.py) and
 [`src/util/environment.py`](../src/util/environment.py).
 
+Three canonical runs predate the manifest plumbing and have no runtime
+`manifest.json`: the W2 BM25 full-corpus retrieval, the W4 dense
+baseline (50k sample), and the W5 reranker over the full BM25 run.
+Each of those output directories carries a `provenance.backfill.json`
+instead — a separate file with a deliberately distinct schema string
+(`msmarco-genqa.backfilled-provenance.v1`) and an explicit `unknown`
+block enumerating what cannot be recovered from outside-of-runtime
+information: the exact production commit, the CLI argv, the wall-clock
+timestamp, whether the tree was dirty, the installed package versions,
+the input-file byte identities, and the effective coverage of the
+seed-42 promise. See
+[`scripts/backfill_provenance.py`](../scripts/backfill_provenance.py).
+
 Deterministic seed (`seed: 42`) is set in `configs/baseline.yaml` and
 threaded through the samplers, the dense encoder batching, and the
 evaluation bootstrap. For an environment that reproduces the numbers

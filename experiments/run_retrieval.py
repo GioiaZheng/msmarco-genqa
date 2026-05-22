@@ -40,6 +40,7 @@ from src.evaluation.retrieval import evaluate_retrieval  # noqa: E402
 from src.retrieval.bm25 import BM25Retriever  # noqa: E402
 from src.util.environment import capture_environment  # noqa: E402
 from src.util.manifest import write_run_manifest  # noqa: E402
+from src.util.seeding import set_global_seed  # noqa: E402
 
 logger = logging.getLogger("run_retrieval")
 
@@ -70,6 +71,15 @@ def parse_args() -> argparse.Namespace:
             "Skip queries that already have a complete top-K block in run.tsv "
             "and append only the missing ones. Without --resume, run.tsv is "
             "truncated at the start of the run."
+        ),
+    )
+    parser.add_argument(
+        "--require-clean-tree",
+        action="store_true",
+        help=(
+            "Refuse to write the manifest if the git working tree has "
+            "uncommitted changes. Use for canonical / headline runs where "
+            "the recorded commit must be sufficient to reproduce."
         ),
     )
     return parser.parse_args()
@@ -137,7 +147,7 @@ def main() -> None:
     args = parse_args()
     cfg = load_config(args.config)
     seed = cfg.get("seed", 42)
-    random.seed(seed)
+    seed_coverage = set_global_seed(seed)
 
     output_dir = PROJECT_ROOT / cfg["eval_retrieval"]["output_dir"]
     index_dir = PROJECT_ROOT / cfg["retrieval"]["index_dir"]
@@ -408,7 +418,9 @@ def main() -> None:
             "n_eval_queries": n_examples,
             "resumed": bool(args.resume and (set(qids) - set(pending_qids))),
             "seed": seed,
+            "seed_coverage": seed_coverage,
         },
+        require_clean_tree=args.require_clean_tree,
     )
 
     # ---- 8. Friendly summary ----

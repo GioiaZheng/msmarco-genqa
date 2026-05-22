@@ -29,7 +29,7 @@ layer* §*Closure* below.
 [§1 Status](#1-status) below (each weekly stage is self-contained with a
 headline number + script + report pointer); the BM25-vs-reranked
 generation comparison is consolidated in *Generation × retrieval source*.
-PDF per-week reports live in `reports/generated/*.pdf`.
+The frozen final PDF lives at `reports/internship_report/report.pdf`.
 
 **How to reproduce.** `make install`, then run the per-week scripts in
 [§4 Run the official baselines](#4-run-the-official-baselines). The W3
@@ -779,14 +779,14 @@ Current state of the engineering scaffold (what works today; what's still TODO).
 
 | Area | Status | Notes |
 |---|---|---|
-| Default unit tests | ✅ | `make test` / `pytest -q` — 78 tests, no network, no heavy deps. Slow tests excluded by `[tool.pytest.ini_options]`. |
+| Default unit tests | ✅ | `make test` / `pytest -q` — 286+ tests, no network, no heavy deps. Slow tests excluded by `[tool.pytest.ini_options]`. |
 | Slow tests | ✅ (skips gracefully) | `make test-slow` includes `@pytest.mark.slow`. HF metric scripts skip if unavailable; never hard-fail offline. |
 | Lockfile | ✅ basic | `requirements-lock.txt` is pip-freeze-style; sub-dep transitive closure + hash pinning are TODO (would need pip-tools / uv). |
 | Installable package | ✅ basic | `pip install -e .` registers `src` via `pyproject.toml`. Existing `sys.path.insert` shims in `experiments/` and `scripts/` are kept for now to avoid touching unrelated code; removing them is a TODO. |
 | CI | ✅ basic | `.github/workflows/ci.yml`: pytest + ruff on push/PR to main. Does not run slow tests or download MS MARCO data. |
 | Lint | ✅ minimal | `ruff` with `F` + `W` (pyflakes + whitespace). Style rules (`E`, `I`, `UP`, …) intentionally OFF on the first pass. |
 | Artifact manifest | ✅ wired | `src/util/manifest.py` provides `build_manifest()` / `write_manifest()` / `write_run_manifest()`. All 4 runners write `outputs/<week>/manifest.json` alongside `metrics.json`. Captures git commit + dirty flag, command, config hash, dependency-file hashes (requirements / lockfile / pyproject), and per-output sha256 (truncated). |
-| Numbers in `reports/generated/*.pdf` | ⚠️ historical | Reflect the dev environment at the time the PDF was committed. Re-running with `requirements-lock.txt` is the closest we get to reproduction today. |
+| Numbers in `reports/internship_report/report.pdf` | ⚠️ historical | Reflect the dev environment at tag `v1.0-internship-final`. Re-running with `requirements-lock.txt` is the closest we get to reproduction today. |
 
 Current limitations to be aware of:
 

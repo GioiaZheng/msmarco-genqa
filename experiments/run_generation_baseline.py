@@ -54,6 +54,7 @@ from src.evaluation.generation import evaluate_generation  # noqa: E402
 from src.generation.rag_generator import RAGGenerationConfig, RAGGenerator  # noqa: E402
 from src.util.environment import capture_environment  # noqa: E402
 from src.util.manifest import write_run_manifest  # noqa: E402
+from src.util.seeding import set_global_seed  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +134,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Override cfg['generation']['model_name'] (e.g. ``t5-base``, "
             "``google/flan-t5-base``). Used by the W7-B generator horizontal."
+        ),
+    )
+    parser.add_argument(
+        "--require-clean-tree",
+        action="store_true",
+        help=(
+            "Refuse to write the manifest if the git working tree has "
+            "uncommitted changes. Use for canonical / headline runs where "
+            "the recorded commit must be sufficient to reproduce."
         ),
     )
     return parser.parse_args(argv)
@@ -236,7 +246,7 @@ def main() -> None:
         # the snapshot reflects the effective value, not the file default.
         cfg.setdefault("generation", {})["max_new_tokens"] = args.max_new_tokens
     seed = cfg.get("seed", 42)
-    random.seed(seed)
+    seed_coverage = set_global_seed(seed)
 
     cache_dir = PROJECT_ROOT / cfg["data"].get("cache_dir", "data/raw")
     run_path = resolve_input_run(args, cfg, PROJECT_ROOT)
@@ -320,8 +330,15 @@ def main() -> None:
 
     # ---- 4. Generate ----
     gen_model_name = args.model_name or cfg["generation"].get("model_name", "t5-small")
+    # If --model-name is used to override the default checkpoint (e.g. the
+    # W7-B generator horizontal swapping t5-small for t5-base), the
+    # baked-in revision pin from the config no longer applies — fall back
+    # to unpinned to avoid loading the wrong revision under the wrong name.
+    revision_from_cfg = cfg["generation"].get("revision")
+    gen_revision = revision_from_cfg if args.model_name is None else None
     gen_cfg = RAGGenerationConfig(
         model_name=gen_model_name,
+        revision=gen_revision,
         max_input_length=int(cfg["generation"].get("max_input_length", 512)),
         max_new_tokens=int(cfg["generation"].get("max_new_tokens", 64)),
         top_k_passages=top_k_passages,
@@ -416,6 +433,7 @@ def main() -> None:
         "top_k_passages": top_k_passages,
         "n_eval_queries": len(predictions),
         "seed": seed,
+        "seed_coverage": seed_coverage,
         "input_run": input_run_rel,
         "retrieval_source": retrieval_source,
         "run_name": output_dir.name,
@@ -429,6 +447,7 @@ def main() -> None:
         config_path=args.config,
         extra_outputs=[pred_path, examples_path],
         extra=manifest_extra,
+        require_clean_tree=args.require_clean_tree,
     )
 
     print("\n=== RAG generation ===")

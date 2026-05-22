@@ -22,6 +22,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RAGGenerationConfig:
     model_name: str = "t5-small"
+    # HF revision pin (40-hex SHA). ``None`` means "use whatever main is
+    # pointing at right now" — the historical behaviour. Configs produced
+    # after infra/reproducibility-round1 always set this.
+    revision: str | None = None
     max_input_length: int = 512
     max_new_tokens: int = 64
     top_k_passages: int = 3
@@ -39,9 +43,21 @@ class RAGGenerator:
         self.config = config or RAGGenerationConfig()
         device = self.config.device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.device = device
-        logger.info("Loading %s on %s", self.config.model_name, device)
-        self.tokenizer = AutoTokenizer.from_pretrained(self.config.model_name)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(self.config.model_name).to(device)
+        logger.info(
+            "Loading %s (revision=%s) on %s",
+            self.config.model_name,
+            self.config.revision or "<unpinned>",
+            device,
+        )
+        hf_kwargs: dict = {}
+        if self.config.revision is not None:
+            hf_kwargs["revision"] = self.config.revision
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.config.model_name, **hf_kwargs
+        )
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(
+            self.config.model_name, **hf_kwargs
+        ).to(device)
         self.model.eval()
         self._torch = torch
 

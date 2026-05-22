@@ -74,6 +74,7 @@ from src.reranking.io import (  # noqa: E402
 )
 from src.util.environment import capture_environment  # noqa: E402
 from src.util.manifest import write_run_manifest  # noqa: E402
+from src.util.seeding import set_global_seed  # noqa: E402
 
 logger = logging.getLogger("run_reranker")
 
@@ -157,6 +158,15 @@ def parse_args() -> argparse.Namespace:
             "(falls back to 200). Smaller chunks = more durable but more I/O."
         ),
     )
+    parser.add_argument(
+        "--require-clean-tree",
+        action="store_true",
+        help=(
+            "Refuse to write the manifest if the git working tree has "
+            "uncommitted changes. Use for canonical / headline runs where "
+            "the recorded commit must be sufficient to reproduce."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -217,7 +227,7 @@ def main() -> None:
     args = parse_args()
     cfg = load_config(args.config)
     seed = cfg.get("seed", 42)
-    random.seed(seed)
+    seed_coverage = set_global_seed(seed)
 
     rerank_cfg = cfg.get("reranker", {})
     model_name = args.model_name or rerank_cfg.get(
@@ -345,6 +355,7 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     reranker = CrossEncoderReranker(
         model_name=model_name,
+        revision=rerank_cfg.get("revision"),
         device=rerank_cfg.get("device"),
         batch_size=batch_size,
         max_length=max_length,
@@ -564,7 +575,9 @@ def main() -> None:
             else str(input_run_path),
             "resumed": bool(args.resume) and len(done_qids) > 0,
             "seed": seed,
+            "seed_coverage": seed_coverage,
         },
+        require_clean_tree=args.require_clean_tree,
     )
 
     # ---------------------------------------------------------------- #

@@ -65,11 +65,16 @@ class DenseRetriever:
         device: str | None = None,
         encode_batch_size: int = 32,
         normalize: bool = True,
+        revision: str | None = None,
     ):
         self.model_name = model_name
         self.device = device  # resolved lazily in _ensure_model
         self.encode_batch_size = encode_batch_size
         self.normalize = normalize
+        # HF revision pin (40-hex SHA). ``None`` means "use whatever main
+        # is pointing at right now" — the historical behaviour. Configs
+        # produced after infra/reproducibility-round1 always set this.
+        self.revision = revision
 
         # Populated by build/load.
         self.doc_ids: list[str] | None = None
@@ -105,8 +110,16 @@ class DenseRetriever:
                 self.device = "cuda" if torch.cuda.is_available() else "cpu"
             except ImportError:
                 self.device = "cpu"
-        logger.info("Loading dense encoder %s on %s", self.model_name, self.device)
-        self._model = SentenceTransformer(self.model_name, device=self.device)
+        logger.info(
+            "Loading dense encoder %s (revision=%s) on %s",
+            self.model_name,
+            self.revision or "<unpinned>",
+            self.device,
+        )
+        st_kwargs: dict = {"device": self.device}
+        if self.revision is not None:
+            st_kwargs["revision"] = self.revision
+        self._model = SentenceTransformer(self.model_name, **st_kwargs)
         self._embedding_dim = self._model.get_sentence_embedding_dimension()
 
     def encode(
@@ -193,6 +206,7 @@ class DenseRetriever:
             json.dump(
                 {
                     "model_name": self.model_name,
+                    "revision": self.revision,
                     "embedding_dim": self._embedding_dim,
                     "normalize": self.normalize,
                     "metric": "ip",  # IP over normalised embeddings == cosine
@@ -254,6 +268,9 @@ class DenseRetriever:
             device=device,
             encode_batch_size=encode_batch_size,
             normalize=cfg.get("normalize", True),
+            # ``revision`` may be missing in caches built before the
+            # revision-pin patch; treat as "unpinned" rather than failing.
+            revision=cfg.get("revision"),
         )
         retriever.doc_ids = list(doc_ids)
         retriever._index = faiss.read_index(str(path / "index.faiss"))

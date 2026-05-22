@@ -58,6 +58,7 @@ from src.retrieval.dense import DenseRetriever  # noqa: E402
 from src.retrieval.sampling import qrels_anchored_sample  # noqa: E402
 from src.util.environment import capture_environment  # noqa: E402
 from src.util.manifest import write_run_manifest  # noqa: E402
+from src.util.seeding import set_global_seed  # noqa: E402
 
 logger = logging.getLogger("run_dense_retrieval")
 
@@ -109,6 +110,15 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Override the output directory. Defaults to ``outputs/week04_dense``. "
             "Pass a fresh path per-encoder so W4-B runs don't collide."
+        ),
+    )
+    parser.add_argument(
+        "--require-clean-tree",
+        action="store_true",
+        help=(
+            "Refuse to write the manifest if the git working tree has "
+            "uncommitted changes. Use for canonical / headline runs where "
+            "the recorded commit must be sufficient to reproduce."
         ),
     )
     return parser.parse_args()
@@ -164,7 +174,7 @@ def main() -> None:
     args = parse_args()
     cfg = load_config(args.config)
     seed = cfg.get("seed", 42)
-    random.seed(seed)
+    seed_coverage = set_global_seed(seed)
 
     dense_cfg = cfg["dense"]
     sample_size = args.sample_size or int(dense_cfg["sample_size"])
@@ -277,6 +287,7 @@ def main() -> None:
     else:
         dense = DenseRetriever(
             model_name=dense_cfg["model_name"],
+            revision=dense_cfg.get("revision"),
             device=dense_cfg.get("device"),
             encode_batch_size=int(dense_cfg.get("encode_batch_size", 32)),
             normalize=True,
@@ -475,7 +486,9 @@ def main() -> None:
             "n_eval_queries": n_examples_total,
             "compared_against_bm25_sample": bm25 is not None,
             "seed": seed,
+            "seed_coverage": seed_coverage,
         },
+        require_clean_tree=args.require_clean_tree,
     )
 
     # ---------------------------------------------------------------- #

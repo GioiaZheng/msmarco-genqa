@@ -8,10 +8,19 @@ absolute-home paths, no usernames, no host-specific bits.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 
-from src.util.manifest import build_manifest, write_manifest, write_run_manifest
+import pytest
+
+from src.util import manifest as manifest_mod
+from src.util.manifest import (
+    DirtyTreeError,
+    build_manifest,
+    write_manifest,
+    write_run_manifest,
+)
 
 
 def test_build_manifest_schema(tmp_path: Path):
@@ -209,3 +218,96 @@ def test_write_run_manifest_records_git_commit(tmp_path: Path):
     assert "git" in data
     assert "commit" in data["git"]
     assert "dirty" in data["git"]
+
+
+# --------------------------------------------------------------------------- #
+# Dirty-tree handling
+# --------------------------------------------------------------------------- #
+
+
+def _make_minimal_output_dir(tmp_path: Path, name: str) -> Path:
+    output_dir = tmp_path / "outputs" / name
+    output_dir.mkdir(parents=True)
+    (output_dir / "metrics.json").write_text("{}")
+    return output_dir
+
+
+def test_write_run_manifest_dirty_tree_emits_warning(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+):
+    """A dirty working tree should produce a clear warning so that downstream
+    readers know the recorded commit alone is not enough to reproduce."""
+    monkeypatch.setattr(
+        manifest_mod,
+        "_git_info",
+        lambda: {"commit": "deadbeefface", "dirty": True},
+    )
+    output_dir = _make_minimal_output_dir(tmp_path, "dirty_warn")
+
+    with caplog.at_level(logging.WARNING, logger="src.util.manifest"):
+        manifest_path = write_run_manifest(
+            project_root=tmp_path,
+            output_dir=output_dir,
+        )
+
+    # The manifest still got written (default behaviour is warn-not-fail).
+    assert manifest_path.exists()
+    data = json.loads(manifest_path.read_text())
+    assert data["git"]["dirty"] is True
+
+    # The warning fired and explicitly named the dirty state.
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert warnings, "expected a WARNING-level log on dirty tree"
+    assert any("dirty" in r.message.lower() for r in warnings)
+
+
+def test_write_run_manifest_require_clean_tree_raises_on_dirty(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """``require_clean_tree=True`` must refuse to write the manifest when the
+    tree is dirty — including not leaving a partial file behind."""
+    monkeypatch.setattr(
+        manifest_mod,
+        "_git_info",
+        lambda: {"commit": "deadbeefface", "dirty": True},
+    )
+    output_dir = _make_minimal_output_dir(tmp_path, "dirty_refuse")
+
+    with pytest.raises(DirtyTreeError, match="dirty"):
+        write_run_manifest(
+            project_root=tmp_path,
+            output_dir=output_dir,
+            require_clean_tree=True,
+        )
+
+    # No partial manifest written on refusal.
+    assert not (output_dir / "manifest.json").exists()
+
+
+def test_write_run_manifest_require_clean_tree_ok_when_clean(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+):
+    """When the tree is clean, ``require_clean_tree=True`` should be a no-op:
+    manifest written, no warning fired."""
+    monkeypatch.setattr(
+        manifest_mod,
+        "_git_info",
+        lambda: {"commit": "deadbeefface", "dirty": False},
+    )
+    output_dir = _make_minimal_output_dir(tmp_path, "clean_ok")
+
+    with caplog.at_level(logging.WARNING, logger="src.util.manifest"):
+        manifest_path = write_run_manifest(
+            project_root=tmp_path,
+            output_dir=output_dir,
+            require_clean_tree=True,
+        )
+
+    assert manifest_path.exists()
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert not any("dirty" in r.message.lower() for r in warnings)

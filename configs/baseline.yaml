@@ -43,6 +43,12 @@ eval_retrieval:
 
 generation:
   model_name: t5-small
+  # HF revision pin. The full 40-hex commit SHA on the HuggingFace Hub repo.
+  # Captured so the manifest records *which* checkpoint produced the run --
+  # HF repos are not immutable, the maintainer can force-push the main
+  # branch. To bump: look up the latest SHA via huggingface_hub.HfApi
+  # (see commit infra(deps): pin HF model revisions).
+  revision: df1b051c49625cf57a3d0d8d3863ed4d13564fe4
   max_input_length: 512
   max_new_tokens: 64
   top_k_passages: 3
@@ -60,6 +66,8 @@ eval_generation:
 # **not** comparable to the full-corpus W2 baseline.
 dense:
   model_name: sentence-transformers/all-MiniLM-L6-v2
+  # HF revision pin (40-hex). See note under generation.revision.
+  revision: c9745ed1d9f207416be6d2e6f8de32d1f16199bf
   sample_size: 50000
   encode_batch_size: 32
   device: null            # null -> auto (cuda if available, else cpu)
@@ -76,6 +84,8 @@ dense:
 # 1000. Top-100 is the standard reranking depth.
 reranker:
   model_name: cross-encoder/ms-marco-MiniLM-L-6-v2
+  # HF revision pin (40-hex). See note under generation.revision.
+  revision: c5ee24cb16019beea0893ab7796b1df96625c6b8
   rerank_top_k: 100
   batch_size: 64
   max_length: 512
