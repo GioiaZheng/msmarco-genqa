@@ -3,7 +3,7 @@
 ## TL;DR
 
 A reproducible, single-machine end-to-end MS MARCO retrieval-augmented QA
-pipeline built up across six weekly stages:
+pipeline built up across six experimental stages:
 
 > **W1 EDA → W2 BM25 retrieval → W3 RAG generation (T5-small) → W4 dense
 > retrieval (SBERT + FAISS) → W5 cross-encoder reranking → W6 semantic-proxy
@@ -22,16 +22,16 @@ output*, not retrieval or semantic failures. A follow-up
 `max_new_tokens=64→128` sweep on full dev/small **falsifies** the
 budget-cap reading (truncation share 90 % → 87.5 %; all four
 surface-form deltas move by <0.005) — the bottleneck is generator
-capacity / output style, not decode budget. See *Week 6 — Evaluation
+capacity / output style, not decode budget. See *Stage 6 — Evaluation
 layer* §*Closure* below.
 
 **How to inspect.** The full statistical write-up lives in
-[§1 Status](#1-status) below (each weekly stage is self-contained with a
+[§1 Status](#1-status) below (each experimental stage is self-contained with a
 headline number + script + report pointer); the BM25-vs-reranked
 generation comparison is consolidated in *Generation × retrieval source*.
 The frozen final PDF lives at `reports/internship_report/report.pdf`.
 
-**How to reproduce.** `make install`, then run the per-week scripts in
+**How to reproduce.** `make install`, then run the per-stage scripts in
 [§4 Run the official baselines](#4-run-the-official-baselines). The W3
 full-dev comparison + W6 evaluation overlay are a single block under
 *Generation × retrieval source*. The repo is **batch-eval oriented** by
@@ -55,19 +55,19 @@ and [`docs/experiments.md`](docs/experiments.md) for the experiment-line narrati
 
 ## 1. Status
 
-### Week 1 — EDA &nbsp;&nbsp;✅ done
+### Stage 1 — EDA &nbsp;&nbsp;✅ done
 
 - Dataset statistics + query/passage/answer-type distributions covered in §1 of
   [`reports/internship_report/report.pdf`](reports/internship_report/report.pdf).
   Source figures: `figures/{query_length,passage_length,query_type,answer_type_by_query_type}_distribution.png`.
 
-### Week 2 — BM25 retrieval &nbsp;&nbsp;✅ done
+### Stage 2 — BM25 retrieval &nbsp;&nbsp;✅ done
 
 - Script: [`experiments/run_retrieval.py`](experiments/run_retrieval.py)
 - **MRR@10 = 0.1703** &nbsp;·&nbsp; **Recall@100 = 0.6212** &nbsp;·&nbsp; **Recall@1000 = 0.8154**
   on `dev/small` (6,980 queries, full 8.8M-passage corpus)
 
-### Week 3 — RAG generation &nbsp;&nbsp;✅ done
+### Stage 3 — RAG generation &nbsp;&nbsp;✅ done
 
 - Script: [`experiments/run_generation_baseline.py`](experiments/run_generation_baseline.py)
 - **Sampled baseline** — 200-query sample of dev/small (seed 42), T5-small (no fine-tuning),
@@ -80,7 +80,7 @@ and [`docs/experiments.md`](docs/experiments.md) for the experiment-line narrati
   retriever lives in [*Generation × retrieval source*](#generation--retrieval-source--done)
   below — that is the headline result, not this 200-query subsample.
 
-### Week 4 — Dense retrieval (sampled) &nbsp;&nbsp;✅ done
+### Stage 4 — Dense retrieval (sampled) &nbsp;&nbsp;✅ done
 
 - Script: [`experiments/run_dense_retrieval.py`](experiments/run_dense_retrieval.py)
 - Encoder: `sentence-transformers/all-MiniLM-L6-v2`, FAISS `IndexFlatIP` over
@@ -112,7 +112,7 @@ and [`docs/experiments.md`](docs/experiments.md) for the experiment-line narrati
     (14.9 %, 50 k). True 1 / 5 / 10 % density cells need 70 k–700 k
     samples (dev/small has ~7 437 unique relevants) and are deferred.
 
-### Week 5 — Cross-encoder reranking &nbsp;&nbsp;✅ done
+### Stage 5 — Cross-encoder reranking &nbsp;&nbsp;✅ done
 
 - Script: [`experiments/run_reranker.py`](experiments/run_reranker.py)
 - Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2` over the W4 dense top-100.
@@ -139,7 +139,7 @@ and [`docs/experiments.md`](docs/experiments.md) for the experiment-line narrati
 
 ### Generation × retrieval source &nbsp;&nbsp;✅ done
 
-*Cross-week synthesis (not a new stage): uses the W2 BM25 run.tsv and the
+*Cross-stage synthesis (not a new stage): uses the W2 BM25 run.tsv and the
 W5 reranked run.tsv as inputs and produces the full-dev paired
 predictions that W6's evaluation layer scores below.*
 
@@ -327,7 +327,7 @@ The earlier 200-query subsample comparison (BM25 0.2131 / Rerank
 estimates and conclusions are consistent across the two scales; the
 full-dev numbers above are the version to cite.
 
-### Week 6 — Evaluation layer &nbsp;&nbsp;✅ done
+### Stage 6 — Evaluation layer &nbsp;&nbsp;✅ done
 
 Two follow-up evaluations layered on top of the full-dev paired
 predictions produced by *Generation × retrieval source* above —
@@ -409,7 +409,7 @@ neither requires a new model run, both are CPU-only:
     [`scripts/regression_query_profile.py`](scripts/regression_query_profile.py);
     three boxplots under [`figures/w6c_regression_vs_other_*.png`](figures/).
 
-### Week 7 — Grounding audit &nbsp;&nbsp;✅ done
+### Stage 7 — Grounding audit &nbsp;&nbsp;✅ done
 
 Cheap deterministic CPU pass over the existing full-dev paired
 predictions to answer the question the W6 closure left open: *what
@@ -592,7 +592,7 @@ brew install --cask basictex           # macOS LaTeX engine
 
 ## 4. Run the official baselines
 
-### Week 2 — BM25 retrieval
+### Stage 2 — BM25 retrieval
 
 ```bash
 python experiments/run_retrieval.py
@@ -620,9 +620,9 @@ Outputs:
 - `outputs/week02_bm25/examples.jsonl`
 - `outputs/week02_bm25/manifest.json` (run provenance — git commit, command line, config + dep hashes)
 
-### Week 3 — RAG generation baseline
+### Stage 3 — RAG generation baseline
 
-Requires Week 2 to have produced `outputs/week02_bm25/run.tsv`.
+Requires Stage 2 to have produced `outputs/week02_bm25/run.tsv`.
 
 ```bash
 python experiments/run_generation_baseline.py
@@ -653,9 +653,9 @@ evaluate on the SAME 200-query subsample even when their upstream
 retrievers cover different query sets — see the "Generation × retrieval
 source" section above for the BM25-vs-reranked comparison this enables.
 
-### Week 4 — Dense retrieval (sampled corpus)
+### Stage 4 — Dense retrieval (sampled corpus)
 
-Requires Week 2 to have produced `data/processed/bm25_index_msmarco/doc_ids.json`
+Requires Stage 2 to have produced `data/processed/bm25_index_msmarco/doc_ids.json`
 (the doc_id pool the qrels-anchored sampler draws from).
 
 ```bash
@@ -670,9 +670,9 @@ Subsequent runs reuse the cached FAISS index. Tunable knobs:
 - `dense.sample_size` (default 50000; grows the pool, shrinks recall)
 - `dense.compare_bm25_on_sample` (head-to-head on the same sample)
 
-### Week 5 — Cross-encoder reranking
+### Stage 5 — Cross-encoder reranking
 
-Requires Week 4 to have produced `outputs/week04_dense/run.tsv`.
+Requires Stage 4 to have produced `outputs/week04_dense/run.tsv`.
 
 ```bash
 python experiments/run_reranker.py
@@ -785,8 +785,19 @@ Current state of the engineering scaffold (what works today; what's still TODO).
 | Installable package | ✅ basic | `pip install -e .` registers `src` via `pyproject.toml`. Existing `sys.path.insert` shims in `experiments/` and `scripts/` are kept for now to avoid touching unrelated code; removing them is a TODO. |
 | CI | ✅ basic | `.github/workflows/ci.yml`: pytest + ruff on push/PR to main. Does not run slow tests or download MS MARCO data. |
 | Lint | ✅ minimal | `ruff` with `F` + `W` (pyflakes + whitespace). Style rules (`E`, `I`, `UP`, …) intentionally OFF on the first pass. |
-| Artifact manifest | ✅ wired | `src/util/manifest.py` provides `build_manifest()` / `write_manifest()` / `write_run_manifest()`. All 4 runners write `outputs/<week>/manifest.json` alongside `metrics.json`. Captures git commit + dirty flag, command, config hash, dependency-file hashes (requirements / lockfile / pyproject), and per-output sha256 (truncated). |
+| Artifact manifest | ✅ wired | `src/util/manifest.py` provides `build_manifest()` / `write_manifest()` / `write_run_manifest()`. All 4 runners write `outputs/<stage>/manifest.json` alongside `metrics.json`. Captures git commit + dirty flag, command, config hash, dependency-file hashes (requirements / lockfile / pyproject), and per-output sha256 (truncated). |
 | Numbers in `reports/internship_report/report.pdf` | ⚠️ historical | Reflect the dev environment at tag `v1.0-internship-final`. Re-running with `requirements-lock.txt` is the closest we get to reproduction today. |
+
+**Historical output-path naming.** A handful of on-disk output
+directories — notably `outputs/week02_bm25/`, `outputs/week04_dense/`,
+and `outputs/week05_reranker/` — retain `outputs/weekNN_<topic>/`
+naming even though the rest of the repo now speaks in terms of
+*stages*. These are the snapshot anchors referenced by the
+`provenance.backfill.json` files committed alongside the tag
+`v1.0-internship-final` (`5a35de9c18ea`); renaming them would
+silently invalidate those provenance records. Future experiments may
+use semantic output paths; the historical three deliberately stay
+as-is.
 
 Current limitations to be aware of:
 
@@ -798,7 +809,7 @@ Current limitations to be aware of:
 
 - **Tokenizer mismatch with Anserini.** Our 0.1703 vs reference 0.184 is mostly tokenizer-induced (`bm25s` default tokenizer ≠ Lucene `EnglishAnalyzer`). Acceptable for a single-machine pure-Python pipeline.
 - **CPU-only retrieve is slow at 8.8M docs.** ~70 min for 6,980 queries. `n_threads=-1` may help; not yet benchmarked on this corpus.
-- **Generation: pretrained T5-small, no fine-tuning.** Numbers will be low on overlap-based metrics. Fine-tuning is in scope for a future week.
+- **Generation: pretrained T5-small, no fine-tuning.** Numbers will be low on overlap-based metrics. Fine-tuning is in scope for a future iteration.
 - **NumPy 2.x runtime warning.** Some compiled deps (torch) were built against NumPy 1.x. Cosmetic on this codebase; downgrade to `numpy<2` if it ever causes a real failure.
 
 ## 8. Next
