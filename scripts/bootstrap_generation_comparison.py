@@ -43,15 +43,15 @@ from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+if str(PROJECT_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from src.evaluation.bootstrap import (  # noqa: E402
+from msmarco_genqa.evaluation.bootstrap import (  # noqa: E402
     paired_bootstrap_diff,
     per_query_bleu,
     per_query_rouge_l,
 )
-from src.evaluation.generation import exact_match, token_f1  # noqa: E402
+from msmarco_genqa.evaluation.generation import exact_match, token_f1  # noqa: E402
 
 logger = logging.getLogger("bootstrap_generation_comparison")
 

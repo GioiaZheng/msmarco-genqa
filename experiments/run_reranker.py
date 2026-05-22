@@ -58,13 +58,13 @@ import time
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+if str(PROJECT_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from src.data.msmarco import get_docs_store, load_msmarco_passage  # noqa: E402
-from src.evaluation.retrieval import evaluate_retrieval  # noqa: E402
-from src.reranking.cross_encoder import CrossEncoderReranker  # noqa: E402
-from src.reranking.io import (  # noqa: E402
+from msmarco_genqa.data.msmarco import get_docs_store, load_msmarco_passage  # noqa: E402
+from msmarco_genqa.evaluation.retrieval import evaluate_retrieval  # noqa: E402
+from msmarco_genqa.reranking.cross_encoder import CrossEncoderReranker  # noqa: E402
+from msmarco_genqa.reranking.io import (  # noqa: E402
     append_run_tsv,
     collect_unique_doc_ids,
     prune_partial_qids,
@@ -72,9 +72,9 @@ from src.reranking.io import (  # noqa: E402
     read_run_tsv,
     truncate_top_k,
 )
-from src.util.environment import capture_environment  # noqa: E402
-from src.util.manifest import write_run_manifest  # noqa: E402
-from src.util.seeding import set_global_seed  # noqa: E402
+from msmarco_genqa.util.environment import capture_environment  # noqa: E402
+from msmarco_genqa.util.manifest import write_run_manifest  # noqa: E402
+from msmarco_genqa.util.seeding import set_global_seed  # noqa: E402
 
 logger = logging.getLogger("run_reranker")
 

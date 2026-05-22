@@ -57,12 +57,12 @@ from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+if str(PROJECT_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from src.data.msmarco import load_msmarco_passage  # noqa: E402
-from src.evaluation.bootstrap import paired_bootstrap_diff  # noqa: E402
-from src.evaluation.generation import (  # noqa: E402
+from msmarco_genqa.data.msmarco import load_msmarco_passage  # noqa: E402
+from msmarco_genqa.evaluation.bootstrap import paired_bootstrap_diff  # noqa: E402
+from msmarco_genqa.evaluation.generation import (  # noqa: E402
     _normalize,
     exact_match,
     token_f1,

@@ -1,4 +1,4 @@
-"""Tests for src.util.seeding.set_global_seed.
+"""Tests for msmarco_genqa.util.seeding.set_global_seed.
 
 The behavioural contract is "all available RNG sinks land at the same
 state after two equal-seed calls". We test that by drawing samples
@@ -13,7 +13,7 @@ import random
 
 import pytest
 
-from src.util.seeding import set_global_seed
+from msmarco_genqa.util.seeding import set_global_seed
 
 
 # --------------------------------------------------------------------------- #

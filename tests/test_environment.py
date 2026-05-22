@@ -1,4 +1,4 @@
-"""Tests for ``src.util.environment``.
+"""Tests for ``msmarco_genqa.util.environment``.
 
 The module is best-effort by design (never raises, returns ``None`` for
 fields it cannot determine), so the tests pin down the *shape* of the
@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import os
 
-from src.util import environment as env_mod
-from src.util.environment import capture_environment
+from msmarco_genqa.util import environment as env_mod
+from msmarco_genqa.util.environment import capture_environment
 
 
 def test_capture_returns_dict_with_required_top_level_keys():

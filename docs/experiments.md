@@ -68,7 +68,7 @@ way* compared to every other metric. See *Grounding audit* below.
 | What | Where |
 |---|---|
 | Driver | [`experiments/run_retrieval.py`](../experiments/run_retrieval.py) |
-| Library | [`src/retrieval/bm25.py`](../src/retrieval/bm25.py) — `bm25s` wrapper with save/load + chunked retrieve |
+| Library | [`src/msmarco_genqa/retrieval/bm25.py`](../src/msmarco_genqa/retrieval/bm25.py) — `bm25s` wrapper with save/load + chunked retrieve |
 | Config | [`configs/baseline.yaml`](../configs/baseline.yaml) — `retrieval.*` and `eval_retrieval.*` blocks |
 | Index location | `data/processed/bm25_index_msmarco/` (~2.1 GB, gitignored) |
 | Output | `outputs/week02_bm25/{run.tsv, metrics.json, examples.jsonl, manifest.json}` |
@@ -97,7 +97,7 @@ for the end-to-end resume integration smoke.
 | What | Where |
 |---|---|
 | Driver | [`experiments/run_dense_retrieval.py`](../experiments/run_dense_retrieval.py) |
-| Library | [`src/retrieval/dense.py`](../src/retrieval/dense.py) (FAISS `IndexFlatIP` over L2-normalised embeddings); [`src/retrieval/sampling.py`](../src/retrieval/sampling.py) (qrels-anchored sub-corpus sampler) |
+| Library | [`src/msmarco_genqa/retrieval/dense.py`](../src/msmarco_genqa/retrieval/dense.py) (FAISS `IndexFlatIP` over L2-normalised embeddings); [`src/msmarco_genqa/retrieval/sampling.py`](../src/msmarco_genqa/retrieval/sampling.py) (qrels-anchored sub-corpus sampler) |
 | Config | `configs/baseline.yaml`, `dense.*` block |
 | Index location | `data/processed/dense_index_minilm_50k/` (gitignored) |
 | Output | `outputs/week04_dense/{run.tsv, metrics.json, examples.jsonl, manifest.json}` |
@@ -157,7 +157,7 @@ True 1 % / 5 % / 10 % density cells would need 70k–700k samples
 | What | Where |
 |---|---|
 | Driver | [`experiments/run_reranker.py`](../experiments/run_reranker.py) |
-| Library | [`src/reranking/cross_encoder.py`](../src/reranking/cross_encoder.py), [`src/reranking/io.py`](../src/reranking/io.py) |
+| Library | [`src/msmarco_genqa/reranking/cross_encoder.py`](../src/msmarco_genqa/reranking/cross_encoder.py), [`src/msmarco_genqa/reranking/io.py`](../src/msmarco_genqa/reranking/io.py) |
 | Config | `configs/baseline.yaml`, `reranker.*` block |
 | Output | `outputs/week05_reranker_full/{run.tsv, metrics.json, examples.jsonl, manifest.json}` |
 
@@ -189,7 +189,7 @@ for rename to `scripts/run_topk_sweep.py`.)
 | What | Where |
 |---|---|
 | Driver | [`experiments/run_generation_baseline.py`](../experiments/run_generation_baseline.py) |
-| Library | [`src/generation/rag_generator.py`](../src/generation/rag_generator.py) |
+| Library | [`src/msmarco_genqa/generation/rag_generator.py`](../src/msmarco_genqa/generation/rag_generator.py) |
 | Config | `configs/baseline.yaml`, `generation.*` block |
 | Output | `outputs/week03_generation_{bm25,reranked}_full/{predictions.jsonl, metrics.json, manifest.json}` |
 
@@ -212,12 +212,12 @@ numbers.
 
 | What | Where |
 |---|---|
-| Paired bootstrap CI (per-metric) | [`scripts/bootstrap_generation_comparison.py`](../scripts/bootstrap_generation_comparison.py) → [`src/evaluation/bootstrap.py`](../src/evaluation/bootstrap.py) |
-| BERTScore semantic proxy | [`scripts/bertscore_paired_eval.py`](../scripts/bertscore_paired_eval.py) → [`src/evaluation/bertscore.py`](../src/evaluation/bertscore.py) |
-| Surface metrics | [`src/evaluation/generation.py`](../src/evaluation/generation.py) — ROUGE-L / BLEU / Exact-Match / Token-F1 |
+| Paired bootstrap CI (per-metric) | [`scripts/bootstrap_generation_comparison.py`](../scripts/bootstrap_generation_comparison.py) → [`src/msmarco_genqa/evaluation/bootstrap.py`](../src/msmarco_genqa/evaluation/bootstrap.py) |
+| BERTScore semantic proxy | [`scripts/bertscore_paired_eval.py`](../scripts/bertscore_paired_eval.py) → [`src/msmarco_genqa/evaluation/bertscore.py`](../src/msmarco_genqa/evaluation/bertscore.py) |
+| Surface metrics | [`src/msmarco_genqa/evaluation/generation.py`](../src/msmarco_genqa/evaluation/generation.py) — ROUGE-L / BLEU / Exact-Match / Token-F1 |
 | Regression taxonomy | [`scripts/regression_failure_taxonomy.py`](../scripts/regression_failure_taxonomy.py) (40-query seeded triage) |
 | Query-form analysis | [`scripts/tag_query_forms.py`](../scripts/tag_query_forms.py), [`scripts/analyze_rerank_by_query_form.py`](../scripts/analyze_rerank_by_query_form.py) |
-| Retrieval metrics | [`src/evaluation/retrieval.py`](../src/evaluation/retrieval.py) — MRR / Recall / nDCG |
+| Retrieval metrics | [`src/msmarco_genqa/evaluation/retrieval.py`](../src/msmarco_genqa/evaluation/retrieval.py) — MRR / Recall / nDCG |
 
 **Reference paired-bootstrap numbers** (6,980 paired qids, BM25 → Reranked):
 
@@ -248,8 +248,8 @@ model.
 | What | Where |
 |---|---|
 | Driver | [`scripts/grounding_audit.py`](../scripts/grounding_audit.py) |
-| Lexical + n-gram | [`src/evaluation/grounding.py`](../src/evaluation/grounding.py) |
-| NLI entailment | [`src/evaluation/nli_grounding.py`](../src/evaluation/nli_grounding.py) — `cross-encoder/nli-deberta-v3-small` |
+| Lexical + n-gram | [`src/msmarco_genqa/evaluation/grounding.py`](../src/msmarco_genqa/evaluation/grounding.py) |
+| NLI entailment | [`src/msmarco_genqa/evaluation/nli_grounding.py`](../src/msmarco_genqa/evaluation/nli_grounding.py) — `cross-encoder/nli-deberta-v3-small` |
 | Correlation analysis | [`scripts/grounding_correlation.py`](../scripts/grounding_correlation.py) |
 | Case study | [`scripts/low_grounding_case_study.py`](../scripts/low_grounding_case_study.py) |
 
@@ -335,8 +335,8 @@ The full pipeline is driven from `experiments/run_*.py` with config in
 Every runner writes a `manifest.json` next to its outputs capturing
 git commit, command line, config hash, and dependency hashes —
 sufficient to re-identify the run six months later. See
-[`src/util/manifest.py`](../src/util/manifest.py) and
-[`src/util/environment.py`](../src/util/environment.py).
+[`src/msmarco_genqa/util/manifest.py`](../src/msmarco_genqa/util/manifest.py) and
+[`src/msmarco_genqa/util/environment.py`](../src/msmarco_genqa/util/environment.py).
 
 Three canonical runs predate the manifest plumbing and have no runtime
 `manifest.json`: the W2 BM25 full-corpus retrieval, the W4 dense

@@ -48,11 +48,11 @@ from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+if str(PROJECT_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from src.evaluation.bertscore import per_query_bertscore_f1  # noqa: E402
-from src.evaluation.bootstrap import paired_bootstrap_diff  # noqa: E402
+from msmarco_genqa.evaluation.bertscore import per_query_bertscore_f1  # noqa: E402
+from msmarco_genqa.evaluation.bootstrap import paired_bootstrap_diff  # noqa: E402
 
 logger = logging.getLogger("bertscore_paired_eval")
 

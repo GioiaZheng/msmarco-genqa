@@ -165,7 +165,7 @@ def _unknown_block(anchor_commit: str) -> dict[str, str]:
             f"({anchor_commit}) the runner did NOT call np.random.seed, "
             "torch.manual_seed, transformers.set_seed, or set "
             "torch.backends.cudnn.deterministic. The unified seeding "
-            "helper (src/util/seeding.py) added in "
+            "helper (src/msmarco_genqa/util/seeding.py) added in "
             f"{SEEDING_PATCH_BRANCH} commit {SEEDING_PATCH_COMMIT_SHORT} "
             "is the patch that retroactively makes these knowable for "
             "future runs; for this backfilled run, the effective seeding "

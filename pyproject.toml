@@ -6,8 +6,8 @@
 # ``[project.dependencies]``: keeping a single source of truth avoids
 # the two files drifting.
 #
-# ``pip install -e .`` only registers the ``src`` package — it does not pull
-# any third-party deps. Run ``pip install -r requirements.txt`` (or
+# ``pip install -e .`` only registers the ``msmarco_genqa`` package — it does
+# not pull any third-party deps. Run ``pip install -r requirements.txt`` (or
 # ``requirements-lock.txt``) alongside.
 
 [build-system]
@@ -28,7 +28,8 @@ authors = [{ name = "msmarco-genqa contributors" }]
 dependencies = []
 
 [tool.setuptools.packages.find]
-include = ["src*"]
+where = ["src"]
+include = ["msmarco_genqa*"]
 exclude = ["tests*", "experiments*", "scripts*"]
 
 
@@ -85,9 +86,9 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# Scripts pre-pend PROJECT_ROOT to sys.path before importing ``src.*``,
-# so E402 is unavoidable there until the project is fully installable
-# and the sys.path hacks are removed (TODO).
+# Scripts pre-pend ``PROJECT_ROOT / "src"`` to sys.path before importing
+# ``msmarco_genqa.*``, so E402 is unavoidable there until the project is
+# fully installable and the sys.path hacks are removed (TODO — R3 C3).
 "experiments/*.py" = ["E402"]
 "scripts/*.py" = ["E402"]
 "tests/conftest.py" = ["E402"]

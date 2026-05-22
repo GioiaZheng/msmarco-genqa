@@ -5,8 +5,8 @@ generation runs, compute two grounding scores on the *exact* top-K
 passages the generator saw at prompt time (they are persisted inside
 ``predictions.jsonl`` alongside the model output):
 
-- lexical content-token grounding (``src.evaluation.grounding.lexical_grounding``)
-- 3-gram grounding (``src.evaluation.grounding.ngram_grounding``)
+- lexical content-token grounding (``msmarco_genqa.evaluation.grounding.lexical_grounding``)
+- 3-gram grounding (``msmarco_genqa.evaluation.grounding.ngram_grounding``)
 
 Then run the project's existing paired bootstrap CI on Δ (rerank −
 BM25) for each metric. No new model, no generation, no NLI; CPU-only,
@@ -52,11 +52,11 @@ from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+if str(PROJECT_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from src.evaluation.bootstrap import paired_bootstrap_diff  # noqa: E402
-from src.evaluation.grounding import (  # noqa: E402
+from msmarco_genqa.evaluation.bootstrap import paired_bootstrap_diff  # noqa: E402
+from msmarco_genqa.evaluation.grounding import (  # noqa: E402
     is_vacuously_grounded_lex,
     is_vacuously_grounded_ngram,
     lexical_grounding,
@@ -251,7 +251,7 @@ def main() -> None:
             n_sub, n_shared, subsample_label, args.nli_model,
         )
 
-        from src.evaluation.nli_grounding import per_query_nli_entailment
+        from msmarco_genqa.evaluation.nli_grounding import per_query_nli_entailment
 
         bm25_preds = [bm25[i].get("prediction") or "" for i in sampled_indices]
         bm25_psgs = [list(bm25[i].get("passages") or []) for i in sampled_indices]
@@ -433,7 +433,7 @@ def main() -> None:
             "policy": (
                 "Vacuous predictions (no content tokens for the lexical "
                 "metric, or <n tokens for the n-gram metric) score 1.0 "
-                "by convention. See src.evaluation.grounding docstrings."
+                "by convention. See msmarco_genqa.evaluation.grounding docstrings."
             ),
         },
         "notes": (

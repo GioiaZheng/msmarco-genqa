@@ -1,4 +1,4 @@
-"""Unit tests for ``src.evaluation.bertscore.per_query_bertscore_f1``.
+"""Unit tests for ``msmarco_genqa.evaluation.bertscore.per_query_bertscore_f1``.
 
 ``bert_score`` is mocked so the test runs in milliseconds without a
 model download. What matters for unit-test coverage is the paired-API
@@ -15,7 +15,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.evaluation.bertscore import per_query_bertscore_f1
+from msmarco_genqa.evaluation.bertscore import per_query_bertscore_f1
 
 
 class _FakeTensor:
