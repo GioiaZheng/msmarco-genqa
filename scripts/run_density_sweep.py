@@ -1,4 +1,4 @@
-"""W4-A — relevant-document density sensitivity (5 % and 10 %).
+"""Relevant-document density sensitivity sweep (5 % and 10 %).
 
 Drives ``experiments/run_dense_retrieval.py`` at two sample sizes that
 land the qrels-relevant-density at roughly 5 % and 10 %, then
@@ -45,7 +45,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-logger = logging.getLogger("run_w4a_density_sweep")
+logger = logging.getLogger("run_density_sweep")
 
 
 # (label, sample_size, output_subdir, reuse_existing)
@@ -300,7 +300,7 @@ def main() -> None:
     fig_rel = plot_density_curve(rows, args.figures_dir)
 
     summary = {
-        "task": "w4a_density_sweep",
+        "task": "density_sweep",
         "scope": "qrel densities ~3 % / ~5 % / ~10 %; 1 % deferred",
         "encoder": encoder,
         "baseline_dir": baseline_dir,

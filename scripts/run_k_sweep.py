@@ -1,4 +1,4 @@
-"""W5-B — rerank-depth K-sweep on BM25 and dense first stages.
+"""Rerank-depth K-sweep on BM25 and dense first stages.
 
 Drives four ``experiments/run_reranker.py`` invocations and aggregates
 the results into a single perf–latency Pareto table + figure.
@@ -45,7 +45,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-logger = logging.getLogger("run_w5b_k_sweep")
+logger = logging.getLogger("run_k_sweep")
 
 
 # (label, first_stage_key_in_metrics, input_run_relpath, input_week, K, output_subdir, num_eval_queries)
@@ -355,7 +355,7 @@ def main() -> None:
     fig_rel = plot_pareto(agg, args.figures_dir)
 
     summary = {
-        "task": "w5b_k_sweep",
+        "task": "k_sweep",
         "scope": "K in {50, 100, 200}; K=50,200 on 1000-q subsample (seed 42); K=100 reuses W5 / W5-A full-dev runs",
         "cells": agg["cells"],
         "figure": fig_rel,

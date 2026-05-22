@@ -1,4 +1,4 @@
-"""W7-B — T5-base generator on the same W3 prompts; compare to T5-small.
+"""Generator capacity sweep — T5-base vs T5-small on the same W3 prompts.
 
 The headline question (per the W7-A finding that T5-small's NLI
 grounding Δ is the *only* metric whose Δ reverses sign vs the W3
@@ -45,7 +45,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-logger = logging.getLogger("run_w7b_generator_comparison")
+logger = logging.getLogger("run_generator_capacity_sweep")
 
 
 # Existing T5-small numbers — paths to the on-disk outputs whose
@@ -290,7 +290,7 @@ def aggregate(
         return out
 
     payload: dict[str, Any] = {
-        "task": "w7b_generator_comparison",
+        "task": "generator_capacity_sweep",
         "t5_small": {
             **cell_from_bootstrap(t5s_bootstrap),
             **cell_from_bertscore(t5s_bertscore),

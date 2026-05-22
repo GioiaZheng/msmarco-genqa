@@ -92,7 +92,7 @@ and [`docs/experiments.md`](docs/experiments.md) for the experiment-line narrati
   same sample*, not against the W2 full-corpus number.
 - **W4 follow-ups (teacher-feedback round 2, ddl scope):**
   - *W4-B — same-tier encoder horizontal* on the identical 50 k sample
-    ([`scripts/run_w4b_encoder_horizontal.py`](scripts/run_w4b_encoder_horizontal.py)).
+    ([`scripts/run_encoder_horizontal.py`](scripts/run_encoder_horizontal.py)).
     Three small encoders evaluated head-to-head:
 
     | Encoder | MRR@10 | nDCG@10 | Recall@100 | ms/passage |
@@ -105,7 +105,7 @@ and [`docs/experiments.md`](docs/experiments.md) for the experiment-line narrati
     CPU encoding cost. ANCE / MS MARCO-tuned encoders deferred.
   - *W4-A — density sensitivity* with the W4-B winner (bge-small) at
     three sample sizes
-    ([`scripts/run_w4a_density_sweep.py`](scripts/run_w4a_density_sweep.py)).
+    ([`scripts/run_density_sweep.py`](scripts/run_density_sweep.py)).
     As the sample grows (relevant-doc density drops), dense's advantage
     over BM25-on-sample grows **monotonically**: Δ MRR@10
     +0.166 (49.6 % density, 15 k) → +0.188 (24.8 %, 30 k) → +0.207
@@ -544,7 +544,7 @@ The two top-level Python directories have **distinct roles**:
   | Evaluation drivers | `bootstrap_generation_comparison.py`, `bertscore_paired_eval.py`, `grounding_audit.py`, `grounding_correlation.py` |
   | Failure / case analysis | `regression_failure_taxonomy.py`, `regression_query_profile.py`, `low_grounding_case_study.py` |
   | Slicing / tagging | `tag_query_forms.py`, `analyze_rerank_by_query_form.py`, `analyze_generation_rerank.py`, `compare_rerank_first_stages.py` |
-  | Ablation drivers | `run_w4a_density_sweep.py`, `run_w4b_encoder_horizontal.py`, `run_w5b_k_sweep.py`, `run_w7b_generator_comparison.py` |
+  | Ablation drivers | `run_density_sweep.py`, `run_encoder_horizontal.py`, `run_k_sweep.py`, `run_generator_capacity_sweep.py` |
   | End-to-end driver | `run_full_generation_and_analysis.py` |
   | Validation | `validate_full_rerank.py` |
   | Smoke (integration) | `smoke_test_resume.py` |
@@ -821,7 +821,7 @@ Current limitations to be aware of:
   prompt formats that demand reasoning* (multi-passage synthesis,
   citation-aware decoding) or *a different model* — not the decode
   budget. The W7-B driver
-  ([`scripts/run_w7b_generator_comparison.py`](scripts/run_w7b_generator_comparison.py))
+  ([`scripts/run_generator_capacity_sweep.py`](scripts/run_generator_capacity_sweep.py))
   runs T5-base on both BM25 and reranked top-3 and re-scores every
   W7 metric, so the load-bearing question — does the W7-A NLI sign
   flip (Δ = −0.145, the only Δ in the project that reverses sign)
