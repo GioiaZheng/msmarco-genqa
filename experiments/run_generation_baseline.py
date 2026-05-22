@@ -54,6 +54,7 @@ from src.evaluation.generation import evaluate_generation  # noqa: E402
 from src.generation.rag_generator import RAGGenerationConfig, RAGGenerator  # noqa: E402
 from src.util.environment import capture_environment  # noqa: E402
 from src.util.manifest import write_run_manifest  # noqa: E402
+from src.util.seeding import set_global_seed  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -236,7 +237,7 @@ def main() -> None:
         # the snapshot reflects the effective value, not the file default.
         cfg.setdefault("generation", {})["max_new_tokens"] = args.max_new_tokens
     seed = cfg.get("seed", 42)
-    random.seed(seed)
+    seed_coverage = set_global_seed(seed)
 
     cache_dir = PROJECT_ROOT / cfg["data"].get("cache_dir", "data/raw")
     run_path = resolve_input_run(args, cfg, PROJECT_ROOT)
@@ -416,6 +417,7 @@ def main() -> None:
         "top_k_passages": top_k_passages,
         "n_eval_queries": len(predictions),
         "seed": seed,
+        "seed_coverage": seed_coverage,
         "input_run": input_run_rel,
         "retrieval_source": retrieval_source,
         "run_name": output_dir.name,
