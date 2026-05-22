@@ -25,16 +25,13 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT / "src") not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from msmarco_genqa.evaluation.query_form import (  # noqa: E402
+from msmarco_genqa.evaluation.query_form import (
     QUESTION_FORM_CATEGORIES,
     classify_question_form,
 )

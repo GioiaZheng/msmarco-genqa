@@ -1,10 +1,5 @@
-"""Pytest config — make ``msmarco_genqa`` importable without an install."""
+"""Pytest config — no fixtures needed.
 
-from __future__ import annotations
-
-import sys
-from pathlib import Path
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT / "src") not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT / "src"))
+``msmarco_genqa`` is importable via the editable install
+(``pip install -e .``); no sys.path manipulation here.
+"""

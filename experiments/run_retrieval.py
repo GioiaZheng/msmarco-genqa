@@ -32,15 +32,13 @@ import time
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT / "src") not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from msmarco_genqa.data.msmarco import load_msmarco_passage  # noqa: E402
-from msmarco_genqa.evaluation.retrieval import evaluate_retrieval  # noqa: E402
-from msmarco_genqa.retrieval.bm25 import BM25Retriever  # noqa: E402
-from msmarco_genqa.util.environment import capture_environment  # noqa: E402
-from msmarco_genqa.util.manifest import write_run_manifest  # noqa: E402
-from msmarco_genqa.util.seeding import set_global_seed  # noqa: E402
+from msmarco_genqa.data.msmarco import load_msmarco_passage
+from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
+from msmarco_genqa.retrieval.bm25 import BM25Retriever
+from msmarco_genqa.util.environment import capture_environment
+from msmarco_genqa.util.manifest import write_run_manifest
+from msmarco_genqa.util.seeding import set_global_seed
 
 logger = logging.getLogger("run_retrieval")
 

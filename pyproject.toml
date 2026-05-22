@@ -111,13 +111,4 @@ select = ["F", "W"]
 ignore = [
     "E501",  # line-too-long: requirements.txt comments + long URLs in docstrings
     "E731",  # lambda assignment: occasionally clearer than def for one-liners
-    "E402",  # imports not at top: experiments/ scripts set PROJECT_ROOT before import
 ]
-
-[tool.ruff.lint.per-file-ignores]
-# Scripts pre-pend ``PROJECT_ROOT / "src"`` to sys.path before importing
-# ``msmarco_genqa.*``, so E402 is unavoidable there until the project is
-# fully installable and the sys.path hacks are removed (TODO — R3 C3).
-"experiments/*.py" = ["E402"]
-"scripts/*.py" = ["E402"]
-"tests/conftest.py" = ["E402"]

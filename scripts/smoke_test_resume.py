@@ -23,9 +23,8 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from msmarco_genqa.data.msmarco import MSMarcoPassage  # noqa: E402
+from msmarco_genqa.data.msmarco import MSMarcoPassage
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 log = logging.getLogger("smoke_resume")
