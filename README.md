@@ -41,7 +41,17 @@ sanity check.
 
 ## Project layout
 
-The script pipeline (`experiments/`, `src/`) is the single source of truth: reproducible, official-corpus, structured outputs + auto-generated reports. All benchmark numbers below come from `experiments/run_*.py` outputs under `outputs/` (gitignored) and are summarised in the per-stage sections.
+The script pipeline (`experiments/`, `src/`) is the single source of truth:
+reproducible, official-corpus, structured outputs with per-run manifests.
+All benchmark numbers below come from `experiments/run_*.py` outputs under
+`outputs/` (gitignored) and are summarised in the per-stage sections.
+
+- **`experiments/`** = the four core pipeline-stage runners (BM25, dense, rerank, generation).
+- **`scripts/`** = analyses, ablation drivers, validation, and integration smokes that read `experiments/` outputs.
+
+See [§2 Directory layout](#2-directory-layout) for the full structural breakdown
+and [`docs/experiments.md`](docs/experiments.md) for the experiment-line narrative
+(stages stitched together with headline numbers and the grounding-audit calibration).
 
 ## 1. Status
 
@@ -487,25 +497,64 @@ new generation, no model load, ~2 s scoring + bootstrap.
 ## 2. Directory layout
 
 ```
-configs/        baseline.yaml — paths + retrieval/generation/reranker/eval knobs
-experiments/    run_retrieval.py, run_dense_retrieval.py,
-                run_generation_baseline.py, run_reranker.py
-src/
-  data/         msmarco.py — ir_datasets loader for the official corpus
-  retrieval/    bm25.py    — bm25s wrapper with save/load + chunked retrieve
-                dense.py   — Sentence-Transformers + FAISS dense retriever
-                sampling.py — qrels-anchored sub-corpus sampling
-  reranking/    cross_encoder.py — Cross-encoder reranker wrapper (W5)
-                io.py            — TREC run.tsv read/truncate/write helpers
-  generation/   rag_generator.py — T5/BART RAG generator
-  evaluation/   retrieval.py (MRR/Recall/nDCG), generation.py (ROUGE/BLEU/EM/F1)
+configs/             baseline.yaml — paths + retrieval/generation/reranker/eval knobs
+experiments/         core pipeline stages (4 runners, see below)
+scripts/             analysis, drivers, ablations, validation, smokes
+src/                 importable library code backing experiments/ and scripts/
+  data/                msmarco.py — ir_datasets loader for the official corpus
+  retrieval/           bm25.py, dense.py, sampling.py
+  reranking/           cross_encoder.py, io.py
+  generation/          rag_generator.py — T5/BART RAG generator
+  evaluation/          retrieval.py, generation.py, grounding.py, nli_grounding.py,
+                       bertscore.py, bootstrap.py, query_form.py
+  util/                manifest.py, environment.py — per-run provenance
+tests/               pytest suite (254 tests; no network, no models)
+docs/                experiments.md — pipeline narrative (BM25 → dense → rerank → gen)
 reports/
-  internship_report/  report.tex + report.pdf + figures/ (committed, frozen at v1.0)
-outputs/        run.tsv, metrics.json, examples.jsonl per stage (gitignored)
-data/           raw/, processed/, cache/ — all gitignored, .gitkeep tracked
-figures/        plots used in the internship report (committed)
-scripts/        analysis drivers, smoke tests
+  internship_report/   report.tex + report.pdf + figures/ (committed, frozen at v1.0)
+figures/             plots used in the internship report (committed)
+outputs/             run.tsv, metrics.json, examples.jsonl, manifest.json per stage (gitignored)
+data/                raw/, processed/, cache/ — all gitignored, .gitkeep tracked
 ```
+
+### `experiments/` vs `scripts/`
+
+The two top-level Python directories have **distinct roles**:
+
+- **`experiments/`** — the four core pipeline-stage runners. Each one is a long-lived
+  entry point that consumes the official MS MARCO corpus (via `ir_datasets`) and
+  produces a structured output directory under `outputs/`:
+
+  | Runner | Stage |
+  |---|---|
+  | [`experiments/run_retrieval.py`](experiments/run_retrieval.py) | BM25 first-stage retrieval |
+  | [`experiments/run_dense_retrieval.py`](experiments/run_dense_retrieval.py) | Dense first-stage retrieval (sampled) |
+  | [`experiments/run_reranker.py`](experiments/run_reranker.py) | Cross-encoder reranking |
+  | [`experiments/run_generation_baseline.py`](experiments/run_generation_baseline.py) | RAG generation |
+
+  Behaviour is locked: `experiments/` runners produce the *canonical* numbers cited
+  in [`reports/internship_report/report.pdf`](reports/internship_report/report.pdf)
+  and in [`docs/experiments.md`](docs/experiments.md).
+
+- **`scripts/`** — everything that **reads or analyses** the outputs of `experiments/`,
+  plus ablation drivers, validation, and integration smokes:
+
+  | Kind | Examples |
+  |---|---|
+  | Evaluation drivers | `bootstrap_generation_comparison.py`, `bertscore_paired_eval.py`, `grounding_audit.py`, `grounding_correlation.py` |
+  | Failure / case analysis | `regression_failure_taxonomy.py`, `regression_query_profile.py`, `low_grounding_case_study.py` |
+  | Slicing / tagging | `tag_query_forms.py`, `analyze_rerank_by_query_form.py`, `analyze_generation_rerank.py`, `compare_rerank_first_stages.py` |
+  | Ablation drivers | `run_w4a_density_sweep.py`, `run_w4b_encoder_horizontal.py`, `run_w5b_k_sweep.py`, `run_w7b_generator_comparison.py` |
+  | End-to-end driver | `run_full_generation_and_analysis.py` |
+  | Validation | `validate_full_rerank.py` |
+  | Smoke (integration) | `smoke_test_resume.py` |
+
+  Scripts in this directory are allowed to change shape as analyses evolve;
+  the contract is on the `experiments/` output schema, not on the script signatures.
+
+For the full experiment-line narrative — what each stage produces, the
+headline numbers, and the grounding-audit calibration finding — see
+[`docs/experiments.md`](docs/experiments.md).
 
 Everything runs from the project root. Scripts add `PROJECT_ROOT` to `sys.path` themselves; no `PYTHONPATH` needed.
 
