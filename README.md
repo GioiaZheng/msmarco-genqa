@@ -366,10 +366,8 @@ neither requires a new model run, both are CPU-only:
   `outputs/week06_bootstrap_mnt128/`,
   `outputs/week06_taxonomy_mnt128/` (gitignored). BERTScore proxy on
   the new predictions was **skipped**; it remains optional and can
-  be reproduced with one command (see *Reproduce* under
-  `reports/templates/week06_eval_layer.md`).
-- Per-week report: [`reports/generated/week06_eval_layer.pdf`](reports/generated/week06_eval_layer.pdf)
-  (regenerate with `python -m src.reporting.build_report --week week06`).
+  be reproduced by re-running `scripts/bertscore_paired_eval.py` against
+  the `mnt128` output directories.
 - **W6 follow-ups — three offline analyses on the existing
   per-query metrics, no new generation / reranker runs:**
   - *W6-A: question-form tagging* of all 6 980 dev/small queries
@@ -442,9 +440,6 @@ new generation, no model load, ~2 s scoring + bootstrap.
 - Outputs:
   [`outputs/week07_grounding/{per_query_grounding.jsonl,summary.json}`](outputs/)
   (gitignored).
-- Per-week report:
-  [`reports/generated/week07_grounding.pdf`](reports/generated/week07_grounding.pdf)
-  (regenerate with `python -m src.reporting.build_report --week week07`).
 - **W7-A — NLI-entailment grounding (semantic-faithfulness companion).**
   Scores `entailment(passages → prediction)` with
   `cross-encoder/nli-deberta-v3-small` on a 3 000-paired-qid subsample
@@ -504,10 +499,8 @@ src/
                 io.py            — TREC run.tsv read/truncate/write helpers
   generation/   rag_generator.py — T5/BART RAG generator
   evaluation/   retrieval.py (MRR/Recall/nDCG), generation.py (ROUGE/BLEU/EM/F1)
-  reporting/    build_report.py — fills markdown templates from outputs/
 reports/
-  templates/    week02_bm25.md, week03_generation.md  (committed)
-  generated/    filled-in markdown + optional PDF     (gitignored)
+  internship_report/  report.tex + report.pdf + figures/ (committed, frozen at v1.0)
 outputs/        run.tsv, metrics.json, examples.jsonl per stage (gitignored)
 data/           raw/, processed/, cache/ — all gitignored, .gitkeep tracked
 figures/        plots used in the internship report (committed)
@@ -554,7 +547,6 @@ brew install --cask basictex           # macOS LaTeX engine
 
 ```bash
 python experiments/run_retrieval.py
-python -m src.reporting.build_report --week week02
 ```
 
 First run: ~5 min download (~1 GB), ~15 min `ir_datasets` encoding fix pass, ~10 min `bm25s` index build, ~70 min retrieve. Total ≈ 1h40m on a 16 GB MacBook.
@@ -577,7 +569,7 @@ Outputs:
 - `outputs/week02_bm25/metrics.json`
 - `outputs/week02_bm25/run.tsv` (TREC-format top-1000, ~250 MB)
 - `outputs/week02_bm25/examples.jsonl`
-- `reports/generated/week02_bm25.md` (+ `.pdf` if pandoc installed)
+- `outputs/week02_bm25/manifest.json` (run provenance — git commit, command line, config + dep hashes)
 
 ### Week 3 — RAG generation baseline
 
@@ -585,7 +577,6 @@ Requires Week 2 to have produced `outputs/week02_bm25/run.tsv`.
 
 ```bash
 python experiments/run_generation_baseline.py
-python -m src.reporting.build_report --week week03
 ```
 
 Default: 200 dev queries, T5-small, top-3 passages from BM25. ROUGE-L / BLEU / EM / Token-F1 against MS MARCO QA v2.1 reference answers. CPU runtime ~5–15 min.
@@ -620,7 +611,6 @@ Requires Week 2 to have produced `data/processed/bm25_index_msmarco/doc_ids.json
 
 ```bash
 python experiments/run_dense_retrieval.py
-python -m src.reporting.build_report --week week04
 ```
 
 First run: ~13.5 min to encode the 50k sampled passages (810 s on a 6-core
@@ -637,7 +627,6 @@ Requires Week 4 to have produced `outputs/week04_dense/run.tsv`.
 
 ```bash
 python experiments/run_reranker.py
-python -m src.reporting.build_report --week week05
 ```
 
 Default: rerank the top-100 dense candidates per query with
