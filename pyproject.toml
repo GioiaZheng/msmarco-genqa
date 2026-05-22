@@ -29,7 +29,7 @@ dependencies = []
 
 [tool.setuptools.packages.find]
 include = ["src*"]
-exclude = ["tests*", "notebooks*", "experiments*", "scripts*"]
+exclude = ["tests*", "experiments*", "scripts*"]
 
 
 # --------------------------------------------------------------------------- #
@@ -64,12 +64,10 @@ markers = [
 line-length = 100
 target-version = "py39"
 extend-exclude = [
-    "notebooks",
     "data",
     "outputs",
     "reports/generated",
     "figures",
-    ".ipynb_checkpoints",
 ]
 
 [tool.ruff.lint]

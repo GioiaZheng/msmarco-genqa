@@ -41,26 +41,21 @@ sanity check.
 
 ## Project layout
 
-The repo has two parallel tracks:
-
-- **Script pipeline** (`experiments/`, `src/`) — reproducible, official-corpus, structured outputs + auto-generated reports. **This is the source of truth for benchmark numbers.**
-- **Notebooks** (`notebooks/`) — small prototype experiments on hand-written toy corpora or sampled data. They exist for narrative + visualization + smoke-checking the API. **Numbers in notebooks are illustrative only — do not cite them as benchmarks.** Every notebook has a "Limitations" section that says so explicitly, and points at the equivalent script for the honest result.
+The script pipeline (`experiments/`, `src/`) is the single source of truth: reproducible, official-corpus, structured outputs + auto-generated reports. All benchmark numbers below come from `experiments/run_*.py` outputs under `outputs/` (gitignored) and are summarised in the per-stage sections.
 
 ## 1. Status
 
-### Week 1 — EDA &nbsp;&nbsp;✅ done (notebook only)
+### Week 1 — EDA &nbsp;&nbsp;✅ done
 
-- Notebook: [`notebooks/week01_eda.ipynb`](notebooks/week01_eda.ipynb) — runs end-to-end
-- Report: `python -m src.reporting.build_report --week week01` →
-  [`reports/generated/week01_eda.md`](reports/generated/) *(gitignored)*
+- Dataset statistics + query/passage/answer-type distributions covered in §1 of
+  [`reports/internship_report/report.pdf`](reports/internship_report/report.pdf).
+  Source figures: `figures/{query_length,passage_length,query_type,answer_type_by_query_type}_distribution.png`.
 
 ### Week 2 — BM25 retrieval &nbsp;&nbsp;✅ done
 
 - Script: [`experiments/run_retrieval.py`](experiments/run_retrieval.py)
 - **MRR@10 = 0.1703** &nbsp;·&nbsp; **Recall@100 = 0.6212** &nbsp;·&nbsp; **Recall@1000 = 0.8154**
   on `dev/small` (6,980 queries, full 8.8M-passage corpus)
-- Prototype notebook: [`notebooks/week02_retrieval.ipynb`](notebooks/week02_retrieval.ipynb)
-  — sampled closed-set (MRR@10 = 0.1956, n=30, structurally optimistic; not a benchmark)
 
 ### Week 3 — RAG generation &nbsp;&nbsp;✅ done
 
@@ -71,8 +66,6 @@ The repo has two parallel tracks:
   - Run config: [`configs/baseline.yaml`](configs/baseline.yaml) · Command: `python experiments/run_generation_baseline.py` ·
     Manifest: `outputs/week03_generation/manifest.json` *(gitignored; regenerated each run)*
   - **Not** a full dev/small benchmark — 200 / 6,980 queries, CPU-friendly.
-- Prototype notebook: [`notebooks/week03_generation.ipynb`](notebooks/week03_generation.ipynb)
-  — 3-passage toy demo with T5-small (smoke test, not a benchmark)
 - A full-dev comparison of this same generator against a *reranked* upstream
   retriever lives in [*Generation × retrieval source*](#generation--retrieval-source--done)
   below — that is the headline result, not this 200-query subsample.
@@ -130,9 +123,6 @@ The repo has two parallel tracks:
   The full-dev deltas (+0.0474 / +0.0393) sit on top of the subsample
   deltas with a similar magnitude, so the subsample was not biased — the
   reranker gain is a property of dev/small, not of the 1 000-query slice.
-- Prototype notebook: [`notebooks/week05_reranker.ipynb`](notebooks/week05_reranker.ipynb)
-  — 8-passage toy demo showing the score-margin sharpening (bi-encoder gap
-  ~0.08 → cross-encoder gap ~7).
 - Narrative: W4 closed the recall gap (semantic matching). W5 closes the
   *local-ordering* gap — once the relevant passage is somewhere in the top-100,
   the cross-encoder is what pushes it to top-1 / top-3.
@@ -515,14 +505,13 @@ src/
   generation/   rag_generator.py — T5/BART RAG generator
   evaluation/   retrieval.py (MRR/Recall/nDCG), generation.py (ROUGE/BLEU/EM/F1)
   reporting/    build_report.py — fills markdown templates from outputs/
-notebooks/      prototype, narrative, plots
 reports/
   templates/    week02_bm25.md, week03_generation.md  (committed)
   generated/    filled-in markdown + optional PDF     (gitignored)
-outputs/        run.tsv, metrics.json, examples.jsonl per week  (gitignored)
+outputs/        run.tsv, metrics.json, examples.jsonl per stage (gitignored)
 data/           raw/, processed/, cache/ — all gitignored, .gitkeep tracked
-figures/        plots from notebooks (committed)
-scripts/        smoke tests + the notebook regenerator
+figures/        plots used in the internship report (committed)
+scripts/        analysis drivers, smoke tests
 ```
 
 Everything runs from the project root. Scripts add `PROJECT_ROOT` to `sys.path` themselves; no `PYTHONPATH` needed.
@@ -732,20 +721,6 @@ index) both return `(scores, doc_ids)`; resolving `doc_ids` to passage
 text is the missing piece for a one-command demo. A thin
 `python -m src.demo.ask "<question>"` wrapper that bundles that mapping
 is listed under §8 *Next*.
-
-## 5. Run the prototype notebooks
-
-```bash
-python -m nbconvert --to notebook --execute --inplace notebooks/week01_eda.ipynb
-python -m nbconvert --to notebook --execute --inplace notebooks/week02_retrieval.ipynb
-python -m nbconvert --to notebook --execute --inplace notebooks/week03_generation.ipynb
-```
-
-First run downloads:
-- HuggingFace `ms_marco` v2.1 validation split (~500 MB) — used by W1, W2
-- T5-small (~250 MB) — used by W3
-
-Notebook results are **prototypes**: small samples, closed-set retrieval, hand-written eval queries. Do not cite as benchmark numbers.
 
 ## 6. Configuration
 
