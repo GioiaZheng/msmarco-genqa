@@ -60,7 +60,7 @@ T5_SMALL_CELLS = {
         "label": "T5-small × Reranked",
     },
 }
-T5_SMALL_BOOTSTRAP = "outputs/week03_generation_bootstrap_full/summary.json"
+T5_SMALL_BOOTSTRAP = "outputs/week03_generation_bootstrap_full/bootstrap_ci.json"
 T5_SMALL_BERTSCORE = "outputs/week06_bertscore_proxy/bertscore_proxy_ci.json"
 T5_SMALL_GROUNDING = "outputs/week07_grounding/summary.json"
 
@@ -222,7 +222,7 @@ def aggregate(
     safe = model_safe_name(args.model_name)
 
     # T5-base headline numbers
-    t5b_bootstrap = load_json(PROJECT_ROOT / bootstrap_dir / "summary.json")
+    t5b_bootstrap = load_json(PROJECT_ROOT / bootstrap_dir / "bootstrap_ci.json")
     t5b_bertscore = load_json(PROJECT_ROOT / bertscore_dir / "bertscore_proxy_ci.json")
     t5b_grounding = load_json(PROJECT_ROOT / grounding_dir / "summary.json")
 
