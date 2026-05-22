@@ -584,6 +584,20 @@ brew install --cask basictex           # macOS LaTeX engine
 
 ## 4. Run the official baselines
 
+After `make install`, each baseline runner is also exposed as an
+`mgq-<verb>` console script (see `pyproject.toml [project.scripts]`).
+The two invocation styles are interchangeable; the console form is
+slightly shorter and works from any working directory:
+
+```bash
+python experiments/run_retrieval.py    # explicit script form
+mgq-retrieve                            # equivalent console form
+```
+
+Console-script names: `mgq-retrieve`, `mgq-dense`, `mgq-rerank`,
+`mgq-generate`. The examples below use the script form for
+backward consistency.
+
 ### Stage 2 — BM25 retrieval
 
 ```bash

@@ -57,9 +57,22 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"]
-include = ["msmarco_genqa*"]
-exclude = ["tests*", "experiments*", "scripts*"]
+# Two roots: ``src/`` for the library package and the repo root for the
+# ``experiments`` entry-point layer. The CLI shims under
+# ``msmarco_genqa.cli`` re-export ``experiments.run_*.main`` so the
+# ``mgq-*`` console scripts can find them; that requires ``experiments``
+# itself to be installed.
+where = ["src", "."]
+include = ["msmarco_genqa*", "experiments"]
+exclude = ["tests*", "scripts*"]
+
+[project.scripts]
+# Console-script entry points. Each shim under msmarco_genqa.cli.<name>
+# re-exports main() from the matching experiments/run_<name>.py.
+mgq-retrieve = "msmarco_genqa.cli.retrieve:main"
+mgq-dense    = "msmarco_genqa.cli.dense:main"
+mgq-rerank   = "msmarco_genqa.cli.rerank:main"
+mgq-generate = "msmarco_genqa.cli.generate:main"
 
 
 # --------------------------------------------------------------------------- #
