@@ -136,6 +136,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "``google/flan-t5-base``). Used by the W7-B generator horizontal."
         ),
     )
+    parser.add_argument(
+        "--require-clean-tree",
+        action="store_true",
+        help=(
+            "Refuse to write the manifest if the git working tree has "
+            "uncommitted changes. Use for canonical / headline runs where "
+            "the recorded commit must be sufficient to reproduce."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -431,6 +440,7 @@ def main() -> None:
         config_path=args.config,
         extra_outputs=[pred_path, examples_path],
         extra=manifest_extra,
+        require_clean_tree=args.require_clean_tree,
     )
 
     print("\n=== RAG generation ===")

@@ -112,6 +112,15 @@ def parse_args() -> argparse.Namespace:
             "Pass a fresh path per-encoder so W4-B runs don't collide."
         ),
     )
+    parser.add_argument(
+        "--require-clean-tree",
+        action="store_true",
+        help=(
+            "Refuse to write the manifest if the git working tree has "
+            "uncommitted changes. Use for canonical / headline runs where "
+            "the recorded commit must be sufficient to reproduce."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -478,6 +487,7 @@ def main() -> None:
             "seed": seed,
             "seed_coverage": seed_coverage,
         },
+        require_clean_tree=args.require_clean_tree,
     )
 
     # ---------------------------------------------------------------- #
