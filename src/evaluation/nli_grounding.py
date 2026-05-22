@@ -37,12 +37,22 @@ from __future__ import annotations
 
 from typing import Sequence
 
+# HF revision pin for the default NLI cross-encoder. Hardcoded (not
+# config-driven) because configs/baseline.yaml has no NLI block --
+# grounding is a post-hoc audit, not part of the per-run config surface.
+# To bump: look up the latest SHA via huggingface_hub.HfApi (see
+# scripts/backfill_provenance.py for the lookup pattern) and update
+# this constant + any call sites that override ``model_type``.
+DEFAULT_NLI_MODEL = "cross-encoder/nli-deberta-v3-small"
+DEFAULT_NLI_REVISION = "fa2804872c3b4bd748f38c0185cc85775361e735"
+
 
 def per_query_nli_entailment(
     predictions: Sequence[str],
     passages_lists: Sequence[Sequence[str]],
     *,
-    model_type: str = "cross-encoder/nli-deberta-v3-small",
+    model_type: str = DEFAULT_NLI_MODEL,
+    revision: str | None = DEFAULT_NLI_REVISION,
     batch_size: int = 16,
     device: str | None = None,
     max_length: int = 512,
@@ -95,8 +105,13 @@ def per_query_nli_entailment(
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    tokenizer = AutoTokenizer.from_pretrained(model_type)
-    model = AutoModelForSequenceClassification.from_pretrained(model_type)
+    hf_kwargs: dict = {}
+    if revision is not None:
+        hf_kwargs["revision"] = revision
+    tokenizer = AutoTokenizer.from_pretrained(model_type, **hf_kwargs)
+    model = AutoModelForSequenceClassification.from_pretrained(
+        model_type, **hf_kwargs
+    )
     model = model.to(device).eval()
 
     id2label = model.config.id2label

@@ -287,6 +287,7 @@ def main() -> None:
     else:
         dense = DenseRetriever(
             model_name=dense_cfg["model_name"],
+            revision=dense_cfg.get("revision"),
             device=dense_cfg.get("device"),
             encode_batch_size=int(dense_cfg.get("encode_batch_size", 32)),
             normalize=True,

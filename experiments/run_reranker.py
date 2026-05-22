@@ -355,6 +355,7 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     reranker = CrossEncoderReranker(
         model_name=model_name,
+        revision=rerank_cfg.get("revision"),
         device=rerank_cfg.get("device"),
         batch_size=batch_size,
         max_length=max_length,

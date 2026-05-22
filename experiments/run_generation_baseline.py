@@ -330,8 +330,15 @@ def main() -> None:
 
     # ---- 4. Generate ----
     gen_model_name = args.model_name or cfg["generation"].get("model_name", "t5-small")
+    # If --model-name is used to override the default checkpoint (e.g. the
+    # W7-B generator horizontal swapping t5-small for t5-base), the
+    # baked-in revision pin from the config no longer applies — fall back
+    # to unpinned to avoid loading the wrong revision under the wrong name.
+    revision_from_cfg = cfg["generation"].get("revision")
+    gen_revision = revision_from_cfg if args.model_name is None else None
     gen_cfg = RAGGenerationConfig(
         model_name=gen_model_name,
+        revision=gen_revision,
         max_input_length=int(cfg["generation"].get("max_input_length", 512)),
         max_new_tokens=int(cfg["generation"].get("max_new_tokens", 64)),
         top_k_passages=top_k_passages,
