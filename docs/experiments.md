@@ -122,9 +122,8 @@ the gap, not the absolute level.
 
 ### Encoder horizontal ablation
 
-[`scripts/run_w4b_encoder_horizontal.py`](../scripts/run_w4b_encoder_horizontal.py)
-swaps the encoder on the identical 50k sample. (Slated for rename to
-`scripts/run_encoder_comparison.py` in a follow-up cleanup commit.)
+[`scripts/run_encoder_horizontal.py`](../scripts/run_encoder_horizontal.py)
+swaps the encoder on the identical 50k sample.
 
 | Encoder | MRR@10 | nDCG@10 | Recall@100 | ms/passage |
 |---|---:|---:|---:|---:|
@@ -137,7 +136,7 @@ CPU encoding cost. ANCE / MS MARCO-tuned encoders are deferred.
 
 ### Density sweep ablation
 
-[`scripts/run_w4a_density_sweep.py`](../scripts/run_w4a_density_sweep.py)
+[`scripts/run_density_sweep.py`](../scripts/run_density_sweep.py)
 runs bge-small on three sample sizes (15k / 30k / 50k passages). As
 the sample grows, the relevant-doc density drops and dense's advantage
 over BM25-on-sample grows monotonically:
@@ -179,7 +178,7 @@ Runtime on a 6-core MacBook CPU: ~4 h 37 min for the full dev/small
 
 ### k-sweep ablation
 
-[`scripts/run_w5b_k_sweep.py`](../scripts/run_w5b_k_sweep.py) varies
+[`scripts/run_k_sweep.py`](../scripts/run_k_sweep.py) varies
 `rerank_top_k` to characterise the depth/quality trade-off. (Slated
 for rename to `scripts/run_topk_sweep.py`.)
 
@@ -294,8 +293,7 @@ see *Phase A — generator capacity sweep* below.
 
 ### Phase A — generator capacity sweep (**In flight**)
 
-[`scripts/run_w7b_generator_comparison.py`](../scripts/run_w7b_generator_comparison.py)
-(slated for rename to `scripts/run_generator_capacity_sweep.py`) runs
+[`scripts/run_generator_capacity_sweep.py`](../scripts/run_generator_capacity_sweep.py) runs
 T5-base on the identical 6,980 paired-qid set with the identical
 prompt, then recomputes the full metric suite (surface metrics +
 BERTScore + lex / n-gram / NLI grounding).
@@ -310,13 +308,13 @@ full-sample outcome determines the direction.
 
 | Ablation | Script | Status |
 |---|---|---|
-| Density sweep on dense retrieval (15k/30k/50k) | [`scripts/run_w4a_density_sweep.py`](../scripts/run_w4a_density_sweep.py) | Done; see Stage 2 |
-| Dense encoder horizontal | [`scripts/run_w4b_encoder_horizontal.py`](../scripts/run_w4b_encoder_horizontal.py) | Done; see Stage 2 |
-| Rerank depth (k-sweep) | [`scripts/run_w5b_k_sweep.py`](../scripts/run_w5b_k_sweep.py) | Done |
+| Density sweep on dense retrieval (15k/30k/50k) | [`scripts/run_density_sweep.py`](../scripts/run_density_sweep.py) | Done; see Stage 2 |
+| Dense encoder horizontal | [`scripts/run_encoder_horizontal.py`](../scripts/run_encoder_horizontal.py) | Done; see Stage 2 |
+| Rerank depth (k-sweep) | [`scripts/run_k_sweep.py`](../scripts/run_k_sweep.py) | Done |
 | Regression vs non-regression query profile | [`scripts/regression_query_profile.py`](../scripts/regression_query_profile.py) | Done |
 | Generation × retrieval source first-stage comparison | [`scripts/compare_rerank_first_stages.py`](../scripts/compare_rerank_first_stages.py) | Done |
 | Validation of full reranker run | [`scripts/validate_full_rerank.py`](../scripts/validate_full_rerank.py) | Done |
-| Generator capacity (T5-small → T5-base) | [`scripts/run_w7b_generator_comparison.py`](../scripts/run_w7b_generator_comparison.py) | **In flight (Phase A)** |
+| Generator capacity (T5-small → T5-base) | [`scripts/run_generator_capacity_sweep.py`](../scripts/run_generator_capacity_sweep.py) | **In flight (Phase A)** |
 
 ---
 
