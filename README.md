@@ -55,20 +55,17 @@ and [`docs/experiments.md`](docs/experiments.md) for the experiment-line narrati
 
 ## 1. Status
 
-### Stage 1 — EDA &nbsp;&nbsp;✅ done
-
+### Stage 1 — EDA
 - Dataset statistics + query/passage/answer-type distributions covered in §1 of
   [`reports/internship_report/report.pdf`](reports/internship_report/report.pdf).
   Source figures: `figures/{query_length,passage_length,query_type,answer_type_by_query_type}_distribution.png`.
 
-### Stage 2 — BM25 retrieval &nbsp;&nbsp;✅ done
-
+### Stage 2 — BM25 retrieval
 - Script: [`experiments/run_retrieval.py`](experiments/run_retrieval.py)
 - **MRR@10 = 0.1703** &nbsp;·&nbsp; **Recall@100 = 0.6212** &nbsp;·&nbsp; **Recall@1000 = 0.8154**
   on `dev/small` (6,980 queries, full 8.8M-passage corpus)
 
-### Stage 3 — RAG generation &nbsp;&nbsp;✅ done
-
+### Stage 3 — RAG generation
 - Script: [`experiments/run_generation_baseline.py`](experiments/run_generation_baseline.py)
 - **Sampled baseline** — 200-query sample of dev/small (seed 42), T5-small (no fine-tuning),
   top-3 BM25 passages from the W2 run, best-of-N reference scoring:
@@ -80,8 +77,7 @@ and [`docs/experiments.md`](docs/experiments.md) for the experiment-line narrati
   retriever lives in [*Generation × retrieval source*](#generation--retrieval-source--done)
   below — that is the headline result, not this 200-query subsample.
 
-### Stage 4 — Dense retrieval (sampled) &nbsp;&nbsp;✅ done
-
+### Stage 4 — Dense retrieval (sampled)
 - Script: [`experiments/run_dense_retrieval.py`](experiments/run_dense_retrieval.py)
 - Encoder: `sentence-transformers/all-MiniLM-L6-v2`, FAISS `IndexFlatIP` over
   L2-normalised embeddings, qrels-anchored 50k-passage sample.
@@ -112,8 +108,7 @@ and [`docs/experiments.md`](docs/experiments.md) for the experiment-line narrati
     (14.9 %, 50 k). True 1 / 5 / 10 % density cells need 70 k–700 k
     samples (dev/small has ~7 437 unique relevants) and are deferred.
 
-### Stage 5 — Cross-encoder reranking &nbsp;&nbsp;✅ done
-
+### Stage 5 — Cross-encoder reranking
 - Script: [`experiments/run_reranker.py`](experiments/run_reranker.py)
 - Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2` over the W4 dense top-100.
 - **Full dev/small (6 980 queries)** — `outputs/week05_reranker_full/` (gitignored):
@@ -137,8 +132,7 @@ and [`docs/experiments.md`](docs/experiments.md) for the experiment-line narrati
   *local-ordering* gap — once the relevant passage is somewhere in the top-100,
   the cross-encoder is what pushes it to top-1 / top-3.
 
-### Generation × retrieval source &nbsp;&nbsp;✅ done
-
+### Generation × retrieval source
 *Cross-stage synthesis (not a new stage): uses the W2 BM25 run.tsv and the
 W5 reranked run.tsv as inputs and produces the full-dev paired
 predictions that W6's evaluation layer scores below.*
@@ -327,8 +321,7 @@ The earlier 200-query subsample comparison (BM25 0.2131 / Rerank
 estimates and conclusions are consistent across the two scales; the
 full-dev numbers above are the version to cite.
 
-### Stage 6 — Evaluation layer &nbsp;&nbsp;✅ done
-
+### Stage 6 — Evaluation layer
 Two follow-up evaluations layered on top of the full-dev paired
 predictions produced by *Generation × retrieval source* above —
 neither requires a new model run, both are CPU-only:
@@ -409,8 +402,7 @@ neither requires a new model run, both are CPU-only:
     [`scripts/regression_query_profile.py`](scripts/regression_query_profile.py);
     three boxplots under [`figures/w6c_regression_vs_other_*.png`](figures/).
 
-### Stage 7 — Grounding audit &nbsp;&nbsp;✅ done
-
+### Stage 7 — Grounding audit
 Cheap deterministic CPU pass over the existing full-dev paired
 predictions to answer the question the W6 closure left open: *what
 is T5-small actually doing on this prompt format — extracting from
