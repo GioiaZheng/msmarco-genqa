@@ -55,6 +55,7 @@ from msmarco_genqa.util.manifest import (
     compute_data_fingerprint,
     compute_env_fingerprint,
     compute_resolved_config_hash,
+    compute_sampling_block,
     write_resolved_config,
     write_run_manifest,
 )
@@ -423,12 +424,26 @@ def main() -> None:
 
     n_examples = metrics.pop("n_predictions", len(predictions))
     env_dict = capture_environment()
+    # Generation inherits sampling context from its upstream retrieval run.
+    # bm25 (W2 full corpus) → not sampled. dense / reranked → qrels-anchored
+    # sample. Generation's own metrics (Token-F1, ROUGE-L, etc.) are
+    # answer-vs-reference, NOT recall-based, so the caveat is contextual
+    # rather than directly affecting metric direction — but the provenance
+    # is still load-bearing for any cross-source comparison (BM25-driven
+    # vs dense-driven generation are NOT apples-to-apples without it).
+    _generation_is_sampled = retrieval_source in ("dense", "reranked")
     payload = {
         "task": "generation",
         "dataset": "msmarco-passage/dev/small ∩ ms_marco/v2.1/validation",
         "n_examples": n_examples,
         "config": cfg,
         "metrics": metrics,
+        "sampling": compute_sampling_block(
+            is_sampled=_generation_is_sampled,
+            method="qrels-anchored (via upstream retrieval)"
+            if _generation_is_sampled
+            else None,
+        ),
         "wall_clock_seconds": {"generation": gen_time},
         "environment": env_dict,
     }

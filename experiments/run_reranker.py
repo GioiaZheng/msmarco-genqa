@@ -75,6 +75,7 @@ from msmarco_genqa.util.manifest import (
     compute_data_fingerprint,
     compute_env_fingerprint,
     compute_resolved_config_hash,
+    compute_sampling_block,
     write_resolved_config,
     write_run_manifest,
 )
@@ -563,6 +564,21 @@ def main() -> None:
         "peak_memory_mib": peak_mem_mb,
         "environment": (env_dict := capture_environment()),
     }
+    # Reranker inherits sampling state from its upstream first-stage run:
+    # presence of input_week_dir/sample_doc_ids.json indicates the upstream
+    # eval was qrels-anchored. The eval (dense_metrics + rerank_metrics) is
+    # then over sample_qrels rather than the full qrels.
+    upstream_sample_path = input_week_dir / "sample_doc_ids.json"
+    if upstream_sample_path.exists():
+        with open(upstream_sample_path) as f:
+            _upstream_sample_size = len(json.load(f))
+        payload["sampling"] = compute_sampling_block(
+            is_sampled=True,
+            method="qrels-anchored (inherited from upstream first-stage)",
+            sample_size=_upstream_sample_size,
+        )
+    else:
+        payload["sampling"] = compute_sampling_block(is_sampled=False)
     with open(output_dir / "metrics.json", "w") as f:
         json.dump(payload, f, indent=2, default=str)
     logger.info("Wrote metrics to %s", output_dir / "metrics.json")

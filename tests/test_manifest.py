@@ -16,6 +16,7 @@ import pytest
 
 from msmarco_genqa.util import manifest as manifest_mod
 from msmarco_genqa.util.manifest import (
+    CANONICAL_SAMPLED_CAVEAT,
     REQUIRED_FIELDS,
     SCHEMA_VERSION,
     DirtyTreeError,
@@ -25,6 +26,7 @@ from msmarco_genqa.util.manifest import (
     compute_data_fingerprint,
     compute_env_fingerprint,
     compute_resolved_config_hash,
+    compute_sampling_block,
     write_manifest,
     write_resolved_config,
     write_run_manifest,
@@ -781,3 +783,74 @@ def test_compute_env_fingerprint_handles_none_fields():
     }
     h = compute_env_fingerprint(env)
     assert len(h) == 64
+
+
+# --------------------------------------------------------------------------- #
+# Sampling caveat block
+# --------------------------------------------------------------------------- #
+
+
+def test_compute_sampling_block_full_corpus_is_minimal():
+    """is_sampled=False produces a minimal 1-key dict; no caveat / method /
+    sample_size pollution. Full-corpus runs must NOT carry a sampling
+    warning, otherwise it dilutes the warning's signal when it fires."""
+    assert compute_sampling_block(is_sampled=False) == {"is_sampled": False}
+
+
+def test_compute_sampling_block_sampled_default_uses_canonical_caveat():
+    """is_sampled=True with no overrides uses the canonical caveat string
+    and the default 'qrels-anchored' method label."""
+    block = compute_sampling_block(is_sampled=True, sample_size=50000)
+    assert block["is_sampled"] is True
+    assert block["method"] == "qrels-anchored"
+    assert block["sample_size"] == 50000
+    assert block["caveat"] == CANONICAL_SAMPLED_CAVEAT
+
+
+def test_compute_sampling_block_canonical_caveat_mentions_critical_terms():
+    """The canonical caveat must contain the load-bearing honest phrases:
+    'qrels-anchored', upper-bound, and 'not comparable to full-corpus'.
+    Drift in the wording silently weakens the published warning."""
+    text = CANONICAL_SAMPLED_CAVEAT.lower()
+    assert "qrels-anchored" in text
+    assert "upper-bound" in text
+    assert "not comparable to full-corpus" in text
+
+
+def test_compute_sampling_block_custom_method_label():
+    """method= overrides the 'qrels-anchored' default — used by the BM25
+    runner's --corpus-limit smoke path (which is first-N-truncated, not
+    qrels-anchored)."""
+    block = compute_sampling_block(
+        is_sampled=True, method="first-N-truncated", sample_size=200000
+    )
+    assert block["method"] == "first-N-truncated"
+    assert block["sample_size"] == 200000
+
+
+def test_compute_sampling_block_custom_caveat_overrides():
+    """caveat= lets a runner emit a non-default warning when the sampling
+    scheme is sufficiently unusual that the canonical wording would be
+    misleading. The override is wholesale, not appended."""
+    custom = "Custom warning text for an exotic sampling scheme."
+    block = compute_sampling_block(
+        is_sampled=True, sample_size=1234, caveat=custom
+    )
+    assert block["caveat"] == custom
+
+
+def test_compute_sampling_block_sample_size_optional():
+    """sample_size=None is valid — used by the generation runner which
+    inherits sampling context from upstream retrieval but has no
+    sample_size of its own."""
+    block = compute_sampling_block(is_sampled=True, sample_size=None)
+    assert block["sample_size"] is None
+    assert block["is_sampled"] is True
+
+
+def test_compute_sampling_block_keys_are_stable_set():
+    """The 4-key shape on is_sampled=True is the locked contract;
+    downstream report tooling will key off these names. Pinning the set
+    catches accidental renames."""
+    block = compute_sampling_block(is_sampled=True, sample_size=50000)
+    assert set(block.keys()) == {"is_sampled", "method", "sample_size", "caveat"}

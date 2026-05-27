@@ -41,6 +41,7 @@ from msmarco_genqa.util.manifest import (
     compute_data_fingerprint,
     compute_env_fingerprint,
     compute_resolved_config_hash,
+    compute_sampling_block,
     write_resolved_config,
     write_run_manifest,
 )
@@ -397,12 +398,21 @@ def main() -> None:
     # ---- 7. metrics.json (unified schema across W2/W3) ----
     n_examples = metrics.pop("n_queries", None)  # promote count to top level
     env_dict = capture_environment()
+    # BM25 baseline runs the full 8.8M corpus by default. corpus_limit is
+    # only set for smoke / dev iteration; when set, it's a first-N truncation
+    # (not qrels-anchored — that's the dense runner's pattern).
+    sampling_block = compute_sampling_block(
+        is_sampled=corpus_limit is not None,
+        method="first-N-truncated" if corpus_limit is not None else None,
+        sample_size=corpus_limit,
+    )
     payload = {
         "task": "retrieval",
         "dataset": "msmarco-passage/dev/small",
         "n_examples": n_examples,
         "config": cfg,
         "metrics": metrics,
+        "sampling": sampling_block,
         "wall_clock_seconds": {
             "indexing": index_time,
             "search": search_time,

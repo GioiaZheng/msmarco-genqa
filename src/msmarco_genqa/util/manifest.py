@@ -244,6 +244,76 @@ def compute_data_fingerprint(
 
 
 # --------------------------------------------------------------------------- #
+# Sampling caveat block — surfaces sub-corpus eval honesty in metrics.json
+# --------------------------------------------------------------------------- #
+#
+# A repo-wide canonical caveat string for runs evaluated on a qrels-anchored
+# sub-sample of the full MS MARCO passage corpus. The block lives at the
+# top-level of payload (peer to "metrics") because sampling is a run-wide
+# property, not a per-metric one — both dense and bm25_sample numbers
+# inside the same dense run share the caveat.
+
+CANONICAL_SAMPLED_CAVEAT = (
+    "Numbers are derived from a qrels-anchored sub-sample of the full "
+    "MS MARCO passage corpus. Every dev-set relevant doc is included by "
+    "construction, so recall@k is upper-bounded at 1.0 and these absolute "
+    "numbers are NOT comparable to full-corpus baselines. The valid "
+    "comparison is between systems evaluated on the SAME sample."
+)
+
+
+def compute_sampling_block(
+    *,
+    is_sampled: bool,
+    method: str | None = None,
+    sample_size: int | None = None,
+    caveat: str | None = None,
+) -> dict[str, Any]:
+    """Return the standardised sampling-caveat block for metrics.json.
+
+    Placement: top-level key ``payload["sampling"]`` peer to
+    ``payload["metrics"]`` — sampling is a run-wide property, not a
+    per-metric one (dense + bm25_sample inside one run share the
+    caveat). Spec note: progress.md's earlier "metrics["sampling"]"
+    wording is implementation-deferred; the top-level placement keeps
+    "metrics" pure (only numeric metric values) and makes the caveat
+    easy to discover.
+
+    Parameters
+    ----------
+    is_sampled :
+        ``True`` if the eval drew on a sub-corpus (qrels-anchored
+        sample, first-N-truncation, etc.); ``False`` for full-corpus.
+    method :
+        Free-form short label for the sampling method, e.g.
+        ``"qrels-anchored"``, ``"first-N-truncated"``. Ignored when
+        ``is_sampled=False``.
+    sample_size :
+        Effective sample size, or ``None`` if not applicable
+        (e.g. generation runs that inherit upstream sampling but have
+        no sample_size of their own).
+    caveat :
+        Override the default canonical caveat string. Useful for
+        runs with a non-default sampling scheme that needs a different
+        warning. When ``None``, the canonical caveat is used.
+
+    Returns
+    -------
+    A minimal dict: ``{"is_sampled": False}`` for full-corpus runs;
+    ``{"is_sampled": True, "method": ..., "sample_size": ..., "caveat": ...}``
+    for sub-corpus runs.
+    """
+    if not is_sampled:
+        return {"is_sampled": False}
+    return {
+        "is_sampled": True,
+        "method": method or "qrels-anchored",
+        "sample_size": sample_size,
+        "caveat": caveat or CANONICAL_SAMPLED_CAVEAT,
+    }
+
+
+# --------------------------------------------------------------------------- #
 # Env fingerprint — stable hash of capture_environment()
 # --------------------------------------------------------------------------- #
 

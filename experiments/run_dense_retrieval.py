@@ -59,6 +59,7 @@ from msmarco_genqa.util.manifest import (
     compute_data_fingerprint,
     compute_env_fingerprint,
     compute_resolved_config_hash,
+    compute_sampling_block,
     write_resolved_config,
     write_run_manifest,
 )
@@ -453,6 +454,11 @@ def main() -> None:
         bm25_metrics.pop("n_queries", None)
 
     env_dict = capture_environment()
+    sampling_block = compute_sampling_block(
+        is_sampled=True,
+        method="qrels-anchored",
+        sample_size=len(sample_doc_ids),
+    )
     payload = {
         "task": "retrieval",
         "dataset": "msmarco-passage/dev/small (qrels-anchored sample)",
@@ -462,6 +468,7 @@ def main() -> None:
             "dense": dense_metrics,
             **({"bm25_sample": bm25_metrics} if bm25_metrics is not None else {}),
         },
+        "sampling": sampling_block,
         "wall_clock_seconds": {
             "encode_corpus": encode_seconds,
             "dense_search": dense_search_seconds,
