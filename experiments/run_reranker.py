@@ -71,7 +71,11 @@ from msmarco_genqa.reranking.io import (
     truncate_top_k,
 )
 from msmarco_genqa.util.environment import capture_environment
-from msmarco_genqa.util.manifest import write_run_manifest
+from msmarco_genqa.util.manifest import (
+    compute_resolved_config_hash,
+    write_resolved_config,
+    write_run_manifest,
+)
 from msmarco_genqa.util.seeding import set_global_seed
 
 logger = logging.getLogger("run_reranker")
@@ -561,12 +565,15 @@ def main() -> None:
         json.dump(payload, f, indent=2, default=str)
     logger.info("Wrote metrics to %s", output_dir / "metrics.json")
 
+    resolved_config_path = write_resolved_config(cfg, output_dir)
+    resolved_config_hash = compute_resolved_config_hash(cfg)
+
     write_run_manifest(
         project_root=PROJECT_ROOT,
         output_dir=output_dir,
         command=sys.argv,
         config_path=args.config,
-        extra_outputs=[rerank_run_path, examples_path],
+        extra_outputs=[rerank_run_path, examples_path, resolved_config_path],
         extra={
             "task": "reranking",
             "model_name": model_name,
@@ -583,6 +590,7 @@ def main() -> None:
             "resumed": bool(args.resume) and len(done_qids) > 0,
             "seed": seed,
             "seed_coverage": seed_coverage,
+            "resolved_config_hash": resolved_config_hash,
         },
         require_clean_tree=args.require_clean_tree,
         allow_incomplete=args.allow_incomplete_manifest,

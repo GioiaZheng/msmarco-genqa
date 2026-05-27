@@ -136,6 +136,57 @@ def _validate_required(manifest: dict[str, Any]) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# Resolved config — content hash + adjacent YAML artifact
+# --------------------------------------------------------------------------- #
+#
+# The "resolved config" is the cfg dict AFTER all CLI overrides have been
+# applied and is the actual config that drove the run. The file-level
+# sha256 of configs/baseline.yaml that already lives in manifest["config"][0]
+# is NOT sufficient: it misses --sample-size, --model-name, and similar
+# runner CLI overrides that meaningfully change the run. The contract is
+# that the runner hashes the resolved dict, writes the dict to
+# output_dir/resolved_config.yaml, and passes the hash via extra so the
+# manifest's required-fields validator sees it.
+
+
+def compute_resolved_config_hash(cfg: dict[str, Any]) -> str:
+    """Return a stable sha256 hex digest of the resolved config dict.
+
+    Stability properties:
+    - Insensitive to key insertion order (uses json.dumps sort_keys=True).
+    - Sensitive to any value change at any depth.
+    - Pure function: same dict in, same hash out, no side effects.
+
+    The 64-char full digest is returned (not the truncated 16-char form
+    used in manifest["config"][...] file records), because this hash is
+    the canonical re-identifier for the run's logical config: shorter
+    digests have non-trivial collision risk across the lifetime of the
+    project's run registry.
+    """
+    serialised = json.dumps(cfg, sort_keys=True, default=str).encode("utf-8")
+    return hashlib.sha256(serialised).hexdigest()
+
+
+def write_resolved_config(cfg: dict[str, Any], output_dir: Path) -> Path:
+    """Write the resolved config dict to ``output_dir/resolved_config.yaml``.
+
+    Returns the written path. ``output_dir`` is created if needed. The
+    YAML is written with ``default_flow_style=False`` and ``sort_keys=True``
+    so the on-disk form matches the hash input (key-order-stable). YAML
+    is preferred over JSON for the on-disk form because configs/baseline.yaml
+    is itself YAML — keeping the resolved-config artifact in the same
+    surface dialect makes diffing trivial.
+    """
+    import yaml  # imported lazily; yaml is a runtime dep but kept out of the manifest module's hot path
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = output_dir / "resolved_config.yaml"
+    with open(path, "w") as f:
+        yaml.safe_dump(cfg, f, default_flow_style=False, sort_keys=True)
+    return path
+
+
+# --------------------------------------------------------------------------- #
 # Git
 # --------------------------------------------------------------------------- #
 

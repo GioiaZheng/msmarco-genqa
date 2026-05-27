@@ -22,7 +22,9 @@ from msmarco_genqa.util.manifest import (
     RequiredFieldMissingError,
     _validate_required,
     build_manifest,
+    compute_resolved_config_hash,
     write_manifest,
+    write_resolved_config,
     write_run_manifest,
 )
 
@@ -526,3 +528,97 @@ def test_write_run_manifest_strict_catches_missing_git_commit(
         )
 
     assert not (output_dir / "manifest.json").exists()
+
+
+# --------------------------------------------------------------------------- #
+# Resolved config — content hash + adjacent YAML artefact
+# --------------------------------------------------------------------------- #
+
+
+def _sample_resolved_cfg() -> dict:
+    """A representative cfg dict with nesting + heterogeneous values, so
+    hashing tests can detect order / type / depth sensitivity bugs."""
+    return {
+        "seed": 42,
+        "retrieval": {"backend": "bm25s", "k1": 1.5, "b": 0.75, "top_k": 1000},
+        "dense": {"model_name": "all-MiniLM-L6-v2", "sample_size": 50000},
+        "eval_retrieval": {"output_dir": "outputs/week02_bm25"},
+    }
+
+
+def test_compute_resolved_config_hash_is_64_hex():
+    """Hash is the full sha256 hex (not the truncated 16-char form)."""
+    h = compute_resolved_config_hash(_sample_resolved_cfg())
+    assert len(h) == 64
+    int(h, 16)  # raises if not valid hex
+
+
+def test_compute_resolved_config_hash_deterministic():
+    """Same dict in, same hash out — stable across calls."""
+    cfg = _sample_resolved_cfg()
+    assert compute_resolved_config_hash(cfg) == compute_resolved_config_hash(cfg)
+
+
+def test_compute_resolved_config_hash_insensitive_to_key_order():
+    """Two dicts with identical content but different insertion order must
+    hash to the same value, otherwise the hash is unstable across Python
+    versions / dict re-iterations and the manifest contract is meaningless."""
+    a = {"seed": 42, "retrieval": {"backend": "bm25s", "k1": 1.5}}
+    b = {"retrieval": {"k1": 1.5, "backend": "bm25s"}, "seed": 42}
+    assert compute_resolved_config_hash(a) == compute_resolved_config_hash(b)
+
+
+def test_compute_resolved_config_hash_sensitive_to_value_change():
+    """Changing any leaf value must flip the hash; otherwise CLI-override
+    capture is meaningless."""
+    base = _sample_resolved_cfg()
+    h_base = compute_resolved_config_hash(base)
+
+    perturbed = _sample_resolved_cfg()
+    perturbed["dense"]["sample_size"] = 30000  # the W4-A density sweep case
+    assert compute_resolved_config_hash(perturbed) != h_base
+
+
+def test_compute_resolved_config_hash_handles_non_json_native(tmp_path: Path):
+    """``Path`` objects appear in cfg dicts via CLI ``type=Path`` argparse
+    flags. The hasher must coerce them deterministically rather than
+    raise ``TypeError`` (handled via ``json.dumps(default=str)``)."""
+    cfg = {"output_dir": tmp_path / "outputs" / "x"}
+    h = compute_resolved_config_hash(cfg)
+    assert len(h) == 64
+
+
+def test_write_resolved_config_roundtrip(tmp_path: Path):
+    """The yaml on disk must reload to the same dict (modulo yaml's
+    canonical types)."""
+    import yaml
+
+    cfg = _sample_resolved_cfg()
+    path = write_resolved_config(cfg, tmp_path / "outputs" / "run1")
+    assert path == tmp_path / "outputs" / "run1" / "resolved_config.yaml"
+    assert path.exists()
+    loaded = yaml.safe_load(path.read_text())
+    assert loaded == cfg
+
+
+def test_write_resolved_config_creates_output_dir(tmp_path: Path):
+    """``output_dir`` not existing yet must NOT raise — the helper mkdirs
+    p=True so it can be the first thing a runner writes."""
+    target = tmp_path / "deep" / "nested" / "outputs"
+    assert not target.exists()
+    path = write_resolved_config({"seed": 7}, target)
+    assert path.exists()
+    assert target.is_dir()
+
+
+def test_write_resolved_config_keys_are_sorted(tmp_path: Path):
+    """The on-disk yaml has keys sorted, so diff'ing two resolved configs
+    across runs is monotone (no order-of-write noise)."""
+    cfg = {"z_last": 3, "a_first": 1, "m_middle": 2}
+    path = write_resolved_config(cfg, tmp_path)
+    content = path.read_text()
+    # Each key should appear in alphabetical order in the file.
+    a_pos = content.index("a_first")
+    m_pos = content.index("m_middle")
+    z_pos = content.index("z_last")
+    assert a_pos < m_pos < z_pos

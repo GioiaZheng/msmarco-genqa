@@ -55,7 +55,11 @@ from msmarco_genqa.retrieval.bm25 import BM25Retriever
 from msmarco_genqa.retrieval.dense import DenseRetriever
 from msmarco_genqa.retrieval.sampling import qrels_anchored_sample
 from msmarco_genqa.util.environment import capture_environment
-from msmarco_genqa.util.manifest import write_run_manifest
+from msmarco_genqa.util.manifest import (
+    compute_resolved_config_hash,
+    write_resolved_config,
+    write_run_manifest,
+)
 from msmarco_genqa.util.seeding import set_global_seed
 
 logger = logging.getLogger("run_dense_retrieval")
@@ -475,7 +479,10 @@ def main() -> None:
         json.dump(payload, f, indent=2, default=str)
     logger.info("Wrote metrics to %s", output_dir / "metrics.json")
 
-    manifest_outputs = [dense_run_path, examples_path, sample_path]
+    resolved_config_path = write_resolved_config(cfg, output_dir)
+    resolved_config_hash = compute_resolved_config_hash(cfg)
+
+    manifest_outputs = [dense_run_path, examples_path, sample_path, resolved_config_path]
     if bm25_run_path is not None:
         manifest_outputs.append(bm25_run_path)
     write_run_manifest(
@@ -494,6 +501,7 @@ def main() -> None:
             "compared_against_bm25_sample": bm25 is not None,
             "seed": seed,
             "seed_coverage": seed_coverage,
+            "resolved_config_hash": resolved_config_hash,
         },
         require_clean_tree=args.require_clean_tree,
         allow_incomplete=args.allow_incomplete_manifest,

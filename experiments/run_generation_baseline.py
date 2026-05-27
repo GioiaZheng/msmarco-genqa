@@ -51,7 +51,11 @@ from msmarco_genqa.data.msmarco import get_docs_store, load_msmarco_passage
 from msmarco_genqa.evaluation.generation import evaluate_generation
 from msmarco_genqa.generation.rag_generator import RAGGenerationConfig, RAGGenerator
 from msmarco_genqa.util.environment import capture_environment
-from msmarco_genqa.util.manifest import write_run_manifest
+from msmarco_genqa.util.manifest import (
+    compute_resolved_config_hash,
+    write_resolved_config,
+    write_run_manifest,
+)
 from msmarco_genqa.util.seeding import set_global_seed
 
 logger = logging.getLogger(__name__)
@@ -434,6 +438,9 @@ def main() -> None:
         if run_path.is_relative_to(PROJECT_ROOT)
         else str(run_path)
     )
+    resolved_config_path = write_resolved_config(cfg, output_dir)
+    resolved_config_hash = compute_resolved_config_hash(cfg)
+
     manifest_extra: dict[str, object] = {
         "task": "generation",
         "model_name": gen_cfg.model_name,
@@ -444,6 +451,7 @@ def main() -> None:
         "input_run": input_run_rel,
         "retrieval_source": retrieval_source,
         "run_name": output_dir.name,
+        "resolved_config_hash": resolved_config_hash,
     }
     if restrict_run_rel is not None:
         manifest_extra["restrict_to_run"] = restrict_run_rel
@@ -452,7 +460,7 @@ def main() -> None:
         output_dir=output_dir,
         command=sys.argv,
         config_path=args.config,
-        extra_outputs=[pred_path, examples_path],
+        extra_outputs=[pred_path, examples_path, resolved_config_path],
         extra=manifest_extra,
         require_clean_tree=args.require_clean_tree,
         allow_incomplete=args.allow_incomplete_manifest,
