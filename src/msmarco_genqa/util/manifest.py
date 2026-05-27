@@ -20,6 +20,17 @@ Manifests deliberately exclude:
 - Absolute paths under the developer's home (CLAUDE.md privacy rule).
 - API tokens or cache prefixes.
 - The contents of large output files (only their size/hash is stored).
+
+Schema v2 — runtime contract
+----------------------------
+
+Schema bumped to ``msmarco-genqa.manifest.v2``. The bump is a hard break
+of v1: writes always emit v2; v1 manifests on disk remain readable as
+plain JSON for archaeological purposes. The behaviour change is the
+*runtime contract*: a manifest write under default (strict) mode fails
+with ``RequiredFieldMissingError`` if any of ``REQUIRED_FIELDS`` is
+missing or ``None``. Runners expose ``--allow-incomplete-manifest`` as
+the dev-time bypass, symmetric to ``--require-clean-tree`` from v1.
 """
 
 from __future__ import annotations
@@ -36,6 +47,33 @@ from typing import Any, Iterable
 logger = logging.getLogger(__name__)
 
 
+SCHEMA_VERSION = "msmarco-genqa.manifest.v2"
+
+# Required-field contract enforced by ``write_run_manifest`` under default
+# (strict) mode. Dotted paths into the manifest dict. A value of ``None`` or
+# a missing key both count as a violation; ``False`` and ``0`` are valid.
+#
+# Field meanings:
+# - git.commit       : short SHA of HEAD at write time (non-None).
+# - git.dirty        : bool (True iff uncommitted changes; never None).
+# - extra.seed       : the seed passed to ``set_global_seed``.
+# - extra.resolved_config_hash : content hash of the resolved config dict
+#                                (after CLI overrides). Populated by
+#                                commit 2 of research/reproducibility-protocol.
+# - extra.data_fingerprint     : lean hash of corpus cache + qrels.
+#                                Populated by commit 3.
+# - extra.env_fingerprint      : stable hash of capture_environment().
+#                                Populated by commit 3.
+REQUIRED_FIELDS: tuple[str, ...] = (
+    "git.commit",
+    "git.dirty",
+    "extra.seed",
+    "extra.resolved_config_hash",
+    "extra.data_fingerprint",
+    "extra.env_fingerprint",
+)
+
+
 class DirtyTreeError(RuntimeError):
     """Raised by ``write_run_manifest`` when ``require_clean_tree=True`` and
     the git working tree has uncommitted changes.
@@ -43,6 +81,58 @@ class DirtyTreeError(RuntimeError):
     The recorded commit SHA alone is not sufficient to reproduce a run made
     from a dirty tree, so canonical / headline runs may opt in to this check.
     """
+
+
+class RequiredFieldMissingError(RuntimeError):
+    """Raised by ``write_run_manifest`` under default (strict) mode when one
+    or more ``REQUIRED_FIELDS`` is missing or ``None``.
+
+    The runtime contract for v2: the recorded fields must be sufficient to
+    re-identify and reproduce the run. Missing fields silently turn the
+    manifest into archaeology, so the default behaviour refuses to write.
+    Pass ``allow_incomplete=True`` (from runners:
+    ``--allow-incomplete-manifest``) to bypass during development.
+    """
+
+
+_MISSING = object()
+
+
+def _get_dotted(d: dict, dotted: str):
+    """Return the value at ``dotted`` path inside ``d``, or ``_MISSING``.
+
+    A returned ``_MISSING`` means "key absent at some level"; a returned
+    ``None`` means "present but null". The validator treats both as
+    violations.
+    """
+    cur: Any = d
+    for part in dotted.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return _MISSING
+        cur = cur[part]
+    return cur
+
+
+def _validate_required(manifest: dict[str, Any]) -> None:
+    """Raise ``RequiredFieldMissingError`` if any ``REQUIRED_FIELDS`` entry
+    is missing or ``None`` in ``manifest``. Returns ``None`` on success.
+
+    The error message enumerates every violating field so the user can fix
+    them in one pass rather than discovering them one at a time.
+    """
+    missing: list[str] = []
+    for field in REQUIRED_FIELDS:
+        value = _get_dotted(manifest, field)
+        if value is _MISSING or value is None:
+            missing.append(field)
+    if missing:
+        raise RequiredFieldMissingError(
+            f"manifest is missing required field(s) {missing}. The write "
+            f"was refused under the {SCHEMA_VERSION} runtime contract. "
+            "Populate the missing field(s) via the runner's extra dict, "
+            "or pass --allow-incomplete-manifest at the CLI to bypass "
+            "(development only)."
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -147,7 +237,7 @@ def build_manifest(
     """
     cmd = list(command) if command is not None else list(sys.argv)
     return {
-        "schema": "msmarco-genqa.manifest.v1",
+        "schema": SCHEMA_VERSION,
         "timestamp_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "git": _git_info(),
         "command": cmd,
@@ -188,6 +278,7 @@ def write_run_manifest(
     extra: dict[str, Any] | None = None,
     manifest_name: str = "manifest.json",
     require_clean_tree: bool = False,
+    allow_incomplete: bool = False,
 ) -> Path:
     """Standardised manifest writer for the experiment runners.
 
@@ -213,6 +304,14 @@ def write_run_manifest(
     ``require_clean_tree=True`` (from runners: ``--require-clean-tree``)
     to refuse to write the manifest in that case — useful for canonical /
     headline runs where the recorded provenance must be tight.
+
+    Required-field contract (schema v2): under default ``allow_incomplete=False``,
+    the manifest is validated against ``REQUIRED_FIELDS`` before write and
+    a ``RequiredFieldMissingError`` is raised if any field is missing or
+    ``None``. Pass ``allow_incomplete=True`` (from runners:
+    ``--allow-incomplete-manifest``) to bypass during development — the
+    bypass is symmetric to ``require_clean_tree`` in role: development
+    convenience that must be deliberately opted in.
     """
     metrics_path = output_dir / "metrics.json"
 
@@ -247,6 +346,9 @@ def write_run_manifest(
             "tree has uncommitted changes and require_clean_tree=True. "
             "Commit your changes and rerun, or omit --require-clean-tree."
         )
+
+    if not allow_incomplete:
+        _validate_required(manifest)
 
     path = write_manifest(manifest, manifest_path)
 

@@ -80,6 +80,15 @@ def parse_args() -> argparse.Namespace:
             "the recorded commit must be sufficient to reproduce."
         ),
     )
+    parser.add_argument(
+        "--allow-incomplete-manifest",
+        action="store_true",
+        help=(
+            "Bypass the schema-v2 required-field contract on manifest write. "
+            "Development-only escape hatch; production / headline runs must "
+            "leave this off so missing reproducibility fields fail loudly."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -419,6 +428,7 @@ def main() -> None:
             "seed_coverage": seed_coverage,
         },
         require_clean_tree=args.require_clean_tree,
+        allow_incomplete=args.allow_incomplete_manifest,
     )
 
     # ---- 8. Friendly summary ----
