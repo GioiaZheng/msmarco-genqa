@@ -1,5 +1,5 @@
 % =============================================================================
-% MS MARCO Generative QA — Internship Report
+% MS MARCO Generative QA — v1.0 Report
 % Author : GioiaZheng  <gioia.zheng.stud@gmail.com>
 % Date   : 2026-05-21
 % Build  : latexmk -pdf report.tex   (or:  see Makefile)
@@ -43,7 +43,7 @@
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[LE,LO]{\small\nouppercase{\leftmark}}
-\fancyhead[RE,RO]{\small\itshape MS~MARCO Generative QA --- Internship Report}
+\fancyhead[RE,RO]{\small\itshape MS~MARCO Generative QA --- v1.0 Report}
 \fancyfoot[C]{\small\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
 \renewcommand{\footrulewidth}{0pt}
@@ -107,7 +107,7 @@
   pdftitle={MS MARCO Generative QA: A Reproducible Retrieve--Rerank--Generate
             Pipeline with a Grounding Audit},
   pdfauthor={GioiaZheng},
-  pdfsubject={Internship Report --- 11-week project (12-week plan)},
+  pdfsubject={v1.0 Report --- 11-week project (12-week plan)},
   pdfkeywords={MS MARCO; BM25; dense retrieval; cross-encoder reranking;
                retrieval-augmented generation; BERTScore; NLI;
                extractive QA; paired bootstrap}
@@ -147,11 +147,6 @@
   \centering
   \vspace*{1.4cm}
 
-  % --- Top affiliation strip
-  {\large\scshape NLP Algorithm Engineer Internship\par}
-  \vspace{0.35em}
-  {\small\itshape Microsoft\par}
-
   \vspace{2.6cm}
 
   % --- Title block ----------------------------------------------------------
@@ -178,8 +173,6 @@
   {\renewcommand{\arraystretch}{1.30}%
    \begin{tabular}{@{}r@{\hskip 1.4em}l@{}}
      \toprule
-     \textbf{Role}    & NLP Algorithm Engineer Intern \\
-     \textbf{Mentor}  & Tyler \\
      \textbf{Period}  & 2026-03-06\,--\,2026-05-21 \quad{\small(11 weeks elapsed; 12-week plan)} \\
      \textbf{Scope}   & Single-machine, CPU-only; English passage retrieval + QA \\
      \textbf{Date}    & 2026-05-21 \\
@@ -201,7 +194,7 @@
 \thispagestyle{empty}
 \section*{Abstract}
 
-This report documents an eleven-week internship project that
+This report documents an eleven-week project that
 reproduces and analyses a complete \emph{retrieve--rerank--generate}
 question-answering pipeline on the \msmarco{} Passage Ranking
 benchmark~\cite{bajaj2016msmarco,nguyen2016msmarcoqa}.  Each stage is
@@ -271,7 +264,7 @@ extractive QA.
 
 \subsection{Background and objectives}
 
-The internship brief was to build a complete
+The project brief was to build a complete
 \emph{retrieve--generate} question-answering pipeline on the
 \msmarco{} corpus, exploring how each stage of the pipeline
 contributes to end-to-end answer quality~\cite{bajaj2016msmarco,lewis2020rag}.
@@ -2025,9 +2018,6 @@ and one runner invocation, not a re-implementation.
 \clearpage
 \section*{Acknowledgements}
 \addcontentsline{toc}{section}{Acknowledgements}
-
-The author thanks the project mentor, Tyler, for guidance on
-problem framing and methodology throughout the internship period.
 
 The project depends entirely on open-source artefacts: \msmarco{}
 itself~\cite{bajaj2016msmarco,nguyen2016msmarcoqa},
