@@ -187,6 +187,85 @@ def write_resolved_config(cfg: dict[str, Any], output_dir: Path) -> Path:
 
 
 # --------------------------------------------------------------------------- #
+# Data fingerprint — lean (per 2026-05-27 design lock)
+# --------------------------------------------------------------------------- #
+#
+# Lean per locked design: cache_dir str + corpus_limit + per-run extra
+# input files (sample_doc_ids JSON for dense, input run.tsv for
+# reranker/generation) content-hashed. We do NOT hash the 8.8M-passage
+# corpus body — its identity is anchored by the cache_dir path + the
+# ir_datasets dataset name + corpus_limit; rehashing the body on every
+# run is wasteful and download-order-dependent.
+
+
+def compute_data_fingerprint(
+    *,
+    cache_dir: Path,
+    corpus_limit: int | None = None,
+    extra_files: dict[str, Path] | None = None,
+) -> str:
+    """Lean sha256 hex digest identifying the data inputs of a run.
+
+    Components:
+    - ``cache_dir`` as string. Anchors which ir_datasets cache served
+      the corpus/queries/qrels for this run.
+    - ``corpus_limit``: scalar, ``None`` for the full corpus.
+    - ``extra_files``: optional ``{label: Path}`` mapping for run-specific
+      inputs that should be content-hashed — e.g. ``sample_doc_ids.json``
+      for dense, ``input run.tsv`` for reranker/generation. Each
+      file's truncated 16-char sha256 (matching the manifest file-record
+      convention) is folded in; ``None`` is recorded for missing files
+      so the fingerprint distinguishes "ran without this input" from
+      "ran with a present but possibly empty input".
+
+    Returns the 64-char full sha256 hex of the canonical JSON encoding
+    (sort_keys=True), matching the rigor of ``compute_resolved_config_hash``.
+    """
+    parts: dict[str, Any] = {
+        "cache_dir": str(cache_dir),
+        "corpus_limit": corpus_limit,
+    }
+    if extra_files:
+        for label, raw_path in sorted(extra_files.items()):
+            if raw_path is None:
+                parts[label] = None
+                continue
+            path = Path(raw_path)
+            if path.exists() and path.is_file():
+                # Match manifest file-record truncated-digest convention
+                # (16-char is enough to spot accidental changes; the
+                # fingerprint as a whole is still 64-char).
+                full_digest = _file_hash(path)
+                parts[label] = full_digest[:16] if full_digest else None
+            else:
+                parts[label] = None
+    serialised = json.dumps(parts, sort_keys=True, default=str).encode("utf-8")
+    return hashlib.sha256(serialised).hexdigest()
+
+
+# --------------------------------------------------------------------------- #
+# Env fingerprint — stable hash of capture_environment()
+# --------------------------------------------------------------------------- #
+
+
+def compute_env_fingerprint(env_dict: dict[str, Any]) -> str:
+    """Return a 64-char sha256 hex of a captured-environment dict.
+
+    Input is the dict returned by
+    ``msmarco_genqa.util.environment.capture_environment()``. The hash
+    is stable across calls with identical input and across Python
+    dict-iteration orders (json.dumps sort_keys=True).
+
+    Sensitive to package version changes, python version changes, cpu
+    brand, mem_gb — anything that ``capture_environment`` records.
+    Insensitive to call-time noise (the environment dict has no
+    timestamps or wall-clock fields).
+    """
+    serialised = json.dumps(env_dict, sort_keys=True, default=str).encode("utf-8")
+    return hashlib.sha256(serialised).hexdigest()
+
+
+# --------------------------------------------------------------------------- #
 # Git
 # --------------------------------------------------------------------------- #
 

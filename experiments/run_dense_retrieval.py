@@ -56,6 +56,8 @@ from msmarco_genqa.retrieval.dense import DenseRetriever
 from msmarco_genqa.retrieval.sampling import qrels_anchored_sample
 from msmarco_genqa.util.environment import capture_environment
 from msmarco_genqa.util.manifest import (
+    compute_data_fingerprint,
+    compute_env_fingerprint,
     compute_resolved_config_hash,
     write_resolved_config,
     write_run_manifest,
@@ -450,6 +452,7 @@ def main() -> None:
     if bm25_metrics is not None:
         bm25_metrics.pop("n_queries", None)
 
+    env_dict = capture_environment()
     payload = {
         "task": "retrieval",
         "dataset": "msmarco-passage/dev/small (qrels-anchored sample)",
@@ -465,7 +468,7 @@ def main() -> None:
             "bm25_sample_build": bm25_build_seconds,
             "bm25_sample_search": bm25_search_seconds,
         },
-        "environment": capture_environment(),
+        "environment": env_dict,
         "sample": {
             "size": len(sample_doc_ids),
             "n_qrels_doc_ids_in_sample": sum(len(v) for v in sample_qrels.values()),
@@ -481,6 +484,11 @@ def main() -> None:
 
     resolved_config_path = write_resolved_config(cfg, output_dir)
     resolved_config_hash = compute_resolved_config_hash(cfg)
+    data_fingerprint = compute_data_fingerprint(
+        cache_dir=cache_dir,
+        extra_files={"sample_doc_ids": sample_path},
+    )
+    env_fingerprint = compute_env_fingerprint(env_dict)
 
     manifest_outputs = [dense_run_path, examples_path, sample_path, resolved_config_path]
     if bm25_run_path is not None:
@@ -502,6 +510,8 @@ def main() -> None:
             "seed": seed,
             "seed_coverage": seed_coverage,
             "resolved_config_hash": resolved_config_hash,
+            "data_fingerprint": data_fingerprint,
+            "env_fingerprint": env_fingerprint,
         },
         require_clean_tree=args.require_clean_tree,
         allow_incomplete=args.allow_incomplete_manifest,

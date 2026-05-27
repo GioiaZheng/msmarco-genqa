@@ -52,6 +52,8 @@ from msmarco_genqa.evaluation.generation import evaluate_generation
 from msmarco_genqa.generation.rag_generator import RAGGenerationConfig, RAGGenerator
 from msmarco_genqa.util.environment import capture_environment
 from msmarco_genqa.util.manifest import (
+    compute_data_fingerprint,
+    compute_env_fingerprint,
     compute_resolved_config_hash,
     write_resolved_config,
     write_run_manifest,
@@ -420,6 +422,7 @@ def main() -> None:
     logger.info("Metrics: %s", metrics)
 
     n_examples = metrics.pop("n_predictions", len(predictions))
+    env_dict = capture_environment()
     payload = {
         "task": "generation",
         "dataset": "msmarco-passage/dev/small ∩ ms_marco/v2.1/validation",
@@ -427,7 +430,7 @@ def main() -> None:
         "config": cfg,
         "metrics": metrics,
         "wall_clock_seconds": {"generation": gen_time},
-        "environment": capture_environment(),
+        "environment": env_dict,
     }
     with open(output_dir / "metrics.json", "w") as f:
         json.dump(payload, f, indent=2, default=str)
@@ -440,6 +443,11 @@ def main() -> None:
     )
     resolved_config_path = write_resolved_config(cfg, output_dir)
     resolved_config_hash = compute_resolved_config_hash(cfg)
+    data_fingerprint = compute_data_fingerprint(
+        cache_dir=cache_dir,
+        extra_files={"input_run": run_path},
+    )
+    env_fingerprint = compute_env_fingerprint(env_dict)
 
     manifest_extra: dict[str, object] = {
         "task": "generation",
@@ -452,6 +460,8 @@ def main() -> None:
         "retrieval_source": retrieval_source,
         "run_name": output_dir.name,
         "resolved_config_hash": resolved_config_hash,
+        "data_fingerprint": data_fingerprint,
+        "env_fingerprint": env_fingerprint,
     }
     if restrict_run_rel is not None:
         manifest_extra["restrict_to_run"] = restrict_run_rel

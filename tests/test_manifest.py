@@ -22,6 +22,8 @@ from msmarco_genqa.util.manifest import (
     RequiredFieldMissingError,
     _validate_required,
     build_manifest,
+    compute_data_fingerprint,
+    compute_env_fingerprint,
     compute_resolved_config_hash,
     write_manifest,
     write_resolved_config,
@@ -622,3 +624,160 @@ def test_write_resolved_config_keys_are_sorted(tmp_path: Path):
     m_pos = content.index("m_middle")
     z_pos = content.index("z_last")
     assert a_pos < m_pos < z_pos
+
+
+# --------------------------------------------------------------------------- #
+# Data fingerprint — lean
+# --------------------------------------------------------------------------- #
+
+
+def test_compute_data_fingerprint_is_64_hex(tmp_path: Path):
+    h = compute_data_fingerprint(cache_dir=tmp_path / "cache", corpus_limit=None)
+    assert len(h) == 64
+    int(h, 16)
+
+
+def test_compute_data_fingerprint_deterministic(tmp_path: Path):
+    """Two calls with identical inputs return identical fingerprints."""
+    a = compute_data_fingerprint(cache_dir=tmp_path / "cache", corpus_limit=8800000)
+    b = compute_data_fingerprint(cache_dir=tmp_path / "cache", corpus_limit=8800000)
+    assert a == b
+
+
+def test_compute_data_fingerprint_sensitive_to_cache_dir(tmp_path: Path):
+    """Different cache_dir → different fingerprint (different ir_datasets cache
+    anchors different corpus identities)."""
+    a = compute_data_fingerprint(cache_dir=tmp_path / "cache_a", corpus_limit=None)
+    b = compute_data_fingerprint(cache_dir=tmp_path / "cache_b", corpus_limit=None)
+    assert a != b
+
+
+def test_compute_data_fingerprint_sensitive_to_corpus_limit(tmp_path: Path):
+    """corpus_limit=None (full corpus) vs corpus_limit=200000 (smoke) must
+    produce distinct fingerprints — different runs."""
+    a = compute_data_fingerprint(cache_dir=tmp_path / "cache", corpus_limit=None)
+    b = compute_data_fingerprint(cache_dir=tmp_path / "cache", corpus_limit=200000)
+    assert a != b
+
+
+def test_compute_data_fingerprint_extra_files_change_hash(tmp_path: Path):
+    """Changing the content of an extra file changes the fingerprint —
+    so sample_doc_ids.json drift or input_run.tsv drift is caught."""
+    extra = tmp_path / "sample_doc_ids.json"
+    extra.write_text('["d1","d2"]')
+    h1 = compute_data_fingerprint(
+        cache_dir=tmp_path / "cache",
+        extra_files={"sample_doc_ids": extra},
+    )
+
+    extra.write_text('["d1","d2","d3"]')
+    h2 = compute_data_fingerprint(
+        cache_dir=tmp_path / "cache",
+        extra_files={"sample_doc_ids": extra},
+    )
+    assert h1 != h2
+
+
+def test_compute_data_fingerprint_missing_extra_file_does_not_raise(tmp_path: Path):
+    """A None / non-existent extra-file path must NOT raise — it folds in
+    as null so the fingerprint still serialises. Avoids fail-on-disk
+    during commit-3 transition before all runners have wired the path."""
+    h = compute_data_fingerprint(
+        cache_dir=tmp_path / "cache",
+        extra_files={"sample_doc_ids": tmp_path / "absent.json", "other": None},
+    )
+    assert len(h) == 64
+
+
+def test_compute_data_fingerprint_extra_files_key_order_stable(tmp_path: Path):
+    """Insertion order of extra_files dict must NOT change the hash —
+    sorted internally."""
+    f1 = tmp_path / "a.json"
+    f1.write_text("[]")
+    f2 = tmp_path / "b.json"
+    f2.write_text("[]")
+    h_ab = compute_data_fingerprint(
+        cache_dir=tmp_path,
+        extra_files={"alpha": f1, "beta": f2},
+    )
+    h_ba = compute_data_fingerprint(
+        cache_dir=tmp_path,
+        extra_files={"beta": f2, "alpha": f1},
+    )
+    assert h_ab == h_ba
+
+
+# --------------------------------------------------------------------------- #
+# Env fingerprint — stable hash of capture_environment()
+# --------------------------------------------------------------------------- #
+
+
+def _sample_env_dict() -> dict:
+    """A representative env dict matching capture_environment() shape."""
+    return {
+        "python": "3.10.13",
+        "platform": "darwin",
+        "git_commit": "deadbeef1234",
+        "cpu": {"brand": "Apple M2 Pro", "logical_count": 10},
+        "mem_gb": 16.0,
+        "packages": {"bm25s": "0.2.4", "torch": "2.3.1", "numpy": "1.26.4"},
+    }
+
+
+def test_compute_env_fingerprint_is_64_hex():
+    h = compute_env_fingerprint(_sample_env_dict())
+    assert len(h) == 64
+    int(h, 16)
+
+
+def test_compute_env_fingerprint_deterministic():
+    a = compute_env_fingerprint(_sample_env_dict())
+    b = compute_env_fingerprint(_sample_env_dict())
+    assert a == b
+
+
+def test_compute_env_fingerprint_insensitive_to_key_order():
+    base = _sample_env_dict()
+    reordered = {
+        "packages": dict(reversed(list(base["packages"].items()))),
+        "mem_gb": base["mem_gb"],
+        "cpu": {"logical_count": base["cpu"]["logical_count"], "brand": base["cpu"]["brand"]},
+        "git_commit": base["git_commit"],
+        "platform": base["platform"],
+        "python": base["python"],
+    }
+    assert compute_env_fingerprint(base) == compute_env_fingerprint(reordered)
+
+
+def test_compute_env_fingerprint_sensitive_to_package_change():
+    """A package version bump must change the env fingerprint — otherwise
+    reproducibility audits silently miss the env drift."""
+    base = _sample_env_dict()
+    h_base = compute_env_fingerprint(base)
+
+    bumped = _sample_env_dict()
+    bumped["packages"]["torch"] = "2.4.0"
+    assert compute_env_fingerprint(bumped) != h_base
+
+
+def test_compute_env_fingerprint_sensitive_to_python_change():
+    base = _sample_env_dict()
+    h_base = compute_env_fingerprint(base)
+    bumped = _sample_env_dict()
+    bumped["python"] = "3.11.0"
+    assert compute_env_fingerprint(bumped) != h_base
+
+
+def test_compute_env_fingerprint_handles_none_fields():
+    """capture_environment() returns ``None`` for unknown cpu brand / git
+    commit / mem_gb. The fingerprint must accept those without raising."""
+    env = {
+        "python": "3.10.0",
+        "platform": "linux",
+        "git_commit": None,
+        "cpu": {"brand": None, "logical_count": 4},
+        "mem_gb": None,
+        "packages": {},
+    }
+    h = compute_env_fingerprint(env)
+    assert len(h) == 64

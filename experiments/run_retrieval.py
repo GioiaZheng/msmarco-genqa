@@ -38,6 +38,8 @@ from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
 from msmarco_genqa.retrieval.bm25 import BM25Retriever
 from msmarco_genqa.util.environment import capture_environment
 from msmarco_genqa.util.manifest import (
+    compute_data_fingerprint,
+    compute_env_fingerprint,
     compute_resolved_config_hash,
     write_resolved_config,
     write_run_manifest,
@@ -394,6 +396,7 @@ def main() -> None:
 
     # ---- 7. metrics.json (unified schema across W2/W3) ----
     n_examples = metrics.pop("n_queries", None)  # promote count to top level
+    env_dict = capture_environment()
     payload = {
         "task": "retrieval",
         "dataset": "msmarco-passage/dev/small",
@@ -405,7 +408,7 @@ def main() -> None:
             "search": search_time,
             "search_pending_count": len(pending_qids),
         },
-        "environment": capture_environment(),
+        "environment": env_dict,
         "top_k": top_k,
         "resumed": args.resume and bool(set(qids) - set(pending_qids)),
     }
@@ -415,6 +418,11 @@ def main() -> None:
 
     resolved_config_path = write_resolved_config(cfg, output_dir)
     resolved_config_hash = compute_resolved_config_hash(cfg)
+    data_fingerprint = compute_data_fingerprint(
+        cache_dir=cache_dir,
+        corpus_limit=corpus_limit,
+    )
+    env_fingerprint = compute_env_fingerprint(env_dict)
 
     write_run_manifest(
         project_root=PROJECT_ROOT,
@@ -434,6 +442,8 @@ def main() -> None:
             "seed": seed,
             "seed_coverage": seed_coverage,
             "resolved_config_hash": resolved_config_hash,
+            "data_fingerprint": data_fingerprint,
+            "env_fingerprint": env_fingerprint,
         },
         require_clean_tree=args.require_clean_tree,
         allow_incomplete=args.allow_incomplete_manifest,

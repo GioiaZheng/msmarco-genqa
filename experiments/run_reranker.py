@@ -72,6 +72,8 @@ from msmarco_genqa.reranking.io import (
 )
 from msmarco_genqa.util.environment import capture_environment
 from msmarco_genqa.util.manifest import (
+    compute_data_fingerprint,
+    compute_env_fingerprint,
     compute_resolved_config_hash,
     write_resolved_config,
     write_run_manifest,
@@ -559,7 +561,7 @@ def main() -> None:
             "n_chunks_this_run": chunks_done,
         },
         "peak_memory_mib": peak_mem_mb,
-        "environment": capture_environment(),
+        "environment": (env_dict := capture_environment()),
     }
     with open(output_dir / "metrics.json", "w") as f:
         json.dump(payload, f, indent=2, default=str)
@@ -567,6 +569,11 @@ def main() -> None:
 
     resolved_config_path = write_resolved_config(cfg, output_dir)
     resolved_config_hash = compute_resolved_config_hash(cfg)
+    data_fingerprint = compute_data_fingerprint(
+        cache_dir=cache_dir,
+        extra_files={"input_run": input_run_path},
+    )
+    env_fingerprint = compute_env_fingerprint(env_dict)
 
     write_run_manifest(
         project_root=PROJECT_ROOT,
@@ -591,6 +598,8 @@ def main() -> None:
             "seed": seed,
             "seed_coverage": seed_coverage,
             "resolved_config_hash": resolved_config_hash,
+            "data_fingerprint": data_fingerprint,
+            "env_fingerprint": env_fingerprint,
         },
         require_clean_tree=args.require_clean_tree,
         allow_incomplete=args.allow_incomplete_manifest,
