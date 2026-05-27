@@ -4,7 +4,7 @@
 # Python dependencies are installed (``pip install -r requirements.txt &&
 # pip install -e .``).
 
-.PHONY: help install test test-slow lint clean-pycache
+.PHONY: help install test test-slow lint clean-pycache reproduce-baseline
 
 PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
@@ -12,10 +12,11 @@ RUFF   ?= $(PYTHON) -m ruff
 
 help:
 	@echo "Common targets:"
-	@echo "  make install     -- pip install -r requirements.txt + editable install"
-	@echo "  make test        -- run default unit tests (fast, no network, no HF Hub)"
-	@echo "  make test-slow   -- include slow tests (HF metric scripts; skipped if offline)"
-	@echo "  make lint        -- ruff check on src/, tests/, experiments/, scripts/"
+	@echo "  make install              -- pip install -r requirements.txt + editable install"
+	@echo "  make test                 -- run default unit tests (fast, no network, no HF Hub)"
+	@echo "  make test-slow            -- include slow tests (HF metric scripts; skipped if offline)"
+	@echo "  make lint                 -- ruff check on src/, tests/, experiments/, scripts/"
+	@echo "  make reproduce-baseline   -- re-run + verify the W2 BM25 baseline (~30 min CPU laptop)"
 
 # ----------------------------------------------------------------------------- #
 # Install
@@ -60,3 +61,26 @@ lint:
 clean-pycache:
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +
 	find . -name "*.pyc" -delete
+
+# ----------------------------------------------------------------------------- #
+# One-command reproducibility
+# ----------------------------------------------------------------------------- #
+
+# Reproduce the W2 BM25 headline baseline end-to-end:
+#   1. Install (editable; `pip install -e .`).
+#   2. Run BM25 retrieval on the full 8.8M-passage MS MARCO corpus
+#      (dev/small, 6,980 queries). Expected MRR@10 = 0.1703.
+#   3. Verify the resulting manifest is v2-compliant and re-identifies
+#      the run (schema, 6 required fields, resolved_config.yaml hash,
+#      metrics.json hash, git HEAD).
+#
+# First-run wall-clock on a 2024-era 8-core CPU laptop: ~30 min
+# (~20 min indexing + ~10 min retrieval). Subsequent runs hit the
+# cached BM25 index and finish in ~2 min.
+#
+# `--require-clean-tree` is intentional: this target is for canonical
+# reproduction, not iterative dev. Commit your edits first, or use
+# `mgq-retrieve` directly with `--allow-incomplete-manifest`.
+reproduce-baseline: install
+	mgq-retrieve --require-clean-tree
+	$(PYTHON) scripts/verify_reproduction.py outputs/week02_bm25
