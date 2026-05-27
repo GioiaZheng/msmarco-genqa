@@ -1,4 +1,4 @@
-"""Edge-case tests for ``src.evaluation.nli_grounding``.
+"""Edge-case tests for ``msmarco_genqa.evaluation.nli_grounding``.
 
 The forward-pass path is intentionally NOT exercised here — that would
 download a ~140 MB model on every test run. The integration test for
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.evaluation.nli_grounding import per_query_nli_entailment
+from msmarco_genqa.evaluation.nli_grounding import per_query_nli_entailment
 
 
 class TestInputValidation:

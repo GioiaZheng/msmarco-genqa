@@ -1,4 +1,4 @@
-"""Unit tests for ``src.evaluation.query_form``.
+"""Unit tests for ``msmarco_genqa.evaluation.query_form``.
 
 The classifier is a pure-Python rule cascade — every test is
 deterministic, microseconds, no model load.
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.evaluation.query_form import (
+from msmarco_genqa.evaluation.query_form import (
     QUESTION_FORM_CATEGORIES,
     classify_many,
     classify_question_form,

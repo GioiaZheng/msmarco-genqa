@@ -12,7 +12,7 @@ import json
 
 import pytest
 
-from src.retrieval.bm25 import BM25IndexConfigMismatch, BM25Retriever
+from msmarco_genqa.retrieval.bm25 import BM25IndexConfigMismatch, BM25Retriever
 
 
 def _fake_index_dir(tmp_path, k1=1.5, b=0.75, stopwords="en"):

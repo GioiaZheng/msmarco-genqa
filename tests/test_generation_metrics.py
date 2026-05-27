@@ -1,4 +1,4 @@
-"""Unit tests for ``src.evaluation.generation``.
+"""Unit tests for ``msmarco_genqa.evaluation.generation``.
 
 Covers the pure-Python helpers (``_normalize``, ``exact_match``, ``token_f1``).
 ``evaluate_generation`` is exercised by an opt-in slow test that requires
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.evaluation.generation import (
+from msmarco_genqa.evaluation.generation import (
     _normalize,
     exact_match,
     token_f1,
@@ -105,7 +105,7 @@ def test_evaluate_generation_smoke():
     """
     pytest.importorskip("evaluate")
     pytest.importorskip("rouge_score")
-    from src.evaluation.generation import evaluate_generation
+    from msmarco_genqa.evaluation.generation import evaluate_generation
 
     preds = ["Canberra is the capital", "Paris"]
     refs = [["Canberra"], ["Paris", "City of Light"]]

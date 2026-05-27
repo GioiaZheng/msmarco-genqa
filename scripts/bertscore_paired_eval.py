@@ -42,17 +42,14 @@ import argparse
 import json
 import logging
 import random
-import sys
 import time
 from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.evaluation.bertscore import per_query_bertscore_f1  # noqa: E402
-from src.evaluation.bootstrap import paired_bootstrap_diff  # noqa: E402
+from msmarco_genqa.evaluation.bertscore import per_query_bertscore_f1
+from msmarco_genqa.evaluation.bootstrap import paired_bootstrap_diff
 
 logger = logging.getLogger("bertscore_paired_eval")
 

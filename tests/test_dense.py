@@ -1,4 +1,4 @@
-"""Tests for ``src.retrieval.dense``.
+"""Tests for ``msmarco_genqa.retrieval.dense``.
 
 We monkey-patch the encoder to avoid downloading SBERT weights, but use
 **real** FAISS — it's lightweight and the index correctness is part of
@@ -12,7 +12,7 @@ import json
 import numpy as np
 import pytest
 
-from src.retrieval.dense import DenseIndexConfigMismatch, DenseRetriever
+from msmarco_genqa.retrieval.dense import DenseIndexConfigMismatch, DenseRetriever
 
 
 class _StubEncoder:

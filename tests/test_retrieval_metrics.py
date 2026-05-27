@@ -1,4 +1,4 @@
-"""Unit tests for ``src.evaluation.retrieval``.
+"""Unit tests for ``msmarco_genqa.evaluation.retrieval``.
 
 These are pure-Python; no network, no dependencies beyond pytest.
 """
@@ -9,7 +9,7 @@ import math
 
 import pytest
 
-from src.evaluation.retrieval import (
+from msmarco_genqa.evaluation.retrieval import (
     evaluate_retrieval,
     ndcg_at_k,
     recall_at_k,

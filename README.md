@@ -407,7 +407,7 @@ Cheap deterministic CPU pass over the existing full-dev paired
 predictions to answer the question the W6 closure left open: *what
 is T5-small actually doing on this prompt format — extracting from
 the passages, or generating from parametric memory?* Two metrics in
-[`src/evaluation/grounding.py`](src/evaluation/grounding.py), driven
+[`src/msmarco_genqa/evaluation/grounding.py`](src/msmarco_genqa/evaluation/grounding.py), driven
 by [`scripts/grounding_audit.py`](scripts/grounding_audit.py); no
 new generation, no model load, ~2 s scoring + bootstrap.
 
@@ -455,7 +455,7 @@ new generation, no model load, ~2 s scoring + bootstrap.
   3-gram overlap (positive lex / ngram / Token-F1) but score low on a
   sentence-level NLI cross-encoder which cannot entail a fragmentary
   hypothesis. Module:
-  [`src/evaluation/nli_grounding.py`](src/evaluation/nli_grounding.py);
+  [`src/msmarco_genqa/evaluation/nli_grounding.py`](src/msmarco_genqa/evaluation/nli_grounding.py);
   driver: the same `grounding_audit.py` script with `--nli-n-pairs 3000`.
 - **W7-C — grounding ↔ downstream correlation.** Per-query
   Spearman / Pearson + binned (≥0.9 vs <0.9) Mann-Whitney comparing
@@ -584,6 +584,20 @@ brew install --cask basictex           # macOS LaTeX engine
 
 ## 4. Run the official baselines
 
+After `make install`, each baseline runner is also exposed as an
+`mgq-<verb>` console script (see `pyproject.toml [project.scripts]`).
+The two invocation styles are interchangeable; the console form is
+slightly shorter and works from any working directory:
+
+```bash
+python experiments/run_retrieval.py    # explicit script form
+mgq-retrieve                            # equivalent console form
+```
+
+Console-script names: `mgq-retrieve`, `mgq-dense`, `mgq-rerank`,
+`mgq-generate`. The examples below use the script form for
+backward consistency.
+
 ### Stage 2 — BM25 retrieval
 
 ```bash
@@ -706,7 +720,7 @@ roughly the time it takes to download T5-small:
 ```python
 # Real, runnable as-is — same generator config the W3 baseline uses
 # (T5-small, top-3 passages folded into the prompt, max_new_tokens=64).
-from src.generation.rag_generator import RAGGenerationConfig, RAGGenerator
+from msmarco_genqa.generation.rag_generator import RAGGenerationConfig, RAGGenerator
 
 gen = RAGGenerator(RAGGenerationConfig())
 answer = gen.generate(
@@ -737,8 +751,8 @@ the **minimal composition pattern**, not a runnable copy-paste:
 ```python
 # Sketch — assumes W2 BM25 index already built and a doc_id → passage map
 # is available. The batch runners build that map from ir_datasets; pulling
-# it out into a standalone helper is a TODO (see §8 Next, src.demo.ask).
-from src.retrieval.bm25 import BM25Retriever
+# it out into a standalone helper is a TODO (see §8 Next, msmarco_genqa.demo.ask).
+from msmarco_genqa.retrieval.bm25 import BM25Retriever
 
 bm25 = BM25Retriever.load("data/processed/bm25_index_msmarco")
 scores, doc_ids = bm25.retrieve("what is bm25", k=3)
@@ -749,7 +763,7 @@ answer = gen.generate(query="what is bm25", passages=passages)
 `BM25Retriever.retrieve` (and `DenseRetriever.retrieve` over the W4 dense
 index) both return `(scores, doc_ids)`; resolving `doc_ids` to passage
 text is the missing piece for a one-command demo. A thin
-`python -m src.demo.ask "<question>"` wrapper that bundles that mapping
+`python -m msmarco_genqa.demo.ask "<question>"` wrapper that bundles that mapping
 is listed under §8 *Next*.
 
 ## 6. Configuration
@@ -777,7 +791,7 @@ Current state of the engineering scaffold (what works today; what's still TODO).
 | Installable package | ✅ basic | `pip install -e .` registers `src` via `pyproject.toml`. Existing `sys.path.insert` shims in `experiments/` and `scripts/` are kept for now to avoid touching unrelated code; removing them is a TODO. |
 | CI | ✅ basic | `.github/workflows/ci.yml`: pytest + ruff on push/PR to main. Does not run slow tests or download MS MARCO data. |
 | Lint | ✅ minimal | `ruff` with `F` + `W` (pyflakes + whitespace). Style rules (`E`, `I`, `UP`, …) intentionally OFF on the first pass. |
-| Artifact manifest | ✅ wired | `src/util/manifest.py` provides `build_manifest()` / `write_manifest()` / `write_run_manifest()`. All 4 runners write `outputs/<stage>/manifest.json` alongside `metrics.json`. Captures git commit + dirty flag, command, config hash, dependency-file hashes (requirements / lockfile / pyproject), and per-output sha256 (truncated). |
+| Artifact manifest | ✅ wired | `src/msmarco_genqa/util/manifest.py` provides `build_manifest()` / `write_manifest()` / `write_run_manifest()`. All 4 runners write `outputs/<stage>/manifest.json` alongside `metrics.json`. Captures git commit + dirty flag, command, config hash, dependency-file hashes (requirements / lockfile / pyproject), and per-output sha256 (truncated). |
 | Numbers in `reports/internship_report/report.pdf` | ⚠️ historical | Reflect the dev environment at tag `v1.0-internship-final`. Re-running with `requirements-lock.txt` is the closest we get to reproduction today. |
 
 **Historical output-path naming.** A handful of on-disk output
@@ -845,7 +859,7 @@ Current limitations to be aware of:
   attributable to generic-encoder choice vs the retrieval setup.
 - **Add a simple single-query demo CLI** (optional, polish-tier). The
   repo is currently batch-eval oriented — see §4.5 for the minimal
-  in-Python composition. A thin `python -m src.demo.ask "<question>"`
+  in-Python composition. A thin `python -m msmarco_genqa.demo.ask "<question>"`
   wrapper around it would make the pipeline approachable for non-eval
   users.
 

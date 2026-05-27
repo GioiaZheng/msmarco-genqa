@@ -1,14 +1,19 @@
 # Project metadata + tool config.
 #
-# Source dependencies still live in ``requirements.txt`` (loose lower bounds,
-# fast to install) and ``requirements-lock.txt`` (pip-freeze, for
-# reproducibility). This file deliberately does NOT duplicate them under
-# ``[project.dependencies]``: keeping a single source of truth avoids
-# the two files drifting.
+# Three-layer dependency design (don't drift these):
+#   - ``[project.dependencies]`` below is the **authoritative** runtime
+#     dep set. ``pip install .`` (or ``pip install -e .``) installs the
+#     package and these deps in one shot.
+#   - ``requirements.txt`` is a dev-convenience mirror (loose lower
+#     bounds matching this file) plus dev tooling (``pytest``).
+#   - ``requirements-lock.txt`` is a pip-freeze-style pinned lockfile
+#     that reproduces the numbers in
+#     ``reports/internship_report/report.pdf`` on the author's macOS
+#     CPU dev environment.
 #
-# ``pip install -e .`` only registers the ``src`` package — it does not pull
-# any third-party deps. Run ``pip install -r requirements.txt`` (or
-# ``requirements-lock.txt``) alongside.
+# To get a working dev environment use ``make install`` — that runs both
+# ``pip install -r requirements.txt`` (for ``pytest`` etc.) and
+# ``pip install -e .``.
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]
@@ -23,13 +28,51 @@ requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [{ name = "msmarco-genqa contributors" }]
 
-# Deliberately empty — see header. pip install -e . registers the package,
-# pip install -r requirements.txt installs the actual dependencies.
-dependencies = []
+# Runtime deps. Loose lower bounds mirroring ``requirements.txt``; exact
+# pins live in ``requirements-lock.txt``. Edit all three together.
+dependencies = [
+    # Core scientific stack
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "matplotlib>=3.7",
+    # Configuration
+    "pyyaml>=6.0",
+    # Datasets and IO
+    "datasets>=2.14",
+    "ir-datasets>=0.5.5",
+    # Lexical retrieval
+    "bm25s>=0.2",
+    # Dense retrieval
+    "sentence-transformers>=2.2",
+    "faiss-cpu>=1.7",
+    # Generation
+    "torch>=2.0",
+    "transformers>=4.35",
+    "sentencepiece>=0.1.99",
+    # Evaluation
+    "evaluate>=0.4",
+    "rouge_score>=0.1.2",
+    "sacrebleu>=2.3",
+    "bert_score>=0.3.13",
+]
 
 [tool.setuptools.packages.find]
-include = ["src*"]
-exclude = ["tests*", "experiments*", "scripts*"]
+# Two roots: ``src/`` for the library package and the repo root for the
+# ``experiments`` entry-point layer. The CLI shims under
+# ``msmarco_genqa.cli`` re-export ``experiments.run_*.main`` so the
+# ``mgq-*`` console scripts can find them; that requires ``experiments``
+# itself to be installed.
+where = ["src", "."]
+include = ["msmarco_genqa*", "experiments"]
+exclude = ["tests*", "scripts*"]
+
+[project.scripts]
+# Console-script entry points. Each shim under msmarco_genqa.cli.<name>
+# re-exports main() from the matching experiments/run_<name>.py.
+mgq-retrieve = "msmarco_genqa.cli.retrieve:main"
+mgq-dense    = "msmarco_genqa.cli.dense:main"
+mgq-rerank   = "msmarco_genqa.cli.rerank:main"
+mgq-generate = "msmarco_genqa.cli.generate:main"
 
 
 # --------------------------------------------------------------------------- #
@@ -81,13 +124,4 @@ select = ["F", "W"]
 ignore = [
     "E501",  # line-too-long: requirements.txt comments + long URLs in docstrings
     "E731",  # lambda assignment: occasionally clearer than def for one-liners
-    "E402",  # imports not at top: experiments/ scripts set PROJECT_ROOT before import
 ]
-
-[tool.ruff.lint.per-file-ignores]
-# Scripts pre-pend PROJECT_ROOT to sys.path before importing ``src.*``,
-# so E402 is unavoidable there until the project is fully installable
-# and the sys.path hacks are removed (TODO).
-"experiments/*.py" = ["E402"]
-"scripts/*.py" = ["E402"]
-"tests/conftest.py" = ["E402"]

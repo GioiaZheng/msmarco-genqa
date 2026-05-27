@@ -23,7 +23,7 @@ or any code path that touches NumPy / torch randomness, the
 It returns a coverage dict describing which sinks were successfully
 seeded, so callers can log it (and so manifests can later record the
 seeding coverage actually achieved by the run — see
-``src/util/manifest.py``).
+``src/msmarco_genqa/util/manifest.py``).
 
 Design notes
 ------------

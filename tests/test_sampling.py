@@ -1,10 +1,10 @@
-"""Tests for ``src.retrieval.sampling.qrels_anchored_sample``."""
+"""Tests for ``msmarco_genqa.retrieval.sampling.qrels_anchored_sample``."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.retrieval.sampling import qrels_anchored_sample
+from msmarco_genqa.retrieval.sampling import qrels_anchored_sample
 
 
 def test_includes_all_relevant_doc_ids():
@@ -79,22 +79,22 @@ def test_reproducible_across_processes():
     script = textwrap.dedent(
         """
         import json, sys
-        from src.retrieval.sampling import qrels_anchored_sample
+        from msmarco_genqa.retrieval.sampling import qrels_anchored_sample
         pool = [f"d{i}" for i in range(2000)]
         qrels = {"q1": {"d10", "d20", "d30"}}
         out = qrels_anchored_sample(pool, qrels, target_size=200, seed=42)
         print(json.dumps(out))
         """
     )
-    project_root = str(__import__("pathlib").Path(__file__).resolve().parent.parent)
+    project_src = str(__import__("pathlib").Path(__file__).resolve().parent.parent / "src")
     a = subprocess.run(
         [sys.executable, "-c", script],
-        env={"PYTHONHASHSEED": "1", "PYTHONPATH": project_root},
+        env={"PYTHONHASHSEED": "1", "PYTHONPATH": project_src},
         capture_output=True, check=True,
     )
     b = subprocess.run(
         [sys.executable, "-c", script],
-        env={"PYTHONHASHSEED": "999999", "PYTHONPATH": project_root},
+        env={"PYTHONHASHSEED": "999999", "PYTHONPATH": project_src},
         capture_output=True, check=True,
     )
     assert json.loads(a.stdout.strip().splitlines()[-1]) == json.loads(b.stdout.strip().splitlines()[-1])

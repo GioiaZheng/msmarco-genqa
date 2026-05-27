@@ -1,4 +1,4 @@
-"""Tests for ``src.util.manifest``.
+"""Tests for ``msmarco_genqa.util.manifest``.
 
 The module is small (filesystem + git introspection) and the goal here is
 to lock down the schema shape and the privacy-relevant behaviour: no
@@ -14,8 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from src.util import manifest as manifest_mod
-from src.util.manifest import (
+from msmarco_genqa.util import manifest as manifest_mod
+from msmarco_genqa.util.manifest import (
     DirtyTreeError,
     build_manifest,
     write_manifest,
@@ -246,7 +246,7 @@ def test_write_run_manifest_dirty_tree_emits_warning(
     )
     output_dir = _make_minimal_output_dir(tmp_path, "dirty_warn")
 
-    with caplog.at_level(logging.WARNING, logger="src.util.manifest"):
+    with caplog.at_level(logging.WARNING, logger="msmarco_genqa.util.manifest"):
         manifest_path = write_run_manifest(
             project_root=tmp_path,
             output_dir=output_dir,
@@ -301,7 +301,7 @@ def test_write_run_manifest_require_clean_tree_ok_when_clean(
     )
     output_dir = _make_minimal_output_dir(tmp_path, "clean_ok")
 
-    with caplog.at_level(logging.WARNING, logger="src.util.manifest"):
+    with caplog.at_level(logging.WARNING, logger="msmarco_genqa.util.manifest"):
         manifest_path = write_run_manifest(
             project_root=tmp_path,
             output_dir=output_dir,

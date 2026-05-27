@@ -1,4 +1,4 @@
-"""Unit tests for ``src.evaluation.grounding``.
+"""Unit tests for ``msmarco_genqa.evaluation.grounding``.
 
 The metrics are pure functions over strings with a fixed regex
 tokeniser and a frozen stopword set, so every test is deterministic
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.evaluation.grounding import (
+from msmarco_genqa.evaluation.grounding import (
     ENGLISH_STOPWORDS,
     content_tokens,
     is_vacuously_grounded_lex,

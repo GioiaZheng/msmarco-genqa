@@ -38,20 +38,17 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import sys
 from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.evaluation.bootstrap import (  # noqa: E402
+from msmarco_genqa.evaluation.bootstrap import (
     paired_bootstrap_diff,
     per_query_bleu,
     per_query_rouge_l,
 )
-from src.evaluation.generation import exact_match, token_f1  # noqa: E402
+from msmarco_genqa.evaluation.generation import exact_match, token_f1
 
 logger = logging.getLogger("bootstrap_generation_comparison")
 

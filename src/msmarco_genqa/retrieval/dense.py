@@ -1,6 +1,6 @@
 """Dense retrieval with Sentence-Transformers + FAISS.
 
-A small wrapper that mirrors :class:`src.retrieval.bm25.BM25Retriever`'s
+A small wrapper that mirrors :class:`msmarco_genqa.retrieval.bm25.BM25Retriever`'s
 API so the experiment scripts and evaluation code can stay
 retriever-agnostic:
 

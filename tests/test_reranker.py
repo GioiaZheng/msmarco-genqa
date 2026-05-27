@@ -1,4 +1,4 @@
-"""Tests for ``src.reranking``.
+"""Tests for ``msmarco_genqa.reranking``.
 
 We stub the underlying ``CrossEncoder`` so the tests don't pull weights
 from HuggingFace. The interesting behaviour is the per-query re-sort
@@ -12,8 +12,8 @@ import math
 import numpy as np
 import pytest
 
-from src.reranking.cross_encoder import CrossEncoderReranker
-from src.reranking.io import (
+from msmarco_genqa.reranking.cross_encoder import CrossEncoderReranker
+from msmarco_genqa.reranking.io import (
     append_run_tsv,
     collect_unique_doc_ids,
     prune_partial_qids,

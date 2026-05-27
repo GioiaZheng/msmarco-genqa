@@ -37,13 +37,10 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import sys
 from pathlib import Path
 from typing import Any, Sequence
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 logger = logging.getLogger("grounding_correlation")
 
@@ -164,7 +161,7 @@ def compute_bertscore_or_load_cache(
         else:
             return out
 
-    from src.evaluation.bertscore import per_query_bertscore_f1
+    from msmarco_genqa.evaluation.bertscore import per_query_bertscore_f1
 
     bm25_preds = [bm25_idx[q]["prediction"] for q in qids]
     rerank_preds = [rerank_idx[q]["prediction"] for q in qids]

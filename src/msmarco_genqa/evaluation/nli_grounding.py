@@ -2,7 +2,7 @@
 union entails the generator's prediction.
 
 This is the *semantic faithfulness* analogue to the regex-only lexical
-and 3-gram grounding metrics in ``src.evaluation.grounding``. A heavy
+and 3-gram grounding metrics in ``msmarco_genqa.evaluation.grounding``. A heavy
 paraphrase that is perfectly faithful semantically will (usually)
 score high here even though it scores low on lexical / 3-gram
 grounding; a verbatim copy from a distractor passage that contradicts
@@ -30,7 +30,7 @@ Edge cases (documented, stable):
 
 The function returns a list aligned with the input order so it can be
 plugged straight into the paired bootstrap utilities in
-``src.evaluation.bootstrap``.
+``msmarco_genqa.evaluation.bootstrap``.
 """
 
 from __future__ import annotations
@@ -85,7 +85,7 @@ def per_query_nli_entailment(
         only fires on the tail of long passages.
     verbose :
         Currently unused; reserved for parity with the other per-query
-        scorers in ``src.evaluation``.
+        scorers in ``msmarco_genqa.evaluation``.
 
     Returns
     -------

@@ -1,4 +1,4 @@
-"""Unit tests for ``src.evaluation.bootstrap``.
+"""Unit tests for ``msmarco_genqa.evaluation.bootstrap``.
 
 Covers the pure-Python ``paired_bootstrap_diff``. ``per_query_rouge_l`` and
 ``per_query_bleu`` are exercised in slow / opt-in tests because they pull
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.evaluation.bootstrap import paired_bootstrap_diff
+from msmarco_genqa.evaluation.bootstrap import paired_bootstrap_diff
 
 
 class TestPairedBootstrapDiff:
@@ -103,7 +103,7 @@ class TestPairedBootstrapDiff:
 
 def test_per_query_rouge_l_smoke():
     pytest.importorskip("rouge_score")
-    from src.evaluation.bootstrap import per_query_rouge_l
+    from msmarco_genqa.evaluation.bootstrap import per_query_rouge_l
 
     preds = ["Eiffel Tower", "Tokyo"]
     refs = [["the Eiffel Tower"], ["Paris", "City of Light"]]
@@ -115,7 +115,7 @@ def test_per_query_rouge_l_smoke():
 
 def test_per_query_rouge_l_empty_refs():
     pytest.importorskip("rouge_score")
-    from src.evaluation.bootstrap import per_query_rouge_l
+    from msmarco_genqa.evaluation.bootstrap import per_query_rouge_l
 
     scores = per_query_rouge_l(["anything"], [[]])
     assert scores == [0.0]
@@ -123,7 +123,7 @@ def test_per_query_rouge_l_empty_refs():
 
 def test_per_query_bleu_smoke():
     pytest.importorskip("nltk")
-    from src.evaluation.bootstrap import per_query_bleu
+    from msmarco_genqa.evaluation.bootstrap import per_query_bleu
 
     preds = ["the cat sat on the mat", "completely unrelated"]
     refs = [["the cat sat on the mat"], ["the cat sat on the mat"]]
@@ -135,7 +135,7 @@ def test_per_query_bleu_smoke():
 
 def test_per_query_bleu_empty_pred():
     pytest.importorskip("nltk")
-    from src.evaluation.bootstrap import per_query_bleu
+    from msmarco_genqa.evaluation.bootstrap import per_query_bleu
 
     scores = per_query_bleu(["", "  "], [["something"], ["something else"]])
     assert scores == [0.0, 0.0]

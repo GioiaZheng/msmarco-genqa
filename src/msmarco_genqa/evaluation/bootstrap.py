@@ -17,7 +17,7 @@ matching the metrics produced corpus-wise by ``evaluate_generation``:
   MS MARCO QA answer lengths).
 
 Token-F1 and Exact-Match per-query scorers already live in
-``src.evaluation.generation`` (``token_f1``, ``exact_match``).
+``msmarco_genqa.evaluation.generation`` (``token_f1``, ``exact_match``).
 """
 
 from __future__ import annotations

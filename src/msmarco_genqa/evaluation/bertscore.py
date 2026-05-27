@@ -9,7 +9,7 @@ sanity check inside a single working session.
 
 The function is intentionally narrow: it scores per query (with the
 multi-reference best-of-N convention used by the other scorers in
-``src.evaluation.bootstrap``) and returns a plain ``list[float]`` so
+``msmarco_genqa.evaluation.bootstrap``) and returns a plain ``list[float]`` so
 the result can be fed directly into ``paired_bootstrap_diff``.
 
 What ``rescale_with_baseline`` does

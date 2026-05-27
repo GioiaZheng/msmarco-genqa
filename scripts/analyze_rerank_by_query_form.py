@@ -25,22 +25,19 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import sys
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.evaluation.bootstrap import (  # noqa: E402
+from msmarco_genqa.evaluation.bootstrap import (
     paired_bootstrap_diff,
     per_query_rouge_l,
 )
-from src.evaluation.query_form import QUESTION_FORM_CATEGORIES  # noqa: E402
-from src.evaluation.retrieval import ndcg_at_k, reciprocal_rank  # noqa: E402
-from src.reranking.io import read_run_tsv  # noqa: E402
+from msmarco_genqa.evaluation.query_form import QUESTION_FORM_CATEGORIES
+from msmarco_genqa.evaluation.retrieval import ndcg_at_k, reciprocal_rank
+from msmarco_genqa.reranking.io import read_run_tsv
 
 logger = logging.getLogger("analyze_rerank_by_query_form")
 
@@ -104,7 +101,7 @@ def load_jsonl(path: Path) -> list[dict[str, Any]]:
 
 
 def load_qrels() -> dict[str, set[str]]:
-    from src.data.msmarco import load_msmarco_passage
+    from msmarco_genqa.data.msmarco import load_msmarco_passage
 
     logger.info("Loading dev/small qrels via ir_datasets...")
     bundle = load_msmarco_passage(load_corpus=False)

@@ -25,16 +25,13 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.evaluation.query_form import (  # noqa: E402
+from msmarco_genqa.evaluation.query_form import (
     QUESTION_FORM_CATEGORIES,
     classify_question_form,
 )
@@ -82,7 +79,7 @@ def load_per_query_rows(path: Path) -> list[dict[str, Any]]:
 
 
 def load_queries_via_irdatasets() -> dict[str, str]:
-    from src.data.msmarco import load_msmarco_passage
+    from msmarco_genqa.data.msmarco import load_msmarco_passage
 
     bundle = load_msmarco_passage(load_corpus=False)
     return bundle.queries

@@ -23,9 +23,8 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.data.msmarco import MSMarcoPassage  # noqa: E402
+from msmarco_genqa.data.msmarco import MSMarcoPassage
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 log = logging.getLogger("smoke_resume")
@@ -78,10 +77,10 @@ def _stub_loader(*_, **__):
 # ---------------------------------------------------------------------------
 
 def _run_main(extra_argv: list[str], output_dir: Path, index_dir: Path) -> None:
-    import src.data.msmarco as _msmarco
+    import msmarco_genqa.data.msmarco as _msmarco
     import experiments.run_retrieval as runner
 
-    # ``run_retrieval`` does ``from src.data.msmarco import load_msmarco_passage``
+    # ``run_retrieval`` does ``from msmarco_genqa.data.msmarco import load_msmarco_passage``
     # at import time, so we have to patch the binding inside the runner module
     # *as well* as the source module. Patching only one is insufficient.
     _msmarco.load_msmarco_passage = _stub_loader

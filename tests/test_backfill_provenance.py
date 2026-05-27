@@ -109,7 +109,7 @@ def test_unknown_seed_block_references_seeding_patch(tmp_path: Path):
 
     seed_note = doc["unknown"]["production_random_seed_effectiveness"]
     assert "seeding" in seed_note.lower()
-    assert "src/util/seeding.py" in seed_note
+    assert "src/msmarco_genqa/util/seeding.py" in seed_note
     assert bp.SEEDING_PATCH_COMMIT_SHORT in seed_note
 
 
