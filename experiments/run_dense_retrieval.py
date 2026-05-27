@@ -55,7 +55,14 @@ from msmarco_genqa.retrieval.bm25 import BM25Retriever
 from msmarco_genqa.retrieval.dense import DenseRetriever
 from msmarco_genqa.retrieval.sampling import qrels_anchored_sample
 from msmarco_genqa.util.environment import capture_environment
-from msmarco_genqa.util.manifest import write_run_manifest
+from msmarco_genqa.util.manifest import (
+    compute_data_fingerprint,
+    compute_env_fingerprint,
+    compute_resolved_config_hash,
+    compute_sampling_block,
+    write_resolved_config,
+    write_run_manifest,
+)
 from msmarco_genqa.util.seeding import set_global_seed
 
 logger = logging.getLogger("run_dense_retrieval")
@@ -117,6 +124,15 @@ def parse_args() -> argparse.Namespace:
             "Refuse to write the manifest if the git working tree has "
             "uncommitted changes. Use for canonical / headline runs where "
             "the recorded commit must be sufficient to reproduce."
+        ),
+    )
+    parser.add_argument(
+        "--allow-incomplete-manifest",
+        action="store_true",
+        help=(
+            "Bypass the schema-v2 required-field contract on manifest write. "
+            "Development-only escape hatch; production / headline runs must "
+            "leave this off so missing reproducibility fields fail loudly."
         ),
     )
     return parser.parse_args()
@@ -437,6 +453,12 @@ def main() -> None:
     if bm25_metrics is not None:
         bm25_metrics.pop("n_queries", None)
 
+    env_dict = capture_environment()
+    sampling_block = compute_sampling_block(
+        is_sampled=True,
+        method="qrels-anchored",
+        sample_size=len(sample_doc_ids),
+    )
     payload = {
         "task": "retrieval",
         "dataset": "msmarco-passage/dev/small (qrels-anchored sample)",
@@ -446,13 +468,14 @@ def main() -> None:
             "dense": dense_metrics,
             **({"bm25_sample": bm25_metrics} if bm25_metrics is not None else {}),
         },
+        "sampling": sampling_block,
         "wall_clock_seconds": {
             "encode_corpus": encode_seconds,
             "dense_search": dense_search_seconds,
             "bm25_sample_build": bm25_build_seconds,
             "bm25_sample_search": bm25_search_seconds,
         },
-        "environment": capture_environment(),
+        "environment": env_dict,
         "sample": {
             "size": len(sample_doc_ids),
             "n_qrels_doc_ids_in_sample": sum(len(v) for v in sample_qrels.values()),
@@ -466,7 +489,15 @@ def main() -> None:
         json.dump(payload, f, indent=2, default=str)
     logger.info("Wrote metrics to %s", output_dir / "metrics.json")
 
-    manifest_outputs = [dense_run_path, examples_path, sample_path]
+    resolved_config_path = write_resolved_config(cfg, output_dir)
+    resolved_config_hash = compute_resolved_config_hash(cfg)
+    data_fingerprint = compute_data_fingerprint(
+        cache_dir=cache_dir,
+        extra_files={"sample_doc_ids": sample_path},
+    )
+    env_fingerprint = compute_env_fingerprint(env_dict)
+
+    manifest_outputs = [dense_run_path, examples_path, sample_path, resolved_config_path]
     if bm25_run_path is not None:
         manifest_outputs.append(bm25_run_path)
     write_run_manifest(
@@ -485,8 +516,12 @@ def main() -> None:
             "compared_against_bm25_sample": bm25 is not None,
             "seed": seed,
             "seed_coverage": seed_coverage,
+            "resolved_config_hash": resolved_config_hash,
+            "data_fingerprint": data_fingerprint,
+            "env_fingerprint": env_fingerprint,
         },
         require_clean_tree=args.require_clean_tree,
+        allow_incomplete=args.allow_incomplete_manifest,
     )
 
     # ---------------------------------------------------------------- #

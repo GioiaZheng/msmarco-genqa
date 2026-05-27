@@ -71,7 +71,14 @@ from msmarco_genqa.reranking.io import (
     truncate_top_k,
 )
 from msmarco_genqa.util.environment import capture_environment
-from msmarco_genqa.util.manifest import write_run_manifest
+from msmarco_genqa.util.manifest import (
+    compute_data_fingerprint,
+    compute_env_fingerprint,
+    compute_resolved_config_hash,
+    compute_sampling_block,
+    write_resolved_config,
+    write_run_manifest,
+)
 from msmarco_genqa.util.seeding import set_global_seed
 
 logger = logging.getLogger("run_reranker")
@@ -163,6 +170,15 @@ def parse_args() -> argparse.Namespace:
             "Refuse to write the manifest if the git working tree has "
             "uncommitted changes. Use for canonical / headline runs where "
             "the recorded commit must be sufficient to reproduce."
+        ),
+    )
+    parser.add_argument(
+        "--allow-incomplete-manifest",
+        action="store_true",
+        help=(
+            "Bypass the schema-v2 required-field contract on manifest write. "
+            "Development-only escape hatch; production / headline runs must "
+            "leave this off so missing reproducibility fields fail loudly."
         ),
     )
     return parser.parse_args()
@@ -546,18 +562,41 @@ def main() -> None:
             "n_chunks_this_run": chunks_done,
         },
         "peak_memory_mib": peak_mem_mb,
-        "environment": capture_environment(),
+        "environment": (env_dict := capture_environment()),
     }
+    # Reranker inherits sampling state from its upstream first-stage run:
+    # presence of input_week_dir/sample_doc_ids.json indicates the upstream
+    # eval was qrels-anchored. The eval (dense_metrics + rerank_metrics) is
+    # then over sample_qrels rather than the full qrels.
+    upstream_sample_path = input_week_dir / "sample_doc_ids.json"
+    if upstream_sample_path.exists():
+        with open(upstream_sample_path) as f:
+            _upstream_sample_size = len(json.load(f))
+        payload["sampling"] = compute_sampling_block(
+            is_sampled=True,
+            method="qrels-anchored (inherited from upstream first-stage)",
+            sample_size=_upstream_sample_size,
+        )
+    else:
+        payload["sampling"] = compute_sampling_block(is_sampled=False)
     with open(output_dir / "metrics.json", "w") as f:
         json.dump(payload, f, indent=2, default=str)
     logger.info("Wrote metrics to %s", output_dir / "metrics.json")
+
+    resolved_config_path = write_resolved_config(cfg, output_dir)
+    resolved_config_hash = compute_resolved_config_hash(cfg)
+    data_fingerprint = compute_data_fingerprint(
+        cache_dir=cache_dir,
+        extra_files={"input_run": input_run_path},
+    )
+    env_fingerprint = compute_env_fingerprint(env_dict)
 
     write_run_manifest(
         project_root=PROJECT_ROOT,
         output_dir=output_dir,
         command=sys.argv,
         config_path=args.config,
-        extra_outputs=[rerank_run_path, examples_path],
+        extra_outputs=[rerank_run_path, examples_path, resolved_config_path],
         extra={
             "task": "reranking",
             "model_name": model_name,
@@ -574,8 +613,12 @@ def main() -> None:
             "resumed": bool(args.resume) and len(done_qids) > 0,
             "seed": seed,
             "seed_coverage": seed_coverage,
+            "resolved_config_hash": resolved_config_hash,
+            "data_fingerprint": data_fingerprint,
+            "env_fingerprint": env_fingerprint,
         },
         require_clean_tree=args.require_clean_tree,
+        allow_incomplete=args.allow_incomplete_manifest,
     )
 
     # ---------------------------------------------------------------- #

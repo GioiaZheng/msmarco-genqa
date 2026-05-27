@@ -51,7 +51,14 @@ from msmarco_genqa.data.msmarco import get_docs_store, load_msmarco_passage
 from msmarco_genqa.evaluation.generation import evaluate_generation
 from msmarco_genqa.generation.rag_generator import RAGGenerationConfig, RAGGenerator
 from msmarco_genqa.util.environment import capture_environment
-from msmarco_genqa.util.manifest import write_run_manifest
+from msmarco_genqa.util.manifest import (
+    compute_data_fingerprint,
+    compute_env_fingerprint,
+    compute_resolved_config_hash,
+    compute_sampling_block,
+    write_resolved_config,
+    write_run_manifest,
+)
 from msmarco_genqa.util.seeding import set_global_seed
 
 logger = logging.getLogger(__name__)
@@ -141,6 +148,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Refuse to write the manifest if the git working tree has "
             "uncommitted changes. Use for canonical / headline runs where "
             "the recorded commit must be sufficient to reproduce."
+        ),
+    )
+    parser.add_argument(
+        "--allow-incomplete-manifest",
+        action="store_true",
+        help=(
+            "Bypass the schema-v2 required-field contract on manifest write. "
+            "Development-only escape hatch; production / headline runs must "
+            "leave this off so missing reproducibility fields fail loudly."
         ),
     )
     return parser.parse_args(argv)
@@ -407,14 +423,29 @@ def main() -> None:
     logger.info("Metrics: %s", metrics)
 
     n_examples = metrics.pop("n_predictions", len(predictions))
+    env_dict = capture_environment()
+    # Generation inherits sampling context from its upstream retrieval run.
+    # bm25 (W2 full corpus) → not sampled. dense / reranked → qrels-anchored
+    # sample. Generation's own metrics (Token-F1, ROUGE-L, etc.) are
+    # answer-vs-reference, NOT recall-based, so the caveat is contextual
+    # rather than directly affecting metric direction — but the provenance
+    # is still load-bearing for any cross-source comparison (BM25-driven
+    # vs dense-driven generation are NOT apples-to-apples without it).
+    _generation_is_sampled = retrieval_source in ("dense", "reranked")
     payload = {
         "task": "generation",
         "dataset": "msmarco-passage/dev/small ∩ ms_marco/v2.1/validation",
         "n_examples": n_examples,
         "config": cfg,
         "metrics": metrics,
+        "sampling": compute_sampling_block(
+            is_sampled=_generation_is_sampled,
+            method="qrels-anchored (via upstream retrieval)"
+            if _generation_is_sampled
+            else None,
+        ),
         "wall_clock_seconds": {"generation": gen_time},
-        "environment": capture_environment(),
+        "environment": env_dict,
     }
     with open(output_dir / "metrics.json", "w") as f:
         json.dump(payload, f, indent=2, default=str)
@@ -425,6 +456,14 @@ def main() -> None:
         if run_path.is_relative_to(PROJECT_ROOT)
         else str(run_path)
     )
+    resolved_config_path = write_resolved_config(cfg, output_dir)
+    resolved_config_hash = compute_resolved_config_hash(cfg)
+    data_fingerprint = compute_data_fingerprint(
+        cache_dir=cache_dir,
+        extra_files={"input_run": run_path},
+    )
+    env_fingerprint = compute_env_fingerprint(env_dict)
+
     manifest_extra: dict[str, object] = {
         "task": "generation",
         "model_name": gen_cfg.model_name,
@@ -435,6 +474,9 @@ def main() -> None:
         "input_run": input_run_rel,
         "retrieval_source": retrieval_source,
         "run_name": output_dir.name,
+        "resolved_config_hash": resolved_config_hash,
+        "data_fingerprint": data_fingerprint,
+        "env_fingerprint": env_fingerprint,
     }
     if restrict_run_rel is not None:
         manifest_extra["restrict_to_run"] = restrict_run_rel
@@ -443,9 +485,10 @@ def main() -> None:
         output_dir=output_dir,
         command=sys.argv,
         config_path=args.config,
-        extra_outputs=[pred_path, examples_path],
+        extra_outputs=[pred_path, examples_path, resolved_config_path],
         extra=manifest_extra,
         require_clean_tree=args.require_clean_tree,
+        allow_incomplete=args.allow_incomplete_manifest,
     )
 
     print("\n=== RAG generation ===")

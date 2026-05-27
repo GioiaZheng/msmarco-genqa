@@ -20,6 +20,17 @@ Manifests deliberately exclude:
 - Absolute paths under the developer's home (CLAUDE.md privacy rule).
 - API tokens or cache prefixes.
 - The contents of large output files (only their size/hash is stored).
+
+Schema v2 — runtime contract
+----------------------------
+
+Schema bumped to ``msmarco-genqa.manifest.v2``. The bump is a hard break
+of v1: writes always emit v2; v1 manifests on disk remain readable as
+plain JSON for archaeological purposes. The behaviour change is the
+*runtime contract*: a manifest write under default (strict) mode fails
+with ``RequiredFieldMissingError`` if any of ``REQUIRED_FIELDS`` is
+missing or ``None``. Runners expose ``--allow-incomplete-manifest`` as
+the dev-time bypass, symmetric to ``--require-clean-tree`` from v1.
 """
 
 from __future__ import annotations
@@ -36,6 +47,33 @@ from typing import Any, Iterable
 logger = logging.getLogger(__name__)
 
 
+SCHEMA_VERSION = "msmarco-genqa.manifest.v2"
+
+# Required-field contract enforced by ``write_run_manifest`` under default
+# (strict) mode. Dotted paths into the manifest dict. A value of ``None`` or
+# a missing key both count as a violation; ``False`` and ``0`` are valid.
+#
+# Field meanings:
+# - git.commit       : short SHA of HEAD at write time (non-None).
+# - git.dirty        : bool (True iff uncommitted changes; never None).
+# - extra.seed       : the seed passed to ``set_global_seed``.
+# - extra.resolved_config_hash : content hash of the resolved config dict
+#                                (after CLI overrides). Populated by
+#                                commit 2 of research/reproducibility-protocol.
+# - extra.data_fingerprint     : lean hash of corpus cache + qrels.
+#                                Populated by commit 3.
+# - extra.env_fingerprint      : stable hash of capture_environment().
+#                                Populated by commit 3.
+REQUIRED_FIELDS: tuple[str, ...] = (
+    "git.commit",
+    "git.dirty",
+    "extra.seed",
+    "extra.resolved_config_hash",
+    "extra.data_fingerprint",
+    "extra.env_fingerprint",
+)
+
+
 class DirtyTreeError(RuntimeError):
     """Raised by ``write_run_manifest`` when ``require_clean_tree=True`` and
     the git working tree has uncommitted changes.
@@ -43,6 +81,258 @@ class DirtyTreeError(RuntimeError):
     The recorded commit SHA alone is not sufficient to reproduce a run made
     from a dirty tree, so canonical / headline runs may opt in to this check.
     """
+
+
+class RequiredFieldMissingError(RuntimeError):
+    """Raised by ``write_run_manifest`` under default (strict) mode when one
+    or more ``REQUIRED_FIELDS`` is missing or ``None``.
+
+    The runtime contract for v2: the recorded fields must be sufficient to
+    re-identify and reproduce the run. Missing fields silently turn the
+    manifest into archaeology, so the default behaviour refuses to write.
+    Pass ``allow_incomplete=True`` (from runners:
+    ``--allow-incomplete-manifest``) to bypass during development.
+    """
+
+
+_MISSING = object()
+
+
+def _get_dotted(d: dict, dotted: str):
+    """Return the value at ``dotted`` path inside ``d``, or ``_MISSING``.
+
+    A returned ``_MISSING`` means "key absent at some level"; a returned
+    ``None`` means "present but null". The validator treats both as
+    violations.
+    """
+    cur: Any = d
+    for part in dotted.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return _MISSING
+        cur = cur[part]
+    return cur
+
+
+def _validate_required(manifest: dict[str, Any]) -> None:
+    """Raise ``RequiredFieldMissingError`` if any ``REQUIRED_FIELDS`` entry
+    is missing or ``None`` in ``manifest``. Returns ``None`` on success.
+
+    The error message enumerates every violating field so the user can fix
+    them in one pass rather than discovering them one at a time.
+    """
+    missing: list[str] = []
+    for field in REQUIRED_FIELDS:
+        value = _get_dotted(manifest, field)
+        if value is _MISSING or value is None:
+            missing.append(field)
+    if missing:
+        raise RequiredFieldMissingError(
+            f"manifest is missing required field(s) {missing}. The write "
+            f"was refused under the {SCHEMA_VERSION} runtime contract. "
+            "Populate the missing field(s) via the runner's extra dict, "
+            "or pass --allow-incomplete-manifest at the CLI to bypass "
+            "(development only)."
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Resolved config — content hash + adjacent YAML artifact
+# --------------------------------------------------------------------------- #
+#
+# The "resolved config" is the cfg dict AFTER all CLI overrides have been
+# applied and is the actual config that drove the run. The file-level
+# sha256 of configs/baseline.yaml that already lives in manifest["config"][0]
+# is NOT sufficient: it misses --sample-size, --model-name, and similar
+# runner CLI overrides that meaningfully change the run. The contract is
+# that the runner hashes the resolved dict, writes the dict to
+# output_dir/resolved_config.yaml, and passes the hash via extra so the
+# manifest's required-fields validator sees it.
+
+
+def compute_resolved_config_hash(cfg: dict[str, Any]) -> str:
+    """Return a stable sha256 hex digest of the resolved config dict.
+
+    Stability properties:
+    - Insensitive to key insertion order (uses json.dumps sort_keys=True).
+    - Sensitive to any value change at any depth.
+    - Pure function: same dict in, same hash out, no side effects.
+
+    The 64-char full digest is returned (not the truncated 16-char form
+    used in manifest["config"][...] file records), because this hash is
+    the canonical re-identifier for the run's logical config: shorter
+    digests have non-trivial collision risk across the lifetime of the
+    project's run registry.
+    """
+    serialised = json.dumps(cfg, sort_keys=True, default=str).encode("utf-8")
+    return hashlib.sha256(serialised).hexdigest()
+
+
+def write_resolved_config(cfg: dict[str, Any], output_dir: Path) -> Path:
+    """Write the resolved config dict to ``output_dir/resolved_config.yaml``.
+
+    Returns the written path. ``output_dir`` is created if needed. The
+    YAML is written with ``default_flow_style=False`` and ``sort_keys=True``
+    so the on-disk form matches the hash input (key-order-stable). YAML
+    is preferred over JSON for the on-disk form because configs/baseline.yaml
+    is itself YAML — keeping the resolved-config artifact in the same
+    surface dialect makes diffing trivial.
+    """
+    import yaml  # imported lazily; yaml is a runtime dep but kept out of the manifest module's hot path
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = output_dir / "resolved_config.yaml"
+    with open(path, "w") as f:
+        yaml.safe_dump(cfg, f, default_flow_style=False, sort_keys=True)
+    return path
+
+
+# --------------------------------------------------------------------------- #
+# Data fingerprint — lean (per 2026-05-27 design lock)
+# --------------------------------------------------------------------------- #
+#
+# Lean per locked design: cache_dir str + corpus_limit + per-run extra
+# input files (sample_doc_ids JSON for dense, input run.tsv for
+# reranker/generation) content-hashed. We do NOT hash the 8.8M-passage
+# corpus body — its identity is anchored by the cache_dir path + the
+# ir_datasets dataset name + corpus_limit; rehashing the body on every
+# run is wasteful and download-order-dependent.
+
+
+def compute_data_fingerprint(
+    *,
+    cache_dir: Path,
+    corpus_limit: int | None = None,
+    extra_files: dict[str, Path] | None = None,
+) -> str:
+    """Lean sha256 hex digest identifying the data inputs of a run.
+
+    Components:
+    - ``cache_dir`` as string. Anchors which ir_datasets cache served
+      the corpus/queries/qrels for this run.
+    - ``corpus_limit``: scalar, ``None`` for the full corpus.
+    - ``extra_files``: optional ``{label: Path}`` mapping for run-specific
+      inputs that should be content-hashed — e.g. ``sample_doc_ids.json``
+      for dense, ``input run.tsv`` for reranker/generation. Each
+      file's truncated 16-char sha256 (matching the manifest file-record
+      convention) is folded in; ``None`` is recorded for missing files
+      so the fingerprint distinguishes "ran without this input" from
+      "ran with a present but possibly empty input".
+
+    Returns the 64-char full sha256 hex of the canonical JSON encoding
+    (sort_keys=True), matching the rigor of ``compute_resolved_config_hash``.
+    """
+    parts: dict[str, Any] = {
+        "cache_dir": str(cache_dir),
+        "corpus_limit": corpus_limit,
+    }
+    if extra_files:
+        for label, raw_path in sorted(extra_files.items()):
+            if raw_path is None:
+                parts[label] = None
+                continue
+            path = Path(raw_path)
+            if path.exists() and path.is_file():
+                # Match manifest file-record truncated-digest convention
+                # (16-char is enough to spot accidental changes; the
+                # fingerprint as a whole is still 64-char).
+                full_digest = _file_hash(path)
+                parts[label] = full_digest[:16] if full_digest else None
+            else:
+                parts[label] = None
+    serialised = json.dumps(parts, sort_keys=True, default=str).encode("utf-8")
+    return hashlib.sha256(serialised).hexdigest()
+
+
+# --------------------------------------------------------------------------- #
+# Sampling caveat block — surfaces sub-corpus eval honesty in metrics.json
+# --------------------------------------------------------------------------- #
+#
+# A repo-wide canonical caveat string for runs evaluated on a qrels-anchored
+# sub-sample of the full MS MARCO passage corpus. The block lives at the
+# top-level of payload (peer to "metrics") because sampling is a run-wide
+# property, not a per-metric one — both dense and bm25_sample numbers
+# inside the same dense run share the caveat.
+
+CANONICAL_SAMPLED_CAVEAT = (
+    "Numbers are derived from a qrels-anchored sub-sample of the full "
+    "MS MARCO passage corpus. Every dev-set relevant doc is included by "
+    "construction, so recall@k is upper-bounded at 1.0 and these absolute "
+    "numbers are NOT comparable to full-corpus baselines. The valid "
+    "comparison is between systems evaluated on the SAME sample."
+)
+
+
+def compute_sampling_block(
+    *,
+    is_sampled: bool,
+    method: str | None = None,
+    sample_size: int | None = None,
+    caveat: str | None = None,
+) -> dict[str, Any]:
+    """Return the standardised sampling-caveat block for metrics.json.
+
+    Placement: top-level key ``payload["sampling"]`` peer to
+    ``payload["metrics"]`` — sampling is a run-wide property, not a
+    per-metric one (dense + bm25_sample inside one run share the
+    caveat). Spec note: progress.md's earlier "metrics["sampling"]"
+    wording is implementation-deferred; the top-level placement keeps
+    "metrics" pure (only numeric metric values) and makes the caveat
+    easy to discover.
+
+    Parameters
+    ----------
+    is_sampled :
+        ``True`` if the eval drew on a sub-corpus (qrels-anchored
+        sample, first-N-truncation, etc.); ``False`` for full-corpus.
+    method :
+        Free-form short label for the sampling method, e.g.
+        ``"qrels-anchored"``, ``"first-N-truncated"``. Ignored when
+        ``is_sampled=False``.
+    sample_size :
+        Effective sample size, or ``None`` if not applicable
+        (e.g. generation runs that inherit upstream sampling but have
+        no sample_size of their own).
+    caveat :
+        Override the default canonical caveat string. Useful for
+        runs with a non-default sampling scheme that needs a different
+        warning. When ``None``, the canonical caveat is used.
+
+    Returns
+    -------
+    A minimal dict: ``{"is_sampled": False}`` for full-corpus runs;
+    ``{"is_sampled": True, "method": ..., "sample_size": ..., "caveat": ...}``
+    for sub-corpus runs.
+    """
+    if not is_sampled:
+        return {"is_sampled": False}
+    return {
+        "is_sampled": True,
+        "method": method or "qrels-anchored",
+        "sample_size": sample_size,
+        "caveat": caveat or CANONICAL_SAMPLED_CAVEAT,
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Env fingerprint — stable hash of capture_environment()
+# --------------------------------------------------------------------------- #
+
+
+def compute_env_fingerprint(env_dict: dict[str, Any]) -> str:
+    """Return a 64-char sha256 hex of a captured-environment dict.
+
+    Input is the dict returned by
+    ``msmarco_genqa.util.environment.capture_environment()``. The hash
+    is stable across calls with identical input and across Python
+    dict-iteration orders (json.dumps sort_keys=True).
+
+    Sensitive to package version changes, python version changes, cpu
+    brand, mem_gb — anything that ``capture_environment`` records.
+    Insensitive to call-time noise (the environment dict has no
+    timestamps or wall-clock fields).
+    """
+    serialised = json.dumps(env_dict, sort_keys=True, default=str).encode("utf-8")
+    return hashlib.sha256(serialised).hexdigest()
 
 
 # --------------------------------------------------------------------------- #
@@ -147,7 +437,7 @@ def build_manifest(
     """
     cmd = list(command) if command is not None else list(sys.argv)
     return {
-        "schema": "msmarco-genqa.manifest.v1",
+        "schema": SCHEMA_VERSION,
         "timestamp_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "git": _git_info(),
         "command": cmd,
@@ -188,6 +478,7 @@ def write_run_manifest(
     extra: dict[str, Any] | None = None,
     manifest_name: str = "manifest.json",
     require_clean_tree: bool = False,
+    allow_incomplete: bool = False,
 ) -> Path:
     """Standardised manifest writer for the experiment runners.
 
@@ -213,6 +504,14 @@ def write_run_manifest(
     ``require_clean_tree=True`` (from runners: ``--require-clean-tree``)
     to refuse to write the manifest in that case — useful for canonical /
     headline runs where the recorded provenance must be tight.
+
+    Required-field contract (schema v2): under default ``allow_incomplete=False``,
+    the manifest is validated against ``REQUIRED_FIELDS`` before write and
+    a ``RequiredFieldMissingError`` is raised if any field is missing or
+    ``None``. Pass ``allow_incomplete=True`` (from runners:
+    ``--allow-incomplete-manifest``) to bypass during development — the
+    bypass is symmetric to ``require_clean_tree`` in role: development
+    convenience that must be deliberately opted in.
     """
     metrics_path = output_dir / "metrics.json"
 
@@ -247,6 +546,9 @@ def write_run_manifest(
             "tree has uncommitted changes and require_clean_tree=True. "
             "Commit your changes and rerun, or omit --require-clean-tree."
         )
+
+    if not allow_incomplete:
+        _validate_required(manifest)
 
     path = write_manifest(manifest, manifest_path)
 

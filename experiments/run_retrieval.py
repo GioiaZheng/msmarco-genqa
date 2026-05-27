@@ -37,7 +37,14 @@ from msmarco_genqa.data.msmarco import load_msmarco_passage
 from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
 from msmarco_genqa.retrieval.bm25 import BM25Retriever
 from msmarco_genqa.util.environment import capture_environment
-from msmarco_genqa.util.manifest import write_run_manifest
+from msmarco_genqa.util.manifest import (
+    compute_data_fingerprint,
+    compute_env_fingerprint,
+    compute_resolved_config_hash,
+    compute_sampling_block,
+    write_resolved_config,
+    write_run_manifest,
+)
 from msmarco_genqa.util.seeding import set_global_seed
 
 logger = logging.getLogger("run_retrieval")
@@ -78,6 +85,15 @@ def parse_args() -> argparse.Namespace:
             "Refuse to write the manifest if the git working tree has "
             "uncommitted changes. Use for canonical / headline runs where "
             "the recorded commit must be sufficient to reproduce."
+        ),
+    )
+    parser.add_argument(
+        "--allow-incomplete-manifest",
+        action="store_true",
+        help=(
+            "Bypass the schema-v2 required-field contract on manifest write. "
+            "Development-only escape hatch; production / headline runs must "
+            "leave this off so missing reproducibility fields fail loudly."
         ),
     )
     return parser.parse_args()
@@ -381,18 +397,28 @@ def main() -> None:
 
     # ---- 7. metrics.json (unified schema across W2/W3) ----
     n_examples = metrics.pop("n_queries", None)  # promote count to top level
+    env_dict = capture_environment()
+    # BM25 baseline runs the full 8.8M corpus by default. corpus_limit is
+    # only set for smoke / dev iteration; when set, it's a first-N truncation
+    # (not qrels-anchored — that's the dense runner's pattern).
+    sampling_block = compute_sampling_block(
+        is_sampled=corpus_limit is not None,
+        method="first-N-truncated" if corpus_limit is not None else None,
+        sample_size=corpus_limit,
+    )
     payload = {
         "task": "retrieval",
         "dataset": "msmarco-passage/dev/small",
         "n_examples": n_examples,
         "config": cfg,
         "metrics": metrics,
+        "sampling": sampling_block,
         "wall_clock_seconds": {
             "indexing": index_time,
             "search": search_time,
             "search_pending_count": len(pending_qids),
         },
-        "environment": capture_environment(),
+        "environment": env_dict,
         "top_k": top_k,
         "resumed": args.resume and bool(set(qids) - set(pending_qids)),
     }
@@ -400,12 +426,20 @@ def main() -> None:
         json.dump(payload, f, indent=2, default=str)
     logger.info("Wrote metrics to %s", output_dir / "metrics.json")
 
+    resolved_config_path = write_resolved_config(cfg, output_dir)
+    resolved_config_hash = compute_resolved_config_hash(cfg)
+    data_fingerprint = compute_data_fingerprint(
+        cache_dir=cache_dir,
+        corpus_limit=corpus_limit,
+    )
+    env_fingerprint = compute_env_fingerprint(env_dict)
+
     write_run_manifest(
         project_root=PROJECT_ROOT,
         output_dir=output_dir,
         command=sys.argv,
         config_path=args.config,
-        extra_outputs=[run_path, examples_path],
+        extra_outputs=[run_path, examples_path, resolved_config_path],
         extra={
             "task": "retrieval",
             "backend": cfg["retrieval"].get("backend", "bm25s"),
@@ -417,8 +451,12 @@ def main() -> None:
             "resumed": bool(args.resume and (set(qids) - set(pending_qids))),
             "seed": seed,
             "seed_coverage": seed_coverage,
+            "resolved_config_hash": resolved_config_hash,
+            "data_fingerprint": data_fingerprint,
+            "env_fingerprint": env_fingerprint,
         },
         require_clean_tree=args.require_clean_tree,
+        allow_incomplete=args.allow_incomplete_manifest,
     )
 
     # ---- 8. Friendly summary ----
