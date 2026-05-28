@@ -145,15 +145,6 @@ ENV/
 env.bak/
 venv.bak/
 
-# Local operator scratch space and per-repo operating contract.
-# Neither the local scratch directory nor the operating-contract file
-# enter git — they exist on disk only as the local development surface
-# and are intentionally not tracked. The literal entries below are
-# kept because gitignore patterns require literal filenames to take
-# effect; their presence here is structural, not informational.
-.claude/
-CLAUDE.md
-
 # Spyder project settings
 .spyderproject
 .spyproject
