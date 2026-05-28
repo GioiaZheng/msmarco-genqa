@@ -32,8 +32,8 @@ Last audit: 2026-05-20.
 
 | Axis | Result | Notes |
 |---|---|---|
-| Secrets in source | ✅ clean | `grep -rEn 'HF_TOKEN\|OPENAI_API_KEY\|AWS_SECRET\|sk-[A-Za-z0-9]{20,}\|hf_[A-Za-z0-9]{20,}\|BEGIN.*PRIVATE KEY'` on `src tests experiments scripts configs README.md CLAUDE.md pyproject.toml requirements*.txt` returns nothing. |
-| `.env` / credential files | ✅ none | No `.env`, no `*.pem`, no `*.key`, no `credentials*`, no `secrets*` anywhere outside `.git/`, `outputs/`, `data/`, `.claude/`. |
+| Secrets in source | ✅ clean | `grep -rEn 'HF_TOKEN\|OPENAI_API_KEY\|AWS_SECRET\|sk-[A-Za-z0-9]{20,}\|hf_[A-Za-z0-9]{20,}\|BEGIN.*PRIVATE KEY'` over the tracked source paths (`src`, `tests`, `experiments`, `scripts`, `configs`, `README.md`, `pyproject.toml`, `requirements*.txt`) returns nothing. |
+| `.env` / credential files | ✅ none | No `.env`, no `*.pem`, no `*.key`, no `credentials*`, no `secrets*` anywhere outside `.git/`, `outputs/`, `data/`, and the local-scratch directory. |
 | Secrets in git history | ✅ clean | `git log --all -p` over the source paths above returns no plaintext-key matches. |
 | `pickle.load` / `torch.load` | ✅ none in source | Zero direct calls. PyTorch is invoked via `transformers` / `sentence_transformers`, which fetch model weights from the HF Hub (trusted registry) — see *Outbound network surface* below. |
 | `yaml.load` (unsafe) | ✅ none | All five YAML loads in the project use `yaml.safe_load` against `configs/baseline.yaml`. |
@@ -64,17 +64,17 @@ collapses to zero after the first invocation.
 
 ## Gitignored sensitive paths
 
-Per `CLAUDE.md`, the following directories never enter git regardless
-of how `git add` is invoked:
+Per the project's local operating contract, the following directories
+never enter git regardless of how `git add` is invoked:
 
-- `.claude/` (local agent state)
+- The local-scratch directory (operator workspace)
 - `outputs/` (experiment artifacts)
 - `data/raw/`, `data/processed/`, `data/cache/` (datasets, indexes,
   caches)
-- `*.jsonl` transcripts under any `.claude/projects/.../`
+- `*.jsonl` transcripts under any local-scratch subdirectory
 
-This is enforced both by the project `.gitignore` and by the operator
-convention documented in `CLAUDE.md`.
+This is enforced both by the project `.gitignore` and by operator
+convention.
 
 ## How to report a problem
 
