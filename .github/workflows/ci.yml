@@ -10,9 +10,9 @@ name: ci
 
 on:
   push:
-    branches: [main, paper-track]
+    branches: [main]
   pull_request:
-    branches: [main, paper-track]
+    branches: [main]
 
 # Avoid running duplicate workflows on the same ref (push + PR from same
 # branch).
