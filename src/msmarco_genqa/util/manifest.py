@@ -17,7 +17,7 @@ constructor; ``write_run_manifest`` is the standard entry point.
 
 Manifests deliberately exclude:
 
-- Absolute paths under the developer's home (CLAUDE.md privacy rule).
+- Absolute paths under the developer's home (project privacy rule).
 - API tokens or cache prefixes.
 - The contents of large output files (only their size/hash is stored).
 

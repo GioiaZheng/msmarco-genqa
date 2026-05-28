@@ -145,10 +145,12 @@ ENV/
 env.bak/
 venv.bak/
 
-# Local Claude Code agent state and per-repo Claude instructions. Neither
-# the local agent state under .claude/ nor the CLAUDE.md operating contract
-# enter git — CLAUDE.md exists on disk as Claude Code's instruction file
-# but is intentionally not tracked.
+# Local operator scratch space and per-repo operating contract.
+# Neither the local scratch directory nor the operating-contract file
+# enter git — they exist on disk only as the local development surface
+# and are intentionally not tracked. The literal entries below are
+# kept because gitignore patterns require literal filenames to take
+# effect; their presence here is structural, not informational.
 .claude/
 CLAUDE.md
 
