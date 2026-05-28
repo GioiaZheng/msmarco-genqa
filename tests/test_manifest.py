@@ -17,6 +17,7 @@ import pytest
 from msmarco_genqa.util import manifest as manifest_mod
 from msmarco_genqa.util.manifest import (
     CANONICAL_SAMPLED_CAVEAT,
+    PROFILE_REQUIRED_FIELDS,
     REQUIRED_FIELDS,
     SCHEMA_VERSION,
     DirtyTreeError,
@@ -532,6 +533,175 @@ def test_write_run_manifest_strict_catches_missing_git_commit(
         )
 
     assert not (output_dir / "manifest.json").exists()
+
+
+# --------------------------------------------------------------------------- #
+# Per-task profile contract (nli_grounding) — R5 metric-robustness
+# --------------------------------------------------------------------------- #
+
+
+_NLI_PROFILE_FIELDS: tuple[str, ...] = PROFILE_REQUIRED_FIELDS["nli_grounding"]
+
+
+def _nli_extras() -> dict:
+    """Minimal ``extra.nli`` sub-dict that satisfies the nli_grounding
+    profile. Mirrors the shape an R5 NLI runner will populate."""
+    return {
+        "backbone": "cross-encoder/nli-deberta-v3-small",
+        "revision": "fa2804872c3b4bd748f38c0185cc85775361e735",
+        "score_formula": "p_entail",
+        "threshold": {"type": "raw_scores"},
+        "premise_hypothesis_direction": "passage_as_premise",
+        "label_index_mapping": {"entailment": 2, "neutral": 1, "contradiction": 0},
+        "aggregation": "whole_passage",
+    }
+
+
+def _v2_nli_compliant_manifest() -> dict:
+    """Base v2-compliant manifest with the nli_grounding profile fields
+    layered in. Positive-case fixture for profile validator tests."""
+    manifest = _v2_compliant_manifest()
+    manifest["extra"]["nli"] = _nli_extras()
+    return manifest
+
+
+def test_profile_required_fields_set():
+    """The nli_grounding profile enumerates exactly the seven fields locked
+    by the R5 design (backbone, revision, score formula, threshold,
+    premise/hypothesis direction, label-index mapping, aggregation). Pinned
+    explicitly so any change forces a deliberate update."""
+    assert PROFILE_REQUIRED_FIELDS["nli_grounding"] == (
+        "extra.nli.backbone",
+        "extra.nli.revision",
+        "extra.nli.score_formula",
+        "extra.nli.threshold",
+        "extra.nli.premise_hypothesis_direction",
+        "extra.nli.label_index_mapping",
+        "extra.nli.aggregation",
+    )
+
+
+def test_validate_required_passes_with_nli_profile_when_full():
+    """A manifest with both base and NLI fields populated passes under
+    profile='nli_grounding'."""
+    _validate_required(_v2_nli_compliant_manifest(), profile="nli_grounding")
+
+
+@pytest.mark.parametrize("field", _NLI_PROFILE_FIELDS)
+def test_validate_required_raises_when_any_nli_field_is_missing(field: str):
+    """Removing any single NLI profile field must trigger
+    RequiredFieldMissingError with that field named in the message."""
+    manifest = _v2_nli_compliant_manifest()
+    # All NLI fields live under "extra.nli.<leaf>".
+    _, _, leaf = field.rpartition(".")
+    del manifest["extra"]["nli"][leaf]
+
+    with pytest.raises(RequiredFieldMissingError, match=field):
+        _validate_required(manifest, profile="nli_grounding")
+
+
+@pytest.mark.parametrize("field", _NLI_PROFILE_FIELDS)
+def test_validate_required_raises_when_any_nli_field_is_none(field: str):
+    """An NLI profile field set explicitly to ``None`` is just as invalid
+    as missing."""
+    manifest = _v2_nli_compliant_manifest()
+    _, _, leaf = field.rpartition(".")
+    manifest["extra"]["nli"][leaf] = None
+
+    with pytest.raises(RequiredFieldMissingError, match=field):
+        _validate_required(manifest, profile="nli_grounding")
+
+
+def test_validate_required_without_profile_ignores_missing_nli_fields():
+    """Backward compatibility: with profile=None (default), a manifest that
+    lacks the entire extra.nli sub-dict is still valid as long as the base
+    REQUIRED_FIELDS are populated. Existing non-NLI runners must keep
+    working unchanged."""
+    manifest = _v2_compliant_manifest()  # no extra.nli at all
+    _validate_required(manifest)  # no exception expected
+    _validate_required(manifest, profile=None)  # explicit form also fine
+
+
+def test_validate_required_unknown_profile_raises_valueerror():
+    """Typo'd profile names must fail loudly up-front rather than silently
+    degrading to base-only validation."""
+    manifest = _v2_compliant_manifest()
+    with pytest.raises(ValueError, match="unknown manifest profile"):
+        _validate_required(manifest, profile="nli-grounding")  # wrong sep
+
+
+def test_validate_required_combines_base_and_profile_missing_in_one_error():
+    """When both a base required field and a profile field are missing,
+    the error names both — single-pass diagnosis."""
+    manifest = _v2_nli_compliant_manifest()
+    del manifest["extra"]["seed"]
+    del manifest["extra"]["nli"]["score_formula"]
+
+    with pytest.raises(RequiredFieldMissingError) as excinfo:
+        _validate_required(manifest, profile="nli_grounding")
+    msg = str(excinfo.value)
+    assert "extra.seed" in msg
+    assert "extra.nli.score_formula" in msg
+
+
+def test_validate_required_error_message_names_profile_when_set():
+    """The error message identifies the profile in play so the user knows
+    which contract refused the write."""
+    manifest = _v2_nli_compliant_manifest()
+    del manifest["extra"]["nli"]["backbone"]
+
+    with pytest.raises(RequiredFieldMissingError, match="nli_grounding"):
+        _validate_required(manifest, profile="nli_grounding")
+
+
+def test_write_run_manifest_with_nli_profile_strict_refuses_when_nli_extras_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """``write_run_manifest(profile='nli_grounding')`` must enforce the NLI
+    profile even when base fields are populated."""
+    monkeypatch.setattr(
+        manifest_mod,
+        "_git_info",
+        lambda: {"commit": "deadbeefface", "dirty": False},
+    )
+    output_dir = _make_minimal_output_dir(tmp_path, "nli_strict_refuses")
+
+    with pytest.raises(RequiredFieldMissingError, match="extra.nli"):
+        write_run_manifest(
+            project_root=tmp_path,
+            output_dir=output_dir,
+            extra=_full_extras(),  # base required ok; nli sub-dict absent
+            profile="nli_grounding",
+        )
+
+    assert not (output_dir / "manifest.json").exists()
+
+
+def test_write_run_manifest_with_nli_profile_strict_accepts_when_nli_extras_populated(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Strict mode + profile='nli_grounding' + all NLI fields populated
+    must write successfully and record the NLI block on disk."""
+    monkeypatch.setattr(
+        manifest_mod,
+        "_git_info",
+        lambda: {"commit": "deadbeefface", "dirty": False},
+    )
+    output_dir = _make_minimal_output_dir(tmp_path, "nli_strict_ok")
+
+    extras = {**_full_extras(), "nli": _nli_extras()}
+    manifest_path = write_run_manifest(
+        project_root=tmp_path,
+        output_dir=output_dir,
+        extra=extras,
+        profile="nli_grounding",
+    )
+    assert manifest_path.exists()
+    data = json.loads(manifest_path.read_text())
+    assert data["extra"]["nli"]["backbone"] == "cross-encoder/nli-deberta-v3-small"
+    assert data["extra"]["nli"]["aggregation"] == "whole_passage"
 
 
 # --------------------------------------------------------------------------- #
