@@ -74,6 +74,37 @@ REQUIRED_FIELDS: tuple[str, ...] = (
 )
 
 
+# Per-task required-field profiles. Each profile adds dotted-path fields on
+# top of ``REQUIRED_FIELDS`` when that profile is selected at write time
+# (via ``write_run_manifest(profile=...)`` or ``_validate_required(...,
+# profile=...)``). Profiles are *additive*: the base contract still applies.
+#
+# nli_grounding fields — R5 metric-robustness scope. The R5 factorial
+# varies all of {backbone, score formula, threshold, premise/hypothesis
+# direction, label-index mapping, aggregation} across runs; recording
+# which combination produced a given metrics.json is the minimum needed
+# to reproduce a single cell of the factorial. The seventh field
+# (label_index_mapping) audits the actual ``model.config.id2label``
+# resolution per the R5 "probe pairs verify label-index mapping per
+# backbone" requirement.
+#
+# Field presence is enforced; value-set enforcement is deliberately
+# omitted so R5 can add formulas / aggregation modes as it discovers them.
+# The contract is "the runner declared what it did", not "the runner's
+# choice is one of a frozen set".
+PROFILE_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
+    "nli_grounding": (
+        "extra.nli.backbone",
+        "extra.nli.revision",
+        "extra.nli.score_formula",
+        "extra.nli.threshold",
+        "extra.nli.premise_hypothesis_direction",
+        "extra.nli.label_index_mapping",
+        "extra.nli.aggregation",
+    ),
+}
+
+
 class DirtyTreeError(RuntimeError):
     """Raised by ``write_run_manifest`` when ``require_clean_tree=True`` and
     the git working tree has uncommitted changes.
@@ -113,25 +144,43 @@ def _get_dotted(d: dict, dotted: str):
     return cur
 
 
-def _validate_required(manifest: dict[str, Any]) -> None:
-    """Raise ``RequiredFieldMissingError`` if any ``REQUIRED_FIELDS`` entry
-    is missing or ``None`` in ``manifest``. Returns ``None`` on success.
+def _validate_required(
+    manifest: dict[str, Any], profile: str | None = None
+) -> None:
+    """Raise ``RequiredFieldMissingError`` if any required field is missing
+    or ``None`` in ``manifest``. Returns ``None`` on success.
+
+    ``profile`` selects an entry from ``PROFILE_REQUIRED_FIELDS`` whose
+    fields are added on top of ``REQUIRED_FIELDS``. Unknown profile names
+    raise ``ValueError`` up-front so a typo doesn't silently degrade to
+    base-only validation.
 
     The error message enumerates every violating field so the user can fix
     them in one pass rather than discovering them one at a time.
     """
+    if profile is not None and profile not in PROFILE_REQUIRED_FIELDS:
+        raise ValueError(
+            f"unknown manifest profile {profile!r}. Known profiles: "
+            f"{sorted(PROFILE_REQUIRED_FIELDS)}."
+        )
+
+    fields: tuple[str, ...] = REQUIRED_FIELDS
+    if profile is not None:
+        fields = REQUIRED_FIELDS + PROFILE_REQUIRED_FIELDS[profile]
+
     missing: list[str] = []
-    for field in REQUIRED_FIELDS:
+    for field in fields:
         value = _get_dotted(manifest, field)
         if value is _MISSING or value is None:
             missing.append(field)
     if missing:
+        profile_note = f" (profile={profile!r})" if profile else ""
         raise RequiredFieldMissingError(
             f"manifest is missing required field(s) {missing}. The write "
-            f"was refused under the {SCHEMA_VERSION} runtime contract. "
-            "Populate the missing field(s) via the runner's extra dict, "
-            "or pass --allow-incomplete-manifest at the CLI to bypass "
-            "(development only)."
+            f"was refused under the {SCHEMA_VERSION} runtime contract"
+            f"{profile_note}. Populate the missing field(s) via the "
+            "runner's extra dict, or pass --allow-incomplete-manifest at "
+            "the CLI to bypass (development only)."
         )
 
 
@@ -479,6 +528,7 @@ def write_run_manifest(
     manifest_name: str = "manifest.json",
     require_clean_tree: bool = False,
     allow_incomplete: bool = False,
+    profile: str | None = None,
 ) -> Path:
     """Standardised manifest writer for the experiment runners.
 
@@ -512,6 +562,11 @@ def write_run_manifest(
     ``--allow-incomplete-manifest``) to bypass during development — the
     bypass is symmetric to ``require_clean_tree`` in role: development
     convenience that must be deliberately opted in.
+
+    Per-task profiles: pass ``profile=<name>`` (e.g. ``"nli_grounding"``)
+    to layer that profile's required fields on top of the base contract.
+    ``profile=None`` (default) preserves prior behaviour. Unknown profile
+    names raise ``ValueError`` up-front.
     """
     metrics_path = output_dir / "metrics.json"
 
@@ -548,7 +603,7 @@ def write_run_manifest(
         )
 
     if not allow_incomplete:
-        _validate_required(manifest)
+        _validate_required(manifest, profile=profile)
 
     path = write_manifest(manifest, manifest_path)
 
