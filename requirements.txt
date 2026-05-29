@@ -11,9 +11,9 @@ datasets>=2.14
 ir-datasets>=0.5.5            # official MS MARCO Passage corpus + dev/small
 
 # Lexical retrieval
-bm25s>=0.2                    # primary backend for the official Week 2 baseline
+bm25s>=0.2                    # primary backend for the BM25 baseline
 
-# Dense retrieval (Week 4)
+# Dense retrieval
 sentence-transformers>=2.2
 faiss-cpu>=1.7
 
@@ -26,7 +26,7 @@ sentencepiece>=0.1.99
 evaluate>=0.4
 rouge_score>=0.1.2
 sacrebleu>=2.3
-bert_score>=0.3.13            # semantic-proxy generation eval (W6 sanity check)
+bert_score>=0.3.13            # semantic-proxy generation eval (sanity check)
 
 # Testing
 pytest>=7.0
