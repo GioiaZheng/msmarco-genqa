@@ -1,0 +1,81 @@
+# Config-driven end-to-end pipeline plan.
+#
+# This file is intentionally command-oriented: each stage names the exact
+# script/arguments to run. `scripts/run_pipeline.py --dry-run` prints the plan
+# without touching data or models; omit `--dry-run` to execute stages in order.
+
+tracking:
+  backend: jsonl
+  output_dir: outputs/pipeline_tracking
+
+stages:
+  - name: bm25_retrieval
+    description: Full-corpus BM25 baseline on dev/small.
+    command:
+      - mgq-retrieve
+      - --config
+      - configs/baseline.yaml
+
+  - name: dense_retrieval
+    description: Sentence-BERT + FAISS dense retrieval, with BM25-on-sample comparison.
+    command:
+      - mgq-dense
+      - --config
+      - configs/baseline.yaml
+
+  - name: cross_encoder_rerank
+    description: Cross-encoder reranking over dense top-100; quantifies rerank lift.
+    command:
+      - mgq-rerank
+      - --config
+      - configs/baseline.yaml
+
+  - name: generation_bm25
+    description: T5 generation over BM25 top-3.
+    command:
+      - mgq-generate
+      - --config
+      - configs/baseline.yaml
+      - --input-run
+      - outputs/week02_bm25/run.tsv
+      - --output-dir
+      - outputs/week03_generation_bm25_full
+      - --retrieval-source
+      - bm25
+
+  - name: generation_reranked
+    description: T5 generation over cross-encoder-reranked top-3.
+    command:
+      - mgq-generate
+      - --config
+      - configs/baseline.yaml
+      - --input-run
+      - outputs/week05_reranker_full/run.tsv
+      - --output-dir
+      - outputs/week03_generation_reranked_full
+      - --retrieval-source
+      - reranked
+      - --restrict-to-run
+      - outputs/week05_reranker_full/run.tsv
+
+  - name: paired_bootstrap_ci
+    description: Paired-bootstrap confidence intervals for rerank lift.
+    command:
+      - python
+      - scripts/bootstrap_generation_comparison.py
+      - --bm25-dir
+      - outputs/week03_generation_bm25_full
+      - --reranked-dir
+      - outputs/week03_generation_reranked_full
+      - --output-dir
+      - outputs/week03_generation_bootstrap_full
+
+  - name: generator_capacity_sweep
+    description: Larger-generator sweep; override --model-name to google/flan-t5-base if desired.
+    command:
+      - python
+      - scripts/run_generator_capacity_sweep.py
+      - --model-name
+      - t5-base
+      - --num-eval-queries
+      - "9999"

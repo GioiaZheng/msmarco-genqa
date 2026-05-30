@@ -1,0 +1,36 @@
+{
+  "project": "msmarco-genqa",
+  "title": "MS MARCO Generative QA Pipeline",
+  "dataset": {
+    "name": "MS MARCO Passage Ranking / QA v2.1",
+    "dev_queries": 6980,
+    "corpus_passages": 8800000
+  },
+  "pipeline": [
+    "bm25_retrieval",
+    "dense_retrieval",
+    "cross_encoder_reranking",
+    "rag_generation",
+    "paired_bootstrap_evaluation",
+    "semantic_grounding_audit"
+  ],
+  "headline_metrics": {
+    "bm25_to_reranked_t5_small": {
+      "token_f1_delta": 0.1711,
+      "rouge_l_delta": 0.1742,
+      "paired_bootstrap_ci_token_f1": [0.1632, 0.1789]
+    },
+    "dense_retrieval_sample": {
+      "dense_mrr_at_10": 0.883,
+      "bm25_sample_mrr_at_10": 0.6948,
+      "cross_encoder_mrr_at_10": 0.9304
+    }
+  },
+  "engineering": {
+    "ci": true,
+    "config_driven": true,
+    "manifested_runs": true,
+    "experiment_tracking": ["jsonl", "mlflow_optional", "wandb_optional"],
+    "serving": ["fastapi_optional"]
+  }
+}

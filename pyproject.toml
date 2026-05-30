@@ -56,6 +56,16 @@ dependencies = [
     "bert_score>=0.3.13",
 ]
 
+[project.optional-dependencies]
+serve = [
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+]
+tracking = [
+    "mlflow>=2.10",
+    "wandb>=0.16",
+]
+
 [tool.setuptools.packages.find]
 # Two roots: ``src/`` for the library package and the repo root for the
 # ``experiments`` entry-point layer. The CLI shims under
@@ -73,6 +83,8 @@ mgq-retrieve = "msmarco_genqa.cli.retrieve:main"
 mgq-dense    = "msmarco_genqa.cli.dense:main"
 mgq-rerank   = "msmarco_genqa.cli.rerank:main"
 mgq-generate = "msmarco_genqa.cli.generate:main"
+mgq-pipeline = "msmarco_genqa.cli.pipeline:main"
+mgq-serve    = "msmarco_genqa.service.app:main"
 
 
 # --------------------------------------------------------------------------- #

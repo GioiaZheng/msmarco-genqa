@@ -32,9 +32,38 @@ batch-eval oriented — no one-shot `--question` CLI; see
 - **`scripts/`** — analyses, ablations, validation, integration smokes that read `experiments/` outputs.
 - **`src/`** — importable library code backing both.
 - **`reports/internship_report/`** — frozen v1.0 PDF + sources.
+- **`reports/acl_findings/`** — ACL-Findings-style experimental report draft.
 - **`docs/experiments.md`** — pipeline narrative stitching the stages together.
+- **`metadata.json`** — project metadata summarising dataset scale, pipeline stages,
+  headline metrics, CI, tracking, and serving support.
 
 See [§2 Directory layout](#2-directory-layout) for the full breakdown.
+
+## Engineering surface
+
+This repo is meant to read as a research-engineering project, not only as a
+notebook reproduction:
+
+- **Config-driven pipeline.** `configs/pipeline.yaml` defines the BM25 → dense
+  → rerank → generation → paired-bootstrap → generator-capacity sequence.
+  `python scripts/run_pipeline.py --dry-run` prints the executable plan without
+  loading data or models.
+- **CI and automation.** The GitHub Actions workflow runs unit tests, linting,
+  and manifest/reproduction checks; the local mirror is `make test` and
+  `make lint`.
+- **Run metadata.** Major runners write `manifest.json`, `resolved_config.yaml`,
+  metrics, output hashes, config hashes, git commit, dependency fingerprints,
+  and sampling metadata.
+- **Experiment tracking.** `msmarco_genqa.util.tracking.ExperimentTracker`
+  writes local JSONL events by default and can use MLflow or Weights & Biases
+  via `pip install -e ".[tracking]"`.
+- **Model serving.** `mgq-serve` exposes a lightweight FastAPI wrapper around
+  the generator (`pip install -e ".[serve]"`), with `/health` and `/generate`
+  endpoints for local demos or integration tests.
+- **Larger-generator sweep.** `scripts/run_generator_capacity_sweep.py` runs
+  the same paired BM25/reranked comparison with `t5-base`; pass
+  `--model-name google/flan-t5-base` to evaluate FLAN-T5 under the same
+  pipeline and bootstrap protocol.
 
 ## 1. Status
 
