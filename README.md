@@ -21,10 +21,20 @@ within <0.005, ruling out the decode-budget reading.
 
 **How to read this repo.** Per-stage write-up with numbers in
 [§1 Status](#1-status); reproduction commands in
-[§4 Run the official baselines](#4-run-the-official-baselines); frozen
+[§4 Run the official baselines](#4-run-the-official-baselines); ACL-style
+report at `reports/acl_findings/report.pdf`; frozen
 final PDF at `reports/internship_report/report.pdf`. The repo is
 batch-eval oriented — no one-shot `--question` CLI; see
 [§4.5](#45-single-query-demo) for the minimal in-Python composition.
+
+## Results at a glance
+
+| Question | Comparison | Result |
+|---|---|---:|
+| Does dense retrieval beat lexical retrieval on the same pool? | BM25-on-sample vs SBERT + FAISS | MRR@10 0.6948 → 0.8830 |
+| Does reranking add value after dense retrieval? | Dense top-100 vs cross-encoder reranked top-100 | MRR@10 0.8830 → 0.9304 |
+| Does retrieval lift transfer to generation? | BM25 top-3 → T5-small vs reranked top-3 → T5-small | Token-F1 0.1966 → 0.3677 |
+| Is the generation lift statistically reliable? | 6,980 paired qids, 10,000 bootstrap resamples | ΔToken-F1 +0.1711, 95% CI [+0.1632, +0.1789] |
 
 ## Project layout
 
@@ -59,7 +69,14 @@ notebook reproduction:
   via `pip install -e ".[tracking]"`.
 - **Model serving.** `mgq-serve` exposes a lightweight FastAPI wrapper around
   the generator (`pip install -e ".[serve]"`), with `/health` and `/generate`
-  endpoints for local demos or integration tests.
+  endpoints for local demos or integration tests. See
+  `examples/demo_payload.json` for a minimal request body:
+
+  ```bash
+  curl -X POST http://127.0.0.1:8000/generate \
+    -H "Content-Type: application/json" \
+    --data @examples/demo_payload.json
+  ```
 - **Larger-generator sweep.** `scripts/run_generator_capacity_sweep.py` runs
   the same paired BM25/reranked comparison with `t5-base`; pass
   `--model-name google/flan-t5-base` to evaluate FLAN-T5 under the same
