@@ -2,30 +2,23 @@
 
 ## TL;DR
 
-A reproducible, single-machine end-to-end MS MARCO retrieval-augmented QA
-pipeline built up across six experimental stages:
+This repository is a reproducible research-engineering implementation of an
+MS MARCO retrieval-augmented QA pipeline. It moves from lexical retrieval to
+dense retrieval, cross-encoder reranking, generation, statistical evaluation,
+and grounding analysis on the full `dev/small` split (6,980 queries).
 
-> **W1 EDA → W2 BM25 retrieval → W3 RAG generation (T5-small) → W4 dense
-> retrieval (SBERT + FAISS) → W5 cross-encoder reranking → W6 semantic-proxy
-> evaluation + regression-failure taxonomy.**
+**Main result.** Replacing BM25 top-3 passages with cross-encoder-reranked
+dense top-3 passages — same T5-small generator, same paired query set —
+increases Token-F1 from 0.197 to 0.368 (Δ +0.171) and ROUGE-L from 0.193 to
+0.368 (Δ +0.174). Paired-bootstrap 95% CIs are strictly above zero across all
+surface metrics, and a DistilBERT BERTScore proxy recovers a similar lift
+magnitude (Δ +0.173).
 
-**Headline result.** Swapping the first-stage retriever from BM25 to a
-cross-encoder-reranked dense top-3 — same T5-small generator, same 6 980
-dev/small queries — roughly doubles every generation metric: Token-F1
-0.197 → 0.368 (Δ +0.171), ROUGE-L 0.193 → 0.368 (Δ +0.174), with 95 %
-paired-bootstrap CIs strictly above 0 on all four surface-form metrics.
-A DistilBERT-based BERTScore proxy on a 3 000-pair subsample recovers
-Δ +0.173, so the gain is not a surface-form artefact. A
-`max_new_tokens=64→128` sweep on full dev/small leaves all four deltas
-within <0.005, ruling out the decode-budget reading.
-
-**How to read this repo.** Per-stage write-up with numbers in
-[§1 Status](#1-status); reproduction commands in
-[§4 Run the official baselines](#4-run-the-official-baselines); ACL-style
-report at `reports/acl_findings/report.pdf`; frozen
-final PDF at `reports/internship_report/report.pdf`. The repo is
-batch-eval oriented — no one-shot `--question` CLI; see
-[§4.5](#45-single-query-demo) for the minimal in-Python composition.
+**Scope.** The repo is batch-evaluation oriented. It includes experiment
+manifests, config-driven runners, query-level diagnostics, CI checks, report
+artifacts, and reproducibility notes alongside the code. Detailed experiment
+notes live in [`docs/experiments.md`](docs/experiments.md); the ACL-style
+write-up is [`reports/acl_findings/report.pdf`](reports/acl_findings/report.pdf).
 
 ## Results at a glance
 
@@ -36,23 +29,29 @@ batch-eval oriented — no one-shot `--question` CLI; see
 | Does retrieval lift transfer to generation? | BM25 top-3 → T5-small vs reranked top-3 → T5-small | Token-F1 0.1966 → 0.3677 |
 | Is the generation lift statistically reliable? | 6,980 paired qids, 10,000 bootstrap resamples | ΔToken-F1 +0.1711, 95% CI [+0.1632, +0.1789] |
 
-## Project layout
+## Implemented components
 
-- **`experiments/`** — four pipeline-stage runners (BM25, dense, rerank, generation). Source of the benchmark numbers.
-- **`scripts/`** — analyses, ablations, validation, integration smokes that read `experiments/` outputs.
-- **`src/`** — importable library code backing both.
-- **`reports/internship_report/`** — frozen v1.0 PDF + sources.
-- **`reports/acl_findings/`** — ACL-Findings-style experimental report draft.
-- **`docs/experiments.md`** — pipeline narrative stitching the stages together.
-- **`metadata.json`** — project metadata summarising dataset scale, pipeline stages,
-  headline metrics, CI, tracking, and serving support.
+| Area | What is included |
+|---|---|
+| Retrieval | BM25, dense SBERT/FAISS, and BM25-on-sample comparisons under controlled qrels-anchored evaluation. |
+| Reranking | Cross-encoder reranking with aggregate lift, first-stage comparison, and query-level promoted/demoted/new-hit/lost-hit diagnostics. |
+| Generation | Paired BM25-vs-reranked generation runs using the same generator, prompt format, query set, and top-k depth. |
+| Evaluation | Paired-bootstrap confidence intervals, BERTScore proxy checks, grounding audit, query-form slicing, and regression taxonomy. |
+| Reproducibility | Config-driven runners, manifests, output hashes, metadata, CI, report artifacts, and optional experiment tracking. |
 
-See [§2 Directory layout](#2-directory-layout) for the full breakdown.
+## Reports and notes
+
+The repository includes runnable code plus written analysis artifacts:
+
+- [`reports/acl_findings/report.pdf`](reports/acl_findings/report.pdf) — compact ACL-style experimental report.
+- [`docs/experiments.md`](docs/experiments.md) — stage-by-stage experiment narrative and caveats.
+- [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md) — query-level reranker lift analysis protocol.
+- [`reports/internship_report/report.pdf`](reports/internship_report/report.pdf) — frozen internship report snapshot.
 
 ## Engineering surface
 
-This repo is meant to read as a research-engineering project, not only as a
-notebook reproduction:
+The repository includes engineering support for running, validating, and
+auditing the experiments:
 
 - **Config-driven pipeline.** `configs/pipeline.yaml` defines the BM25 → dense
   → rerank → generation → paired-bootstrap → generator-capacity sequence.
@@ -85,6 +84,19 @@ notebook reproduction:
   the same paired BM25/reranked comparison with `t5-base`; pass
   `--model-name google/flan-t5-base` to evaluate FLAN-T5 under the same
   pipeline and bootstrap protocol.
+
+## Project layout
+
+- **`experiments/`** — four pipeline-stage runners (BM25, dense, rerank, generation). Source of the benchmark numbers.
+- **`scripts/`** — analyses, ablations, validation, integration smokes that read `experiments/` outputs.
+- **`src/`** — importable library code backing both.
+- **`docs/`** — experiment narratives and reproducibility notes.
+- **`reports/acl_findings/`** — ACL-Findings-style experimental report draft.
+- **`reports/internship_report/`** — frozen v1.0 PDF + sources.
+- **`metadata.json`** — project metadata summarising dataset scale, pipeline stages,
+  headline metrics, CI, tracking, and serving support.
+
+See [§2 Directory layout](#2-directory-layout) for the full breakdown.
 
 ## 1. Status
 
