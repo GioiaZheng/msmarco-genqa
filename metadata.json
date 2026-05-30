@@ -10,6 +10,7 @@
     "bm25_retrieval",
     "dense_retrieval",
     "cross_encoder_reranking",
+    "retrieval_lift_diagnostics",
     "rag_generation",
     "paired_bootstrap_evaluation",
     "semantic_grounding_audit"
@@ -30,6 +31,7 @@
     "ci": true,
     "config_driven": true,
     "manifested_runs": true,
+    "query_level_retrieval_diagnostics": true,
     "experiment_tracking": ["jsonl", "mlflow_optional", "wandb_optional"],
     "serving": ["fastapi_optional"]
   }

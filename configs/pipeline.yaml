@@ -30,6 +30,18 @@ stages:
       - --config
       - configs/baseline.yaml
 
+  - name: retrieval_lift_analysis
+    description: Query-level diagnostics for promoted, demoted, new-hit, and lost-hit rerank cases.
+    command:
+      - python
+      - scripts/analyze_retrieval_lift.py
+      - --before-run
+      - outputs/week04_dense/run.tsv
+      - --after-run
+      - outputs/week05_reranker_full/run.tsv
+      - --output-dir
+      - outputs/week05_retrieval_lift_analysis
+
   - name: generation_bm25
     description: T5 generation over BM25 top-3.
     command:

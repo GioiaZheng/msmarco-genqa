@@ -64,6 +64,10 @@ notebook reproduction:
 - **Run metadata.** Major runners write `manifest.json`, `resolved_config.yaml`,
   metrics, output hashes, config hashes, git commit, dependency fingerprints,
   and sampling metadata.
+- **Retrieval lift diagnostics.** `scripts/analyze_retrieval_lift.py` compares
+  two `run.tsv` files per query, bucketizing reranker gains/losses into
+  promoted, demoted, new-hit, and lost-hit cases. See
+  [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md).
 - **Experiment tracking.** `msmarco_genqa.util.tracking.ExperimentTracker`
   writes local JSONL events by default and can use MLflow or Weights & Biases
   via `pip install -e ".[tracking]"`.
