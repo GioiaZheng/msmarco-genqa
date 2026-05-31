@@ -17,8 +17,10 @@ magnitude (Δ +0.173).
 **Scope.** The repo is batch-evaluation oriented. It includes experiment
 manifests, config-driven runners, query-level diagnostics, CI checks, report
 artifacts, and reproducibility notes alongside the code. Detailed experiment
-notes live in [`docs/experiments.md`](docs/experiments.md); the ACL-style
-write-up is [`reports/acl_findings/report.pdf`](reports/acl_findings/report.pdf).
+notes live in [`docs/experiments.md`](docs/experiments.md); the result summary
+is [`RESULTS.md`](RESULTS.md); reproducibility entry points are documented in
+[`REPRODUCIBILITY.md`](REPRODUCIBILITY.md); the ACL-style write-up is
+[`reports/acl_findings/report.pdf`](reports/acl_findings/report.pdf).
 
 ## Results at a glance
 
@@ -44,6 +46,8 @@ write-up is [`reports/acl_findings/report.pdf`](reports/acl_findings/report.pdf)
 The repository includes runnable code plus written analysis artifacts:
 
 - [`reports/acl_findings/report.pdf`](reports/acl_findings/report.pdf) — compact ACL-style experimental report.
+- [`RESULTS.md`](RESULTS.md) — headline metrics, statistical intervals, and interpretation limits.
+- [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) — setup, checks, run artifacts, and reproduction commands.
 - [`docs/experiments.md`](docs/experiments.md) — stage-by-stage experiment narrative and caveats.
 - [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md) — query-level reranker lift analysis protocol.
 - [`reports/internship_report/report.pdf`](reports/internship_report/report.pdf) — frozen internship report snapshot.
