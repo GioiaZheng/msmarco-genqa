@@ -51,6 +51,9 @@ jobs:
       - name: Run default unit tests
         run: pytest -q
 
+      - name: Check headline metric metadata
+        run: python scripts/check_headline_metrics.py
+
   lint:
     name: ruff
     runs-on: ubuntu-latest

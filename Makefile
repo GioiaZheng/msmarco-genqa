@@ -4,7 +4,7 @@
 # Python dependencies are installed (``pip install -r requirements.txt &&
 # pip install -e .``).
 
-.PHONY: help install test test-slow lint pipeline-dry-run serve-dev clean-pycache reproduce-baseline
+.PHONY: help install test test-slow lint check-results pipeline-dry-run serve-dev clean-pycache reproduce-baseline
 
 PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
@@ -16,6 +16,7 @@ help:
 	@echo "  make test                 -- run default unit tests (fast, no network, no HF Hub)"
 	@echo "  make test-slow            -- include slow tests (HF metric scripts; skipped if offline)"
 	@echo "  make lint                 -- ruff check on src/, tests/, experiments/, scripts/"
+	@echo "  make check-results        -- verify metadata.json headline metrics against RESULTS.md"
 	@echo "  make pipeline-dry-run     -- print the config-driven experiment plan"
 	@echo "  make serve-dev            -- start the optional FastAPI generation service"
 	@echo "  make reproduce-baseline   -- re-run + verify the W2 BM25 baseline (~30 min CPU laptop)"
@@ -55,6 +56,9 @@ test-slow:
 # (``pip install --user`` puts it in a non-PATH location on some setups).
 lint:
 	$(RUFF) check src tests experiments scripts
+
+check-results:
+	$(PYTHON) scripts/check_headline_metrics.py
 
 pipeline-dry-run:
 	$(PYTHON) scripts/run_pipeline.py --dry-run
