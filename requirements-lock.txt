@@ -31,6 +31,7 @@ PyYAML==6.0.3
 # --- Datasets and IO ---
 datasets==4.5.0
 ir_datasets==0.5.11
+lxml==6.1.0
 
 # --- Lexical retrieval ---
 bm25s==0.3.8

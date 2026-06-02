@@ -40,6 +40,7 @@ dependencies = [
     # Datasets and IO
     "datasets>=2.14",
     "ir-datasets>=0.5.5",
+    "lxml>=6.1.0",
     # Lexical retrieval
     "bm25s>=0.2",
     # Dense retrieval
