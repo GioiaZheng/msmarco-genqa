@@ -9,7 +9,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 MAX_FILE_BYTES = 2_000_000
 
 SKIP_PARTS = {
