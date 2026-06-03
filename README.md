@@ -49,7 +49,11 @@ The repository includes runnable code plus written analysis artifacts:
 - [`RESULTS.md`](RESULTS.md) — headline metrics, statistical intervals, and interpretation limits.
 - [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) — setup, checks, run artifacts, and reproduction commands.
 - [`docs/experiments.md`](docs/experiments.md) — stage-by-stage experiment narrative and caveats.
+- [`docs/architecture.md`](docs/architecture.md) — module boundaries and artifact flow.
+- [`docs/evaluation_protocol.md`](docs/evaluation_protocol.md) — reproducible evaluation contract.
+- [`docs/failure_taxonomy.md`](docs/failure_taxonomy.md) — regression and grounding error taxonomy.
 - [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md) — query-level reranker lift analysis protocol.
+- [`notebooks/rag_eval_demo.ipynb`](notebooks/rag_eval_demo.ipynb) — lightweight evaluation workflow demo.
 - [`reports/internship_report/report.pdf`](reports/internship_report/report.pdf) — frozen internship report snapshot.
 
 ## Engineering surface
@@ -61,6 +65,10 @@ auditing the experiments:
   → rerank → generation → paired-bootstrap → generator-capacity sequence.
   `python scripts/run_pipeline.py --dry-run` prints the executable plan without
   loading data or models.
+- **Research evaluation workflow.** `rag-eval run --config configs/baseline.yaml`
+  builds the end-to-end BM25, dense, rerank, paired generation, bootstrap, and
+  grounding plan from the baseline config. Use `--dry-run` to inspect the
+  command sequence before touching data or models.
 - **CI and automation.** The GitHub Actions workflow runs unit tests, linting,
   and manifest/reproduction checks; the local mirror is `make test` and
   `make lint`.
@@ -95,6 +103,7 @@ auditing the experiments:
 - **`scripts/`** — analyses, ablations, validation, integration smokes that read `experiments/` outputs.
 - **`src/`** — importable library code backing both.
 - **`docs/`** — experiment narratives and reproducibility notes.
+- **`notebooks/`** — lightweight demos for inspecting the workflow without running heavy jobs.
 - **`reports/acl_findings/`** — ACL-Findings-style experimental report draft.
 - **`reports/internship_report/`** — frozen v1.0 PDF + sources.
 - **`metadata.json`** — project metadata summarising dataset scale, pipeline stages,

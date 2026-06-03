@@ -99,3 +99,30 @@ reranker:
   # min and ``--resume`` picks up from the next chunk. Smaller =
   # more durable but more file-flush overhead.
   chunk_size: 200
+
+# Research evaluation workflow facade. `rag-eval run --config configs/baseline.yaml`
+# reads this section to build an auditable BM25 -> dense -> rerank -> generation
+# -> bootstrap -> grounding plan without duplicating stage logic.
+rag_eval:
+  stages:
+    - bm25_retrieval
+    - dense_retrieval
+    - cross_encoder_rerank
+    - retrieval_lift_analysis
+    - generation_bm25
+    - generation_reranked
+    - paired_bootstrap_ci
+    - grounding_audit
+  num_eval_queries: 9999
+  bm25_generation_dir: outputs/week03_generation_bm25_full
+  reranker_output_dir: outputs/week05_reranker_full
+  reranker_resume: true
+  reranked_generation_dir: outputs/week03_generation_reranked_full
+  bootstrap_output_dir: outputs/week03_generation_bootstrap_full
+  retrieval_lift_output_dir: outputs/week05_retrieval_lift_analysis
+  grounding_output_dir: outputs/week07_grounding
+  bootstrap_resamples: 10000
+  grounding_nli_pairs: 0
+  tracking:
+    backend: jsonl
+    output_dir: outputs/rag_eval_tracking

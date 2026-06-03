@@ -86,6 +86,7 @@ mgq-rerank   = "msmarco_genqa.cli.rerank:main"
 mgq-generate = "msmarco_genqa.cli.generate:main"
 mgq-pipeline = "msmarco_genqa.cli.pipeline:main"
 mgq-serve    = "msmarco_genqa.service.app:main"
+rag-eval     = "msmarco_genqa.cli.rag_eval:main"
 
 
 # --------------------------------------------------------------------------- #
