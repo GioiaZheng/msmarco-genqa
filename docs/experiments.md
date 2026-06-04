@@ -353,9 +353,11 @@ seed-42 promise. See
 
 Deterministic seed (`seed: 42`) is set in `configs/baseline.yaml` and
 threaded through the samplers, the dense encoder batching, and the
-evaluation bootstrap. For an environment that reproduces the numbers
-below, install [`requirements-lock.txt`](../requirements-lock.txt)
-rather than the loose [`requirements.txt`](../requirements.txt).
+evaluation bootstrap. For the current pinned environment, install
+[`requirements-lock.txt`](../requirements-lock.txt) rather than the
+loose [`requirements.txt`](../requirements.txt). Historical report
+numbers are tied to the frozen tag below; dependency refreshes should be
+accepted only after rerunning the relevant checks or smoke tests.
 
 The frozen reference snapshot is
 [`reports/internship_report/report.pdf`](../reports/internship_report/report.pdf)

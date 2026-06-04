@@ -7,9 +7,9 @@
 #   - ``requirements.txt`` is a dev-convenience mirror (loose lower
 #     bounds matching this file) plus dev tooling (``pytest``).
 #   - ``requirements-lock.txt`` is a pip-freeze-style pinned lockfile
-#     that reproduces the numbers in
-#     ``reports/internship_report/report.pdf`` on the author's macOS
-#     CPU dev environment.
+#     for the current security-refreshed CPU dev environment. Historical
+#     report numbers remain anchored to the frozen release tag documented
+#     in ``requirements-lock.txt``.
 #
 # To get a working dev environment use ``make install`` — that runs both
 # ``pip install -r requirements.txt`` (for ``pytest`` etc.) and
@@ -24,7 +24,7 @@ name = "msmarco-genqa"
 version = "0.1.0"
 description = "Retrieval-augmented question answering on MS MARCO."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [{ name = "msmarco-genqa contributors" }]
 
@@ -44,11 +44,11 @@ dependencies = [
     # Lexical retrieval
     "bm25s>=0.2",
     # Dense retrieval
-    "sentence-transformers>=2.2",
+    "sentence-transformers>=5.5.1",
     "faiss-cpu>=1.7",
     # Generation
-    "torch>=2.0",
-    "transformers>=4.35",
+    "torch>=2.12.0",
+    "transformers>=5.10.2",
     "sentencepiece>=0.1.99",
     # Evaluation
     "evaluate>=0.4",

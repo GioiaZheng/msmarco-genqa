@@ -4,7 +4,7 @@
 # Python dependencies are installed (``pip install -r requirements.txt &&
 # pip install -e .``).
 
-.PHONY: help install test test-slow lint check-results pipeline-dry-run rag-eval-dry-run serve-dev clean-pycache reproduce-baseline
+.PHONY: help install test test-slow lint check-results pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-baseline
 
 PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
@@ -19,6 +19,7 @@ help:
 	@echo "  make check-results        -- verify metadata.json headline metrics against RESULTS.md"
 	@echo "  make pipeline-dry-run     -- print the config-driven experiment plan"
 	@echo "  make rag-eval-dry-run     -- print the research evaluation workflow plan"
+	@echo "  make model-stack-smoke    -- load baseline HF models and run a short smoke"
 	@echo "  make serve-dev            -- start the optional FastAPI generation service"
 	@echo "  make reproduce-baseline   -- re-run + verify the W2 BM25 baseline (~30 min CPU laptop)"
 
@@ -66,6 +67,9 @@ pipeline-dry-run:
 
 rag-eval-dry-run:
 	rag-eval run --config configs/baseline.yaml --dry-run
+
+model-stack-smoke:
+	$(PYTHON) scripts/smoke_model_stack.py --config configs/baseline.yaml --device cpu --max-new-tokens 16
 
 serve-dev:
 	mgq-serve --host 127.0.0.1 --port 8000

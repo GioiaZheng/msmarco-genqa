@@ -46,6 +46,16 @@ python scripts/run_pipeline.py --dry-run
 The dry run prints the pipeline plan without loading MS MARCO data or model
 weights.
 
+When torch, transformers, or sentence-transformers changes, also run:
+
+```bash
+python scripts/smoke_model_stack.py --config configs/baseline.yaml --device cpu
+```
+
+That opt-in check downloads the pinned generator and dense encoder revisions,
+runs one short generation, and verifies a normalized embedding shape. It is kept
+outside default CI because it requires HuggingFace Hub access and model weights.
+
 ## Reproducing the BM25 Baseline
 
 The canonical BM25 reproduction target is:

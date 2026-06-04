@@ -15,12 +15,12 @@ lxml>=6.1.0                   # constrain XML/HTML parsing dependency to patched
 bm25s>=0.2                    # primary backend for the official Week 2 baseline
 
 # Dense retrieval (Week 4)
-sentence-transformers>=2.2
+sentence-transformers>=5.5.1
 faiss-cpu>=1.7
 
 # Generation
-torch>=2.0
-transformers>=4.35
+torch>=2.12.0
+transformers>=5.10.2
 sentencepiece>=0.1.99
 
 # Evaluation

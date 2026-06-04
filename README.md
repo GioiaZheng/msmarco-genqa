@@ -69,6 +69,10 @@ auditing the experiments:
   builds the end-to-end BM25, dense, rerank, paired generation, bootstrap, and
   grounding plan from the baseline config. Use `--dry-run` to inspect the
   command sequence before touching data or models.
+- **Model-stack smoke.** `python scripts/smoke_model_stack.py --config
+  configs/baseline.yaml` loads the pinned generator and dense encoder, runs one
+  short CPU generation, and checks a normalized embedding shape. Use it before
+  accepting torch / transformers / sentence-transformers upgrades.
 - **CI and automation.** The GitHub Actions workflow runs unit tests, linting,
   and manifest/reproduction checks; the local mirror is `make test` and
   `make lint`.
@@ -385,14 +389,15 @@ Everything runs from the project root. Scripts add `PROJECT_ROOT` to
 
 ## 3. Setup
 
-Python 3.10+ recommended (3.9 also works).
+Python 3.10+ is required. CI currently runs on Python 3.10.
 
 ```bash
 pip install -r requirements.txt
 pip install -e .                       # register `src` as a real package
 ```
 
-To reproduce the numbers in the reports, pin to the lockfile instead:
+For a pinned version of the current security-refreshed environment, install
+the lockfile instead:
 
 ```bash
 pip install -r requirements-lock.txt
@@ -403,6 +408,14 @@ Or, equivalently:
 
 ```bash
 make install
+```
+
+Model-stack dependency updates should also run the opt-in smoke after install.
+It downloads the pinned HuggingFace checkpoints from `configs/baseline.yaml` and
+does not touch MS MARCO data:
+
+```bash
+python scripts/smoke_model_stack.py --config configs/baseline.yaml --device cpu
 ```
 
 Optional, only for PDF report generation:
@@ -610,12 +623,12 @@ All knobs live in [`configs/baseline.yaml`](configs/baseline.yaml). Key ones:
 |---|---|---|
 | Unit tests | works | `make test` / `pytest -q` — no network, no heavy deps. Slow tests excluded by `pytest.ini_options`. |
 | Slow tests | works (skips gracefully) | `make test-slow` includes `@pytest.mark.slow`. HF metric scripts skip if unavailable. |
-| Lockfile | basic | `requirements-lock.txt` is pip-freeze-style; sub-dep transitive closure + hash pinning are TODO. |
+| Lockfile | basic | `requirements-lock.txt` is pip-freeze-style; sub-dep transitive closure + hash pinning are TODO. Model-stack pins are checked with `scripts/smoke_model_stack.py`. |
 | Installable package | basic | `pip install -e .` registers `src` via `pyproject.toml`. Existing `sys.path.insert` shims in `experiments/` and `scripts/` are kept for now. |
 | CI | basic | `.github/workflows/ci.yml`: pytest + ruff on push/PR to main. No slow tests, no data download. |
 | Lint | minimal | `ruff` with `F` + `W` (pyflakes + whitespace). `E` / `I` / `UP` are off on the first pass. |
 | Artifact manifest | wired | `src/msmarco_genqa/util/manifest.py` writes `outputs/<stage>/manifest.json` alongside `metrics.json`. Captures git commit + dirty flag, command, config hash, dependency-file hashes, per-output sha256 (truncated). |
-| Numbers in `reports/internship_report/report.pdf` | historical | Reflect the dev environment at tag `v1.0-internship-final`. Re-running with `requirements-lock.txt` is the closest we get today. |
+| Numbers in `reports/internship_report/report.pdf` | historical | Reflect the dev environment at tag `v1.0-internship-final`. Current dependencies are security-refreshed; use the frozen tag for archival reproduction. |
 
 **Historical output-path naming.** `outputs/week02_bm25/`,
 `outputs/week04_dense/`, `outputs/week05_reranker/` retain
