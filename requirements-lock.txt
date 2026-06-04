@@ -1,10 +1,10 @@
 # pip-freeze-style lockfile for reproducibility.
 #
 # `requirements.txt` is the loose, easy-to-install dep list (use for fast
-# development setup). This file pins exact versions known to produce the
-# numbers in `reports/internship_report/report.pdf` (the frozen
-# v1.0-internship-final snapshot) and `outputs/*/metrics.json` on the
-# author's macOS development machine (Python 3.9, CPU-only).
+# development setup). This file pins a security-refreshed reproduction
+# environment for the repository's current code. The historical numbers in
+# `reports/internship_report/report.pdf` remain anchored by the frozen
+# v1.0-internship-final snapshot; use that tag for archival reproduction.
 #
 # Install with:
 #
@@ -16,9 +16,10 @@
 #   `requirements.txt` plus a handful of test/lint tools are pinned.
 #   Sub-dependencies are still resolved at install time. For a fully
 #   reproducible lock with hashes, regenerate via pip-tools / uv.
-# - Pinned versions reflect the macOS CPU dev environment. Linux/CUDA
-#   builds may need a different torch wheel; install `torch` separately
-#   from the appropriate index before running pip install.
+# - Pinned versions reflect the macOS CPU dev environment, with patch-level
+#   security refreshes where they do not change the core model stack.
+#   Linux/CUDA builds may need a different torch wheel; install `torch`
+#   separately from the appropriate index before running pip install.
 
 # --- Core scientific stack ---
 numpy==1.26.4
@@ -51,8 +52,8 @@ safetensors==0.7.0
 evaluate==0.4.6
 rouge_score==0.1.2
 sacrebleu==2.6.0
-nltk==3.9.2
+nltk==3.9.4
 
 # --- Testing / lint ---
-pytest==8.4.2
+pytest==9.0.3
 ruff==0.15.12
