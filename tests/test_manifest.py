@@ -170,7 +170,7 @@ def test_write_run_manifest_basic(tmp_path: Path):
     assert "sha256_16" in metrics_rec
 
     # 3. Config + auto-discovered deps are captured.
-    assert data["config"][0]["path"].endswith("configs/baseline.yaml")
+    assert Path(data["config"][0]["path"]).as_posix().endswith("configs/baseline.yaml")
     dep_paths = [rec["path"] for rec in data["dependencies"]]
     # We auto-discover all three: lockfile first (priority), then requirements,
     # then pyproject. Each gets a hash.
