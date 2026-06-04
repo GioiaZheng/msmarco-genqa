@@ -22,7 +22,7 @@
 #   separately from the appropriate index before running pip install.
 
 # --- Core scientific stack ---
-numpy==1.26.4
+numpy==2.0.2
 pandas==2.3.3
 matplotlib==3.9.4
 
