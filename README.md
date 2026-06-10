@@ -675,6 +675,11 @@ Limitations to be aware of:
   `python -m msmarco_genqa.demo.ask "<question>"` wrapper around the
   composition shown in §4.5.
 
-## 9. License
+## 9. Contributing
+
+Setup, the `make test` / `make lint` gates, and the branch, commit, and
+pull-request conventions are documented in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## 10. License
 
 See [LICENSE](LICENSE).
