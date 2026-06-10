@@ -4,7 +4,7 @@
 # Python dependencies are installed (``pip install -r requirements.txt &&
 # pip install -e .``).
 
-.PHONY: help install test test-slow lint check-results pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-baseline
+.PHONY: help install test test-slow lint check-results pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-baseline nli-factorial-smoke nli-factorial
 
 PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
@@ -22,6 +22,8 @@ help:
 	@echo "  make model-stack-smoke    -- load baseline HF models and run a short smoke"
 	@echo "  make serve-dev            -- start the optional FastAPI generation service"
 	@echo "  make reproduce-baseline   -- re-run + verify the W2 BM25 baseline (~30 min CPU laptop)"
+	@echo "  make nli-factorial-smoke  -- R5 NLI factorial smoke (small backbone, 50 pairs)"
+	@echo "  make nli-factorial        -- R5 NLI factorial, all 3 backbones (roberta-large = CPU-hours)"
 
 # ----------------------------------------------------------------------------- #
 # Install
@@ -73,6 +75,12 @@ model-stack-smoke:
 
 serve-dev:
 	mgq-serve --host 127.0.0.1 --port 8000
+
+nli-factorial-smoke:
+	$(PYTHON) scripts/run_nli_factorial.py --backbone deberta-v3-small --max-pairs 50
+
+nli-factorial:
+	$(PYTHON) scripts/run_nli_factorial.py --backbone all --direction passages_to_prediction
 
 # ----------------------------------------------------------------------------- #
 # Housekeeping
