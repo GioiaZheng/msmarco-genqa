@@ -149,3 +149,91 @@ def run_factorial(
                 )
             )
     return cells
+
+
+def _cell_key(cell: Mapping) -> tuple:
+    return (cell["formula"], cell["threshold"])
+
+
+def aggregate_backbones(summaries: Sequence[Mapping]) -> dict:
+    """Cross-backbone verdict for the Axis A sign-reversal gate.
+
+    Each input is one backbone's run summary (as written by the factorial
+    runner): it must carry ``backbone`` and a ``cells`` list of
+    ``factorial_cell`` outputs. Summaries are expected to share the same
+    ``(formula, threshold)`` grid; a cell key present in some backbones but
+    not others is reported under ``missing_in`` rather than silently dropped.
+
+    Per ``(formula, threshold)`` cell the verdict reports:
+
+    - ``n_reverse`` / ``n_backbones``: how many backbones show a strict
+      negative rerank effect (CI upper bound below zero);
+    - ``robust_reversal``: every backbone reverses — the cell survives the
+      metric-choice attack surface;
+    - ``unanimous_rise``: every backbone instead *raises* grounding.
+
+    ``headline`` summarises the baseline cell (``entailment`` formula,
+    threshold ``None`` — the W7-A regime). ``baseline_robust_reversal`` true
+    across >=3 backbones is the Axis A paper's go condition.
+    """
+    summaries = list(summaries)
+    backbones = [str(s.get("backbone")) for s in summaries]
+
+    keys: list[tuple] = []
+    for s in summaries:
+        for cell in s.get("cells", []):
+            k = _cell_key(cell)
+            if k not in keys:
+                keys.append(k)
+
+    cell_rows: list[dict] = []
+    for formula, threshold in keys:
+        per_backbone: list[dict] = []
+        missing_in: list[str] = []
+        for s in summaries:
+            match = next(
+                (c for c in s.get("cells", []) if _cell_key(c) == (formula, threshold)),
+                None,
+            )
+            if match is None:
+                missing_in.append(str(s.get("backbone")))
+                continue
+            boot = match["bootstrap"]
+            per_backbone.append({
+                "backbone": str(s.get("backbone")),
+                "delta": boot["mean_delta"],
+                "ci_low": boot["ci_low"],
+                "ci_high": boot["ci_high"],
+                "reverses_sign": bool(match["reverses_sign"]),
+                "raises_grounding": bool(match["raises_grounding"]),
+            })
+        n_reverse = sum(1 for p in per_backbone if p["reverses_sign"])
+        n_rise = sum(1 for p in per_backbone if p["raises_grounding"])
+        cell_rows.append({
+            "formula": formula,
+            "threshold": threshold,
+            "n_backbones": len(per_backbone),
+            "n_reverse": n_reverse,
+            "n_rise": n_rise,
+            "robust_reversal": bool(per_backbone) and n_reverse == len(per_backbone),
+            "unanimous_rise": bool(per_backbone) and n_rise == len(per_backbone),
+            "missing_in": missing_in,
+            "per_backbone": per_backbone,
+        })
+
+    baseline = next(
+        (c for c in cell_rows if c["formula"] == "entailment" and c["threshold"] is None),
+        None,
+    )
+    return {
+        "backbones": backbones,
+        "n_backbones": len(summaries),
+        "n_cells": len(cell_rows),
+        "n_robust_reversal_cells": sum(1 for c in cell_rows if c["robust_reversal"]),
+        "headline": {
+            "baseline_robust_reversal": bool(baseline and baseline["robust_reversal"]),
+            "baseline_n_reverse": baseline["n_reverse"] if baseline else None,
+            "baseline_n_backbones": baseline["n_backbones"] if baseline else None,
+        },
+        "cells": cell_rows,
+    }
