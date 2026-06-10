@@ -163,6 +163,21 @@ def assert_paired(bm25: list[dict], rerank: list[dict]) -> None:
         )
 
 
+def _rel_to_root(path: Path) -> str:
+    """Path relative to PROJECT_ROOT when possible, else its string form.
+
+    The plain ``.relative_to(PROJECT_ROOT)`` crashes when inputs live
+    outside the project tree (e.g. a worktree run whose data dir is
+    symlinked elsewhere). Mirror the runner convention in
+    ``experiments/run_generation_baseline.py`` and degrade to the absolute
+    string rather than failing after the expensive scoring is already done.
+    """
+    resolved = path.resolve()
+    if resolved.is_relative_to(PROJECT_ROOT):
+        return str(resolved.relative_to(PROJECT_ROOT))
+    return str(resolved)
+
+
 # --------------------------------------------------------------------------- #
 # One backbone x direction run
 # --------------------------------------------------------------------------- #
@@ -249,12 +264,8 @@ def run_one(
         "max_pairs_cap": int(args.max_pairs) or None,
         "scoring_seconds": round(score_secs, 2),
         "inputs": {
-            "bm25_predictions": str(
-                (args.bm25_dir / "predictions.jsonl").resolve().relative_to(PROJECT_ROOT)
-            ),
-            "reranked_predictions": str(
-                (args.reranked_dir / "predictions.jsonl").resolve().relative_to(PROJECT_ROOT)
-            ),
+            "bm25_predictions": _rel_to_root(args.bm25_dir / "predictions.jsonl"),
+            "reranked_predictions": _rel_to_root(args.reranked_dir / "predictions.jsonl"),
         },
         "verdict": {
             "baseline_cell_reverses_sign": baseline["reverses_sign"],
