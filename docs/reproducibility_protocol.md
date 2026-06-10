@@ -216,7 +216,11 @@ These remain out of scope (handled separately or accepted as gaps):
   pinned in `configs/baseline.yaml` and recorded in `extra`. The
   weights themselves are downloaded by `transformers` /
   `sentence-transformers` from HF Hub at first use; the pinned
-  revision is what guarantees the same weights.
+  revision is what guarantees the same weights. Dependency upgrades that
+  touch torch / transformers / sentence-transformers should run
+  `python scripts/smoke_model_stack.py --config configs/baseline.yaml --device cpu`
+  so both the pinned generator and dense encoder are loaded under the new
+  stack before the lockfile is accepted.
 - **Hardware non-determinism** — captured at the descriptive level
   in `env.cpu.brand`, `env.mem_gb`. CUDA non-determinism would
   surface when the repo moves off CPU-laptop (24-month-roadmap

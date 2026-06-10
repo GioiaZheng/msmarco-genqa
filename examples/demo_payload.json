@@ -1,0 +1,8 @@
+{
+  "query": "what is the capital of italy?",
+  "passages": [
+    "Rome is the capital city of Italy and the capital of the Lazio region.",
+    "Italy is a country in Southern Europe with Rome as its capital.",
+    "The city of Rome has been an important political and cultural center for centuries."
+  ]
+}

@@ -1,10 +1,10 @@
 # pip-freeze-style lockfile for reproducibility.
 #
 # `requirements.txt` is the loose, easy-to-install dep list (use for fast
-# development setup). This file pins exact versions known to produce the
-# numbers in `reports/internship_report/report.pdf` (the frozen
-# v1.0-internship-final snapshot) and `outputs/*/metrics.json` on the
-# author's macOS development machine (Python 3.9, CPU-only).
+# development setup). This file pins a security-refreshed reproduction
+# environment for the repository's current code. The historical numbers in
+# `reports/internship_report/report.pdf` remain anchored by the frozen
+# v1.0-internship-final snapshot; use that tag for archival reproduction.
 #
 # Install with:
 #
@@ -16,14 +16,16 @@
 #   `requirements.txt` plus a handful of test/lint tools are pinned.
 #   Sub-dependencies are still resolved at install time. For a fully
 #   reproducible lock with hashes, regenerate via pip-tools / uv.
-# - Pinned versions reflect the macOS CPU dev environment. Linux/CUDA
-#   builds may need a different torch wheel; install `torch` separately
-#   from the appropriate index before running pip install.
+# - Pinned versions reflect a CPU dev environment, with security refreshes
+#   that are validated by the opt-in model-stack smoke test when they touch
+#   torch / transformers / sentence-transformers.
+#   Linux/CUDA builds may need a different torch wheel; install `torch`
+#   separately from the appropriate index before running pip install.
 
 # --- Core scientific stack ---
 numpy==1.26.4
 pandas==2.3.3
-matplotlib==3.9.4
+matplotlib==3.10.9
 
 # --- Configuration ---
 PyYAML==6.0.3
@@ -31,17 +33,18 @@ PyYAML==6.0.3
 # --- Datasets and IO ---
 datasets==4.5.0
 ir_datasets==0.5.11
+lxml==6.1.1
 
 # --- Lexical retrieval ---
-bm25s==0.3.8
+bm25s==0.3.9
 
 # --- Dense retrieval ---
-sentence-transformers==5.1.2
+sentence-transformers==5.5.1
 faiss-cpu==1.13.0
 
 # --- Generation / reranking (transformers stack) ---
-torch==2.2.2
-transformers==4.57.6
+torch==2.12.0
+transformers==5.10.2
 tokenizers==0.22.2
 sentencepiece==0.2.1
 safetensors==0.7.0
@@ -50,8 +53,8 @@ safetensors==0.7.0
 evaluate==0.4.6
 rouge_score==0.1.2
 sacrebleu==2.6.0
-nltk==3.9.2
+nltk==3.9.4
 
 # --- Testing / lint ---
-pytest==8.4.2
-ruff==0.15.12
+pytest==9.0.3
+ruff==0.15.16

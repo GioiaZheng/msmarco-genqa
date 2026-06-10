@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -44,12 +44,15 @@ jobs:
           python -m pip install --upgrade pip
           # CPU-only torch index — the default index pulls in CUDA wheels
           # that bloat the install by ~2 GB on Linux.
-          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.12.0"
           pip install -r requirements.txt
           pip install -e .
 
       - name: Run default unit tests
         run: pytest -q
+
+      - name: Check headline metric metadata
+        run: python scripts/check_headline_metrics.py
 
   lint:
     name: ruff
@@ -58,7 +61,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v6

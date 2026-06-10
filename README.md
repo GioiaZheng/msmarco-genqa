@@ -2,37 +2,116 @@
 
 ## TL;DR
 
-A reproducible, single-machine end-to-end MS MARCO retrieval-augmented QA
-pipeline built up across six experimental stages:
+This repository is a reproducible research-engineering implementation of an
+MS MARCO retrieval-augmented QA pipeline. It moves from lexical retrieval to
+dense retrieval, cross-encoder reranking, generation, statistical evaluation,
+and grounding analysis on the full `dev/small` split (6,980 queries).
 
-> **W1 EDA → W2 BM25 retrieval → W3 RAG generation (T5-small) → W4 dense
-> retrieval (SBERT + FAISS) → W5 cross-encoder reranking → W6 semantic-proxy
-> evaluation + regression-failure taxonomy.**
+**Main result.** Replacing BM25 top-3 passages with cross-encoder-reranked
+dense top-3 passages — same T5-small generator, same paired query set —
+increases Token-F1 from 0.197 to 0.368 (Δ +0.171) and ROUGE-L from 0.193 to
+0.368 (Δ +0.174). Paired-bootstrap 95% CIs are strictly above zero across all
+surface metrics, and a DistilBERT BERTScore proxy recovers a similar lift
+magnitude (Δ +0.173).
 
-**Headline result.** Swapping the first-stage retriever from BM25 to a
-cross-encoder-reranked dense top-3 — same T5-small generator, same 6 980
-dev/small queries — roughly doubles every generation metric: Token-F1
-0.197 → 0.368 (Δ +0.171), ROUGE-L 0.193 → 0.368 (Δ +0.174), with 95 %
-paired-bootstrap CIs strictly above 0 on all four surface-form metrics.
-A DistilBERT-based BERTScore proxy on a 3 000-pair subsample recovers
-Δ +0.173, so the gain is not a surface-form artefact. A
-`max_new_tokens=64→128` sweep on full dev/small leaves all four deltas
-within <0.005, ruling out the decode-budget reading.
+**Scope.** The repo is batch-evaluation oriented. It includes experiment
+manifests, config-driven runners, query-level diagnostics, CI checks, report
+artifacts, and reproducibility notes alongside the code. Detailed experiment
+notes live in [`docs/experiments.md`](docs/experiments.md); the result summary
+is [`RESULTS.md`](RESULTS.md); reproducibility entry points are documented in
+[`REPRODUCIBILITY.md`](REPRODUCIBILITY.md); the ACL-style write-up is
+[`reports/acl_findings/report.pdf`](reports/acl_findings/report.pdf).
 
-**How to read this repo.** Per-stage write-up with numbers in
-[§1 Status](#1-status); reproduction commands in
-[§4 Run the official baselines](#4-run-the-official-baselines); frozen
-final PDF at `reports/internship_report/report.pdf`. The repo is
-batch-eval oriented — no one-shot `--question` CLI; see
-[§4.5](#45-single-query-demo) for the minimal in-Python composition.
+## Results at a glance
+
+| Question | Comparison | Result |
+|---|---|---:|
+| Does dense retrieval beat lexical retrieval on the same pool? | BM25-on-sample vs SBERT + FAISS | MRR@10 0.6948 → 0.8830 |
+| Does reranking add value after dense retrieval? | Dense top-100 vs cross-encoder reranked top-100 | MRR@10 0.8830 → 0.9304 |
+| Does retrieval lift transfer to generation? | BM25 top-3 → T5-small vs reranked top-3 → T5-small | Token-F1 0.1966 → 0.3677 |
+| Is the generation lift statistically reliable? | 6,980 paired qids, 10,000 bootstrap resamples | ΔToken-F1 +0.1711, 95% CI [+0.1632, +0.1789] |
+
+## Implemented components
+
+| Area | What is included |
+|---|---|
+| Retrieval | BM25, dense SBERT/FAISS, and BM25-on-sample comparisons under controlled qrels-anchored evaluation. |
+| Reranking | Cross-encoder reranking with aggregate lift, first-stage comparison, and query-level promoted/demoted/new-hit/lost-hit diagnostics. |
+| Generation | Paired BM25-vs-reranked generation runs using the same generator, prompt format, query set, and top-k depth. |
+| Evaluation | Paired-bootstrap confidence intervals, BERTScore proxy checks, grounding audit, query-form slicing, and regression taxonomy. |
+| Reproducibility | Config-driven runners, manifests, output hashes, metadata, CI, report artifacts, and optional experiment tracking. |
+
+## Reports and notes
+
+The repository includes runnable code plus written analysis artifacts:
+
+- [`reports/acl_findings/report.pdf`](reports/acl_findings/report.pdf) — compact ACL-style experimental report.
+- [`RESULTS.md`](RESULTS.md) — headline metrics, statistical intervals, and interpretation limits.
+- [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) — setup, checks, run artifacts, and reproduction commands.
+- [`docs/experiments.md`](docs/experiments.md) — stage-by-stage experiment narrative and caveats.
+- [`docs/architecture.md`](docs/architecture.md) — module boundaries and artifact flow.
+- [`docs/evaluation_protocol.md`](docs/evaluation_protocol.md) — reproducible evaluation contract.
+- [`docs/failure_taxonomy.md`](docs/failure_taxonomy.md) — regression and grounding error taxonomy.
+- [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md) — query-level reranker lift analysis protocol.
+- [`notebooks/rag_eval_demo.ipynb`](notebooks/rag_eval_demo.ipynb) — lightweight evaluation workflow demo.
+- [`reports/internship_report/report.pdf`](reports/internship_report/report.pdf) — frozen internship report snapshot.
+
+## Engineering surface
+
+The repository includes engineering support for running, validating, and
+auditing the experiments:
+
+- **Config-driven pipeline.** `configs/pipeline.yaml` defines the BM25 → dense
+  → rerank → generation → paired-bootstrap → generator-capacity sequence.
+  `python scripts/run_pipeline.py --dry-run` prints the executable plan without
+  loading data or models.
+- **Research evaluation workflow.** `rag-eval run --config configs/baseline.yaml`
+  builds the end-to-end BM25, dense, rerank, paired generation, bootstrap, and
+  grounding plan from the baseline config. Use `--dry-run` to inspect the
+  command sequence before touching data or models.
+- **Model-stack smoke.** `python scripts/smoke_model_stack.py --config
+  configs/baseline.yaml` loads the pinned generator and dense encoder, runs one
+  short CPU generation, and checks a normalized embedding shape. Use it before
+  accepting torch / transformers / sentence-transformers upgrades.
+- **CI and automation.** The GitHub Actions workflow runs unit tests, linting,
+  and manifest/reproduction checks; the local mirror is `make test` and
+  `make lint`.
+- **Run metadata.** Major runners write `manifest.json`, `resolved_config.yaml`,
+  metrics, output hashes, config hashes, git commit, dependency fingerprints,
+  and sampling metadata.
+- **Retrieval lift diagnostics.** `scripts/analyze_retrieval_lift.py` compares
+  two `run.tsv` files per query, bucketizing reranker gains/losses into
+  promoted, demoted, new-hit, and lost-hit cases. See
+  [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md).
+- **Experiment tracking.** `msmarco_genqa.util.tracking.ExperimentTracker`
+  writes local JSONL events by default and can use MLflow or Weights & Biases
+  via `pip install -e ".[tracking]"`.
+- **Model serving.** `mgq-serve` exposes a lightweight FastAPI wrapper around
+  the generator (`pip install -e ".[serve]"`), with `/health` and `/generate`
+  endpoints for local demos or integration tests. See
+  `examples/demo_payload.json` for a minimal request body:
+
+  ```bash
+  curl -X POST http://127.0.0.1:8000/generate \
+    -H "Content-Type: application/json" \
+    --data @examples/demo_payload.json
+  ```
+- **Larger-generator sweep.** `scripts/run_generator_capacity_sweep.py` runs
+  the same paired BM25/reranked comparison with `t5-base`; pass
+  `--model-name google/flan-t5-base` to evaluate FLAN-T5 under the same
+  pipeline and bootstrap protocol.
 
 ## Project layout
 
 - **`experiments/`** — four pipeline-stage runners (BM25, dense, rerank, generation). Source of the benchmark numbers.
 - **`scripts/`** — analyses, ablations, validation, integration smokes that read `experiments/` outputs.
 - **`src/`** — importable library code backing both.
+- **`docs/`** — experiment narratives and reproducibility notes.
+- **`notebooks/`** — lightweight demos for inspecting the workflow without running heavy jobs.
+- **`reports/acl_findings/`** — ACL-Findings-style experimental report draft.
 - **`reports/internship_report/`** — frozen v1.0 PDF + sources.
-- **`docs/experiments.md`** — pipeline narrative stitching the stages together.
+- **`metadata.json`** — project metadata summarising dataset scale, pipeline stages,
+  headline metrics, CI, tracking, and serving support.
 
 See [§2 Directory layout](#2-directory-layout) for the full breakdown.
 
@@ -310,14 +389,15 @@ Everything runs from the project root. Scripts add `PROJECT_ROOT` to
 
 ## 3. Setup
 
-Python 3.10+ recommended (3.9 also works).
+Python 3.10+ is required. CI currently runs on Python 3.10.
 
 ```bash
 pip install -r requirements.txt
 pip install -e .                       # register `src` as a real package
 ```
 
-To reproduce the numbers in the reports, pin to the lockfile instead:
+For a pinned version of the current security-refreshed environment, install
+the lockfile instead:
 
 ```bash
 pip install -r requirements-lock.txt
@@ -328,6 +408,14 @@ Or, equivalently:
 
 ```bash
 make install
+```
+
+Model-stack dependency updates should also run the opt-in smoke after install.
+It downloads the pinned HuggingFace checkpoints from `configs/baseline.yaml` and
+does not touch MS MARCO data:
+
+```bash
+python scripts/smoke_model_stack.py --config configs/baseline.yaml --device cpu
 ```
 
 Optional, only for PDF report generation:
@@ -535,12 +623,12 @@ All knobs live in [`configs/baseline.yaml`](configs/baseline.yaml). Key ones:
 |---|---|---|
 | Unit tests | works | `make test` / `pytest -q` — no network, no heavy deps. Slow tests excluded by `pytest.ini_options`. |
 | Slow tests | works (skips gracefully) | `make test-slow` includes `@pytest.mark.slow`. HF metric scripts skip if unavailable. |
-| Lockfile | basic | `requirements-lock.txt` is pip-freeze-style; sub-dep transitive closure + hash pinning are TODO. |
+| Lockfile | basic | `requirements-lock.txt` is pip-freeze-style; sub-dep transitive closure + hash pinning are TODO. Model-stack pins are checked with `scripts/smoke_model_stack.py`. |
 | Installable package | basic | `pip install -e .` registers `src` via `pyproject.toml`. Existing `sys.path.insert` shims in `experiments/` and `scripts/` are kept for now. |
 | CI | basic | `.github/workflows/ci.yml`: pytest + ruff on push/PR to main. No slow tests, no data download. |
 | Lint | minimal | `ruff` with `F` + `W` (pyflakes + whitespace). `E` / `I` / `UP` are off on the first pass. |
 | Artifact manifest | wired | `src/msmarco_genqa/util/manifest.py` writes `outputs/<stage>/manifest.json` alongside `metrics.json`. Captures git commit + dirty flag, command, config hash, dependency-file hashes, per-output sha256 (truncated). |
-| Numbers in `reports/internship_report/report.pdf` | historical | Reflect the dev environment at tag `v1.0-internship-final`. Re-running with `requirements-lock.txt` is the closest we get today. |
+| Numbers in `reports/internship_report/report.pdf` | historical | Reflect the dev environment at tag `v1.0-internship-final`. Current dependencies are security-refreshed; use the frozen tag for archival reproduction. |
 
 **Historical output-path naming.** `outputs/week02_bm25/`,
 `outputs/week04_dense/`, `outputs/week05_reranker/` retain
