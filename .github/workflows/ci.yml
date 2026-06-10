@@ -15,10 +15,14 @@ on:
     branches: [main]
 
 # Avoid running duplicate workflows on the same ref (push + PR from same
-# branch).
+# branch). cancel-in-progress is scoped OUT of main: superseding an
+# outdated PR/feature run is desirable, but cancelling main's in-progress
+# run when merges land back-to-back (e.g. stacked Dependabot merges) would
+# leave the branch tip with a cancelled run instead of a real pass/fail.
+# On main, runs queue and each completes.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   test:
