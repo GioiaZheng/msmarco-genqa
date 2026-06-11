@@ -436,7 +436,7 @@ python experiments/run_retrieval.py    # script form
 mgq-retrieve                            # console form
 ```
 
-Console names: `mgq-retrieve`, `mgq-dense`, `mgq-rerank`, `mgq-generate`.
+Console names: `mgq-retrieve`, `mgq-dense`, `mgq-fuse`, `mgq-rerank`, `mgq-generate`.
 The examples below use the script form.
 
 ### Stage 2 — BM25
@@ -500,6 +500,25 @@ runs reuse the cached index. Tunable knobs:
 - `dense.model_name` (e.g. `sentence-transformers/msmarco-MiniLM-L6-cos-v5`)
 - `dense.sample_size` (default 50 000)
 - `dense.compare_bm25_on_sample`
+
+### Stage 4B - Hybrid RRF fusion
+
+Fuse two or more TREC-format first-stage runs with weighted Reciprocal
+Rank Fusion (RRF). The sample-matched BM25 and dense outputs from Stage 4
+are the recommended first comparison because both runs share the same
+candidate pool and qrels caveat.
+
+```bash
+python experiments/run_hybrid_fusion.py \
+    --input-run bm25_sample=outputs/week04_dense/run_bm25_sample.tsv \
+    --input-run dense=outputs/week04_dense/run.tsv \
+    --output-dir outputs/week04_hybrid_rrf \
+    --top-k 1000
+```
+
+Pass `--qrels <path>` to compute MRR, nDCG, and recall in `metrics.json`.
+The runner always writes `run.tsv`, `provenance.jsonl`, `metrics.json`,
+`resolved_config.yaml`, and `manifest.json`.
 
 ### Stage 5 — Cross-encoder reranking
 
