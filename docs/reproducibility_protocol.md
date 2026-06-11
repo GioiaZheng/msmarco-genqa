@@ -6,7 +6,8 @@ verify a recorded run is reproducible.
 
 ## TL;DR
 
-Every run of `mgq-{retrieve, dense, fuse, rerank, generate, evaluate}` writes:
+Every manifest-writing experiment runner (`mgq-{retrieve, dense, fuse, rerank,
+generate}` and the matching `experiments/run_*.py` entry points) writes:
 
 - `outputs/<run>/manifest.json` — schema-v2 provenance contract
 - `outputs/<run>/resolved_config.yaml` — config dict actually used (with CLI overrides applied)
@@ -119,7 +120,7 @@ silent wording drift.
 
 ## Dev-time bypasses
 
-Two CLI flags recognised by every `mgq-*` and `experiments/run_*.py`:
+Two CLI flags recognised by the manifest-writing experiment runners:
 
 - `--require-clean-tree` — refuse to write the manifest if the git
   tree is dirty. Default off. Use for canonical / headline runs.
