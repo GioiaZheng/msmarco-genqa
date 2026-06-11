@@ -88,7 +88,7 @@ def _suffix(s: str) -> str:
 
 
 def build_default_config(args: argparse.Namespace) -> DriverConfig:
-    """Production defaults: full dev/small via outputs/week05_reranker_full/.
+    """Production defaults: full dev/small via outputs/W5_reranker_full/.
 
     ``--out-suffix`` (e.g. ``_mnt128``) appends to the three output directories
     so a budget-sweep run leaves the canonical _full directories untouched.
@@ -99,12 +99,12 @@ def build_default_config(args: argparse.Namespace) -> DriverConfig:
     # preflight, so over-estimating is safer than under.
     spq = 0.30 if not args.max_new_tokens or args.max_new_tokens <= 64 else 0.50
     return DriverConfig(
-        reranker_run=PROJECT_ROOT / "outputs/week05_reranker_full/run.tsv",
-        reranker_manifest=PROJECT_ROOT / "outputs/week05_reranker_full/manifest.json",
-        bm25_run=PROJECT_ROOT / "outputs/week02_bm25/run.tsv",
-        bm25_out=PROJECT_ROOT / f"outputs/week03_generation_bm25_full{suf}",
-        rerank_out=PROJECT_ROOT / f"outputs/week03_generation_reranked_full{suf}",
-        analysis_out=PROJECT_ROOT / f"outputs/week06_analysis{suf}",
+        reranker_run=PROJECT_ROOT / "outputs/W5_reranker_full/run.tsv",
+        reranker_manifest=PROJECT_ROOT / "outputs/W5_reranker_full/manifest.json",
+        bm25_run=PROJECT_ROOT / "outputs/W2_bm25/run.tsv",
+        bm25_out=PROJECT_ROOT / f"outputs/W3_generation_bm25_full{suf}",
+        rerank_out=PROJECT_ROOT / f"outputs/W3_generation_reranked_full{suf}",
+        analysis_out=PROJECT_ROOT / f"outputs/W6_analysis{suf}",
         log_dir=PROJECT_ROOT / f"logs{suf}",
         n_eval_queries=args.num_eval_queries or 99999,
         expected_qids=args.expected_qids,
@@ -128,7 +128,7 @@ def build_dryrun_config(args: argparse.Namespace) -> DriverConfig:
         reranker_manifest=PROJECT_ROOT / args.dryrun_reranker_run.replace(
             "run.tsv", "manifest.json"
         ),
-        bm25_run=PROJECT_ROOT / "outputs/week02_bm25/run.tsv",
+        bm25_run=PROJECT_ROOT / "outputs/W2_bm25/run.tsv",
         bm25_out=PROJECT_ROOT / f"outputs/dryrun/gen_bm25{suf}",
         rerank_out=PROJECT_ROOT / f"outputs/dryrun/gen_reranked{suf}",
         analysis_out=PROJECT_ROOT / f"outputs/dryrun/analysis{suf}",
@@ -434,7 +434,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--dryrun-reranker-run",
         type=str,
-        default="outputs/week05_reranker/run.tsv",
+        default="outputs/W5_reranker/run.tsv",
         help="Reranker run.tsv to use in dry-run mode.",
     )
     p.add_argument(

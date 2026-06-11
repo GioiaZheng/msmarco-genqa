@@ -50,9 +50,9 @@ contract between the ranking layer and every downstream experiment.
 
 Important outputs:
 
-- `outputs/week02_bm25/run.tsv`
-- `outputs/week04_dense/run.tsv`
-- `outputs/week05_reranker/run.tsv`
+- `outputs/W2_bm25/run.tsv`
+- `outputs/W4_dense/run.tsv`
+- `outputs/W5_reranker/run.tsv`
 
 The dense stage uses a qrels-anchored sample. Absolute dense metrics should
 not be compared against full-corpus BM25; only same-sample comparisons are

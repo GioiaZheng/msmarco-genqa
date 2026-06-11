@@ -113,13 +113,13 @@ def _build_all_stages(
         settings.get("bootstrap_output_dir", _default_named_dir(generation_dir, "bootstrap_full"))
     )
     retrieval_lift_dir = _as_posix(
-        settings.get("retrieval_lift_output_dir", "outputs/week05_retrieval_lift_analysis")
+        settings.get("retrieval_lift_output_dir", "outputs/W5_retrieval_lift_analysis")
     )
     retrieval_report_dir = _as_posix(
         settings.get("retrieval_report_output_dir", "outputs/retrieval_reports/dense_vs_reranked")
     )
     retrieval_qrels_path = settings.get("retrieval_qrels_path")
-    grounding_dir = _as_posix(settings.get("grounding_output_dir", "outputs/week07_grounding"))
+    grounding_dir = _as_posix(settings.get("grounding_output_dir", "outputs/W7_grounding"))
     num_eval_queries = str(settings.get("num_eval_queries", cfg["generation"].get("num_eval_queries", 200)))
     n_resamples = str(settings.get("bootstrap_resamples", 10000))
     grounding_nli_pairs = str(settings.get("grounding_nli_pairs", 0))

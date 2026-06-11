@@ -1,16 +1,16 @@
-"""End-to-end Week 3 RAG generation baseline.
+"""End-to-end W3 RAG generation baseline.
 
 Pipeline:
 
 1. Load a TREC-format retrieval run (``--input-run``; defaults to the W2
-   BM25 run at ``outputs/week02_bm25/run.tsv``).
+   BM25 run at ``outputs/W2_bm25/run.tsv``).
 2. Load dev/small queries and the MS MARCO Passage docs_store (random access).
 3. Cross-reference dev/small query ids with MS MARCO QA v2.1 (HuggingFace
    ``ms_marco`` dataset, validation split) to recover human-written answers
    for evaluation.
 4. For each evaluated query, take the top-K passages from the run, generate
    an answer with the Seq2Seq model, and score predictions.
-5. Persist (under ``--output-dir``, defaults to ``outputs/week03_generation``):
+5. Persist (under ``--output-dir``, defaults to ``outputs/W3_generation``):
    - ``predictions.jsonl``
    - ``metrics.json``
    - ``examples.jsonl``
@@ -30,8 +30,8 @@ Run from the project root::
 
     # Reranked → T5-small, restricted to reranker-covered queries
     python experiments/run_generation_baseline.py \\
-        --input-run outputs/week05_reranker/run.tsv \\
-        --output-dir outputs/week03_generation_reranked \\
+        --input-run outputs/W5_reranker/run.tsv \\
+        --output-dir outputs/W3_generation_reranked \\
         --retrieval-source reranked
 """
 
@@ -185,11 +185,11 @@ def infer_retrieval_source(input_run: Path) -> str:
     flag ``--retrieval-source`` is preferred whenever the caller knows.
     """
     name = input_run.parent.name.lower()
-    if "week02" in name or "bm25" in name:
+    if "W2" in name or "bm25" in name:
         return "bm25"
-    if "week04" in name or "dense" in name:
+    if "W4" in name or "dense" in name:
         return "dense"
-    if "week05" in name or "rerank" in name:
+    if "W5" in name or "rerank" in name:
         return "reranked"
     return "unknown"
 

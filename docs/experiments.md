@@ -71,7 +71,7 @@ way* compared to every other metric. See *Grounding audit* below.
 | Library | [`src/msmarco_genqa/retrieval/bm25.py`](../src/msmarco_genqa/retrieval/bm25.py) — `bm25s` wrapper with save/load + chunked retrieve |
 | Config | [`configs/baseline.yaml`](../configs/baseline.yaml) — `retrieval.*` and `eval_retrieval.*` blocks |
 | Index location | `data/processed/bm25_index_msmarco/` (~2.1 GB, gitignored) |
-| Output | `outputs/week02_bm25/{run.tsv, metrics.json, examples.jsonl, manifest.json}` |
+| Output | `outputs/W2_bm25/{run.tsv, metrics.json, examples.jsonl, manifest.json}` |
 
 **Reference numbers** (6,980 dev/small queries, full 8.8M-passage corpus):
 
@@ -100,7 +100,7 @@ for the end-to-end resume integration smoke.
 | Library | [`src/msmarco_genqa/retrieval/dense.py`](../src/msmarco_genqa/retrieval/dense.py) (FAISS `IndexFlatIP` over L2-normalised embeddings); [`src/msmarco_genqa/retrieval/sampling.py`](../src/msmarco_genqa/retrieval/sampling.py) (qrels-anchored sub-corpus sampler) |
 | Config | `configs/baseline.yaml`, `dense.*` block |
 | Index location | `data/processed/dense_index_minilm_50k/` (gitignored) |
-| Output | `outputs/week04_dense/{run.tsv, metrics.json, examples.jsonl, manifest.json}` |
+| Output | `outputs/W4_dense/{run.tsv, metrics.json, examples.jsonl, manifest.json}` |
 
 The dense stage uses a **qrels-anchored 50k-passage sample** of the
 full corpus rather than the full 8.8M-passage corpus. Every dev/small
@@ -159,7 +159,7 @@ True 1 % / 5 % / 10 % density cells would need 70k–700k samples
 | Driver | [`experiments/run_reranker.py`](../experiments/run_reranker.py) |
 | Library | [`src/msmarco_genqa/reranking/cross_encoder.py`](../src/msmarco_genqa/reranking/cross_encoder.py), [`src/msmarco_genqa/reranking/io.py`](../src/msmarco_genqa/reranking/io.py) |
 | Config | `configs/baseline.yaml`, `reranker.*` block |
-| Output | `outputs/week05_reranker_full/{run.tsv, metrics.json, examples.jsonl, manifest.json}` |
+| Output | `outputs/W5_reranker_full/{run.tsv, metrics.json, examples.jsonl, manifest.json}` |
 
 Cross-encoder `cross-encoder/ms-marco-MiniLM-L-6-v2` over the **W4
 dense top-100** per query. Reranking is order-only, so Recall@100 is
@@ -190,7 +190,7 @@ Runtime on a 6-core MacBook CPU: ~4 h 37 min for the full dev/small
 | Driver | [`experiments/run_generation_baseline.py`](../experiments/run_generation_baseline.py) |
 | Library | [`src/msmarco_genqa/generation/rag_generator.py`](../src/msmarco_genqa/generation/rag_generator.py) |
 | Config | `configs/baseline.yaml`, `generation.*` block |
-| Output | `outputs/week03_generation_{bm25,reranked}_full/{predictions.jsonl, metrics.json, manifest.json}` |
+| Output | `outputs/W3_generation_{bm25,reranked}_full/{predictions.jsonl, metrics.json, manifest.json}` |
 
 T5-small (frozen, no fine-tuning), `question: ... context: ...`
 prompt, top-3 passages from the upstream retrieval source folded into

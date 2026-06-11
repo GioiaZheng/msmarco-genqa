@@ -10,9 +10,9 @@ This project now exposes a query-level diagnostic layer for that question:
 
 ```bash
 python scripts/analyze_retrieval_lift.py \
-  --before-run outputs/week04_dense/run.tsv \
-  --after-run outputs/week05_reranker_full/run.tsv \
-  --output-dir outputs/week05_retrieval_lift_analysis
+  --before-run outputs/W4_dense/run.tsv \
+  --after-run outputs/W5_reranker_full/run.tsv \
+  --output-dir outputs/W5_retrieval_lift_analysis
 ```
 
 If `--qrels` is omitted, the script loads MS MARCO passage dev/small qrels

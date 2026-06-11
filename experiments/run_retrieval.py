@@ -9,9 +9,9 @@ End-to-end:
    query 0.
 4. Compute MRR@10, Recall@100, Recall@1000.
 5. Persist:
-   - ``outputs/week02_bm25/metrics.json``
-   - ``outputs/week02_bm25/run.tsv``  (TREC-format run, top-1000 by default)
-   - ``outputs/week02_bm25/examples.jsonl``  (qualitative samples)
+   - ``outputs/W2_bm25/metrics.json``
+   - ``outputs/W2_bm25/run.tsv``  (TREC-format run, top-1000 by default)
+   - ``outputs/W2_bm25/examples.jsonl``  (qualitative samples)
 
 Run from the project root::
 
@@ -479,7 +479,7 @@ def main() -> None:
     )
 
     # ---- 8. Friendly summary ----
-    print("\n=== Week 2 BM25 baseline ===")
+    print("\n=== W2 BM25 baseline ===")
     print(f"queries evaluated: {n_examples}")
     for key in ("mrr@10", "ndcg@10", "recall@100", "recall@1000"):
         if key in metrics:

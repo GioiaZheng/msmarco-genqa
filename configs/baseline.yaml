@@ -58,7 +58,7 @@ eval_retrieval:
   ks_mrr: [10]
   ks_ndcg: [10]
   ks_recall: [100, 1000]
-  output_dir: outputs/week02_bm25
+  output_dir: outputs/W2_bm25
   n_examples: 20                # qualitative examples dumped to examples.jsonl
 
 generation:
@@ -73,12 +73,12 @@ generation:
   max_new_tokens: 64
   top_k_passages: 3
   num_eval_queries: 200         # subset for the W3 baseline (CPU-friendly)
-  output_dir: outputs/week03_generation
+  output_dir: outputs/W3_generation
 
 eval_generation:
   metrics: [rouge-l, bleu, exact-match, token-f1]
 
-# Week 4: dense retrieval baseline on a *sampled* sub-corpus.
+# W4: dense retrieval baseline on a *sampled* sub-corpus.
 # We do NOT embed the full 8.8M corpus on a CPU laptop. The sample is
 # qrels-anchored: every dev/small relevant doc is included, then random
 # distractors fill to ``sample_size``. This makes BM25-on-sample vs
@@ -93,12 +93,12 @@ dense:
   device: null            # null -> auto (cuda if available, else cpu)
   index_dir: data/processed/dense_index_minilm_50k
   bm25_sample_index_dir: data/processed/bm25_sample_index_50k
-  output_dir: outputs/week04_dense
+  output_dir: outputs/W4_dense
   top_k: 1000
   compare_bm25_on_sample: true
   n_examples: 20          # qualitative examples dumped to examples.jsonl
 
-# Week 5: cross-encoder reranking on top of the W4 dense run.
+# W5: cross-encoder reranking on top of the W4 dense run.
 # We score (query, passage) pairs with a small MS MARCO cross-encoder.
 # Cost is O(rerank_top_k) forward passes per query -- do NOT default to
 # 1000. Top-100 is the standard reranking depth.
@@ -110,7 +110,7 @@ reranker:
   batch_size: 64
   max_length: 512
   device: null            # null -> auto (cuda if available, else cpu)
-  output_dir: outputs/week05_reranker
+  output_dir: outputs/W5_reranker
   n_examples: 20
 
   # Resume / chunking. ``chunk_size`` queries are scored and appended to
@@ -136,14 +136,14 @@ rag_eval:
     - paired_bootstrap_ci
     - grounding_audit
   num_eval_queries: 9999
-  bm25_generation_dir: outputs/week03_generation_bm25_full
-  reranker_output_dir: outputs/week05_reranker_full
+  bm25_generation_dir: outputs/W3_generation_bm25_full
+  reranker_output_dir: outputs/W5_reranker_full
   reranker_resume: true
-  reranked_generation_dir: outputs/week03_generation_reranked_full
-  bootstrap_output_dir: outputs/week03_generation_bootstrap_full
+  reranked_generation_dir: outputs/W3_generation_reranked_full
+  bootstrap_output_dir: outputs/W3_generation_bootstrap_full
   retrieval_report_output_dir: outputs/retrieval_reports/dense_vs_reranked
-  retrieval_lift_output_dir: outputs/week05_retrieval_lift_analysis
-  grounding_output_dir: outputs/week07_grounding
+  retrieval_lift_output_dir: outputs/W5_retrieval_lift_analysis
+  grounding_output_dir: outputs/W7_grounding
   bootstrap_resamples: 10000
   grounding_nli_pairs: 0
   tracking:

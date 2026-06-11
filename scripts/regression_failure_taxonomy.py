@@ -53,22 +53,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--per-query-metrics",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week06_analysis/per_query_metrics.jsonl",
+        default=PROJECT_ROOT / "outputs/W6_analysis/per_query_metrics.jsonl",
     )
     parser.add_argument(
         "--bm25-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week03_generation_bm25_full",
+        default=PROJECT_ROOT / "outputs/W3_generation_bm25_full",
     )
     parser.add_argument(
         "--reranked-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week03_generation_reranked_full",
+        default=PROJECT_ROOT / "outputs/W3_generation_reranked_full",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week06_analysis",
+        default=PROJECT_ROOT / "outputs/W6_analysis",
     )
     parser.add_argument("--sample-size", type=int, default=40)
     parser.add_argument("--seed", type=int, default=42)

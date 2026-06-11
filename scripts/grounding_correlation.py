@@ -21,7 +21,7 @@ here (DistilBERT-base, ``rescale_with_baseline=True``, matching the W6
 BERTScore-proxy convention) and cached to disk so subsequent runs are
 instant.
 
-Outputs (gitignored under ``outputs/week07_grounding_correlation/``):
+Outputs (gitignored under ``outputs/W7_grounding_correlation/``):
 
 - ``cache_bertscore_full.jsonl`` — per-qid BERTScore-F1 for both arms;
                                     cache key for repeat runs and W7-A
@@ -68,27 +68,27 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--per-query-grounding",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week07_grounding/per_query_grounding.jsonl",
+        default=PROJECT_ROOT / "outputs/W7_grounding/per_query_grounding.jsonl",
     )
     p.add_argument(
         "--per-query-metrics",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week06_analysis/per_query_metrics.jsonl",
+        default=PROJECT_ROOT / "outputs/W6_analysis/per_query_metrics.jsonl",
     )
     p.add_argument(
         "--bm25-predictions",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week03_generation_bm25_full/predictions.jsonl",
+        default=PROJECT_ROOT / "outputs/W3_generation_bm25_full/predictions.jsonl",
     )
     p.add_argument(
         "--rerank-predictions",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week03_generation_reranked_full/predictions.jsonl",
+        default=PROJECT_ROOT / "outputs/W3_generation_reranked_full/predictions.jsonl",
     )
     p.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week07_grounding_correlation",
+        default=PROJECT_ROOT / "outputs/W7_grounding_correlation",
     )
     p.add_argument(
         "--bertscore-model",

@@ -1,4 +1,4 @@
-"""Week 5: cross-encoder reranking on top of the W4 dense retrieval run.
+"""W5: cross-encoder reranking on top of the W4 dense retrieval run.
 
 Pipeline:
 
@@ -24,13 +24,13 @@ Pipeline:
 
 Usage::
 
-    # default 1,000-query CPU subsample, output at outputs/week05_reranker/
+    # default 1,000-query CPU subsample, output at outputs/W5_reranker/
     python experiments/run_reranker.py --num-eval-queries 1000
 
     # full dev/small, resume-safe, distinct output dir so the 1k-query
     # historical result stays untouched
     OMP_NUM_THREADS=12 python experiments/run_reranker.py \\
-        --output-dir outputs/week05_reranker_full \\
+        --output-dir outputs/W5_reranker_full \\
         --resume
 
 The W4 dense run is the source of truth; we never re-encode the corpus
@@ -101,13 +101,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input-run",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week04_dense/run.tsv",
+        default=PROJECT_ROOT / "outputs/W4_dense/run.tsv",
         help="First-stage run.tsv to rerank. Defaults to the W4 dense run.",
     )
     parser.add_argument(
-        "--input-week",
+        "--input-stage",
         type=str,
-        default="week04_dense",
+        default="W4_dense",
         help="Output dir name of the input retriever (used to find sample_doc_ids.json).",
     )
     parser.add_argument(
@@ -210,14 +210,14 @@ def _resolve_passages(doc_ids: list[str], docs_store) -> dict[str, str]:
     return out
 
 
-def _load_sample_qrels(input_week_dir: Path, all_qrels: dict[str, set[str]]) -> dict[str, set[str]]:
+def _load_sample_qrels(input_stage_dir: Path, all_qrels: dict[str, set[str]]) -> dict[str, set[str]]:
     """Restrict qrels to the W4 sample (apples-to-apples eval).
 
-    If ``sample_doc_ids.json`` exists in the input week's output dir we
+    If ``sample_doc_ids.json`` exists in the input stage's output dir we
     use it; otherwise we fall back to the full qrels — this lets the
     runner also work against the W2 full-corpus run.
     """
-    sample_path = input_week_dir / "sample_doc_ids.json"
+    sample_path = input_stage_dir / "sample_doc_ids.json"
     if not sample_path.exists():
         logger.info(
             "No sample_doc_ids.json at %s; using full qrels (assume non-sampled run).",
@@ -250,7 +250,7 @@ def main() -> None:
     rerank_top_k = int(args.rerank_top_k or rerank_cfg.get("rerank_top_k", 100))
     batch_size = int(args.batch_size or rerank_cfg.get("batch_size", 64))
     max_length = int(rerank_cfg.get("max_length", 512))
-    cfg_output_dir = rerank_cfg.get("output_dir", "outputs/week05_reranker")
+    cfg_output_dir = rerank_cfg.get("output_dir", "outputs/W5_reranker")
     if args.output_dir is not None:
         output_dir = (
             args.output_dir
@@ -273,7 +273,7 @@ def main() -> None:
             f"Input run not found at {input_run_path}.\n"
             "Run experiments/run_dense_retrieval.py first (or pass --input-run)."
         )
-    input_week_dir = PROJECT_ROOT / "outputs" / args.input_week
+    input_stage_dir = PROJECT_ROOT / "outputs" / args.input_stage
 
     # ---------------------------------------------------------------- #
     # 1. Load first-stage run + truncate to top-K
@@ -299,7 +299,7 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     data = load_msmarco_passage(cache_dir=cache_dir, load_corpus=False)
     docs_store = data.docs_store or get_docs_store(cache_dir=cache_dir)
-    sample_qrels = _load_sample_qrels(input_week_dir, data.qrels)
+    sample_qrels = _load_sample_qrels(input_stage_dir, data.qrels)
 
     # Restrict to queries that have at least one positive qrel AND have a
     # text in the queries map. ``runs_topk`` already only contains queries
@@ -535,7 +535,7 @@ def main() -> None:
             "input_run": str(input_run_path.relative_to(PROJECT_ROOT))
             if input_run_path.is_relative_to(PROJECT_ROOT)
             else str(input_run_path),
-            "input_week": args.input_week,
+            "input_stage": args.input_stage,
             "rerank_top_k": rerank_top_k,
             "model_name": model_name,
             "batch_size": batch_size,
@@ -565,10 +565,10 @@ def main() -> None:
         "environment": (env_dict := capture_environment()),
     }
     # Reranker inherits sampling state from its upstream first-stage run:
-    # presence of input_week_dir/sample_doc_ids.json indicates the upstream
+    # presence of input_stage_dir/sample_doc_ids.json indicates the upstream
     # eval was qrels-anchored. The eval (dense_metrics + rerank_metrics) is
     # then over sample_qrels rather than the full qrels.
-    upstream_sample_path = input_week_dir / "sample_doc_ids.json"
+    upstream_sample_path = input_stage_dir / "sample_doc_ids.json"
     if upstream_sample_path.exists():
         with open(upstream_sample_path) as f:
             _upstream_sample_size = len(json.load(f))
@@ -624,7 +624,7 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     # 9. Friendly summary
     # ---------------------------------------------------------------- #
-    print("\n=== Week 5 cross-encoder reranking ===")
+    print("\n=== W5 cross-encoder reranking ===")
     print(f"input run:   {input_run_path}")
     print(f"rerank model: {model_name}")
     print(
