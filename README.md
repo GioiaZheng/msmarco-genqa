@@ -384,8 +384,8 @@ data/                raw/, processed/, cache/ — all gitignored, .gitkeep track
   Scripts may change shape as analyses evolve; only the `experiments/`
   output schema is held fixed.
 
-Everything runs from the project root. Scripts add `PROJECT_ROOT` to
-`sys.path` themselves; no `PYTHONPATH` needed.
+Everything runs from the project root after the editable install registers
+the package; no `PYTHONPATH` needed.
 
 ## 3. Setup
 
@@ -624,7 +624,7 @@ All knobs live in [`configs/baseline.yaml`](configs/baseline.yaml). Key ones:
 | Unit tests | works | `make test` / `pytest -q` — no network, no heavy deps. Slow tests excluded by `pytest.ini_options`. |
 | Slow tests | works (skips gracefully) | `make test-slow` includes `@pytest.mark.slow`. HF metric scripts skip if unavailable. |
 | Lockfile | basic | `requirements-lock.txt` is pip-freeze-style; sub-dep transitive closure + hash pinning are TODO. Model-stack pins are checked with `scripts/smoke_model_stack.py`. |
-| Installable package | basic | `pip install -e .` registers `src` via `pyproject.toml`. Existing `sys.path.insert` shims in `experiments/` and `scripts/` are kept for now. |
+| Installable package | works | `pip install -e .` registers `src` via `pyproject.toml`; scripts import the installed package without local `sys.path` shims. |
 | CI | basic | `.github/workflows/ci.yml`: pytest + ruff on push/PR to main. No slow tests, no data download. |
 | Lint | minimal | `ruff` with `F` + `W` (pyflakes + whitespace). `E` / `I` / `UP` are off on the first pass. |
 | Artifact manifest | wired | `src/msmarco_genqa/util/manifest.py` writes `outputs/<stage>/manifest.json` alongside `metrics.json`. Captures git commit + dirty flag, command, config hash, dependency-file hashes, per-output sha256 (truncated). |
@@ -642,7 +642,6 @@ Limitations to be aware of:
 
 - The lockfile reflects a macOS CPU-only dev environment. Linux / CUDA may resolve different versions; install `torch` from the appropriate PyTorch index first.
 - Corpus, encoder, and reranker checkpoints are downloaded by `ir_datasets` / HuggingFace at first run and are not checksummed by the project.
-- `experiments/run_*.py` still rely on `sys.path.insert(0, PROJECT_ROOT)` at the top of the file. `pip install -e .` makes this unnecessary; the shim is kept until a later pass removes it.
 
 ## 7. Known limitations
 
