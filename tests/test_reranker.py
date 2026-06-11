@@ -14,6 +14,7 @@ import pytest
 
 from msmarco_genqa.reranking.cross_encoder import CrossEncoderReranker
 from msmarco_genqa.reranking.io import (
+    RunTsvFormatError,
     append_run_tsv,
     collect_unique_doc_ids,
     prune_partial_qids,
@@ -160,6 +161,57 @@ def test_read_run_tsv_roundtrip(tmp_path):
     assert list(runs.keys()) == ["q1", "q2"]
     assert runs["q1"] == [("d_a", 3.0), ("d_b", 2.5), ("d_c", 1.0)]
     assert runs["q2"] == [("d_x", 9.9)]
+
+
+@pytest.mark.parametrize(
+    ("line", "message"),
+    [
+        ("q1\tQ0\td1\t1\t1.0\n", "expected 6 tab-separated fields"),
+        ("\tQ0\td1\t1\t1.0\tdense\n", "empty query id"),
+        ("q1\tQ0\t\t1\t1.0\tdense\n", "empty document id"),
+        ("q1\tQ0\td1\t0\t1.0\tdense\n", "rank must be positive"),
+        ("q1\tQ0\td1\tNOT_A_RANK\t1.0\tdense\n", "rank is not an integer"),
+        ("q1\tQ0\td1\t1\tNOT_A_SCORE\tdense\n", "score is not numeric"),
+        ("q1\tQ0\td1\t1\tnan\tdense\n", "score must be finite"),
+        ("q1\tQ0\td\ufffd\t1\t1.0\tdense\n", "replacement character"),
+    ],
+)
+def test_read_run_tsv_rejects_malformed_lines(tmp_path, line, message):
+    path = tmp_path / "run.tsv"
+    path.write_text(line, encoding="utf-8")
+    with pytest.raises(RunTsvFormatError, match=message) as excinfo:
+        read_run_tsv(path)
+    assert excinfo.value.line_number == 1
+
+
+def test_read_run_tsv_rejects_duplicate_rank_per_query(tmp_path):
+    path = tmp_path / "run.tsv"
+    path.write_text(
+        "q1\tQ0\td1\t1\t2.0\tdense\n"
+        "q1\tQ0\td2\t1\t1.0\tdense\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(RunTsvFormatError, match="duplicate rank 1"):
+        read_run_tsv(path)
+
+
+def test_read_run_tsv_rejects_duplicate_doc_per_query(tmp_path):
+    path = tmp_path / "run.tsv"
+    path.write_text(
+        "q1\tQ0\td1\t1\t2.0\tdense\n"
+        "q1\tQ0\td1\t2\t1.0\tdense\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(RunTsvFormatError, match="duplicate document id"):
+        read_run_tsv(path)
+
+
+def test_read_run_tsv_rejects_non_utf8_bytes(tmp_path):
+    path = tmp_path / "run.tsv"
+    path.write_bytes(b"q1\tQ0\td1\t1\t1.0\tdense\n\xff")
+    with pytest.raises(RunTsvFormatError, match="not valid UTF-8") as excinfo:
+        read_run_tsv(path)
+    assert excinfo.value.line_number is None
 
 
 def test_truncate_top_k():
