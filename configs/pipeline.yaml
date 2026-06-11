@@ -30,6 +30,22 @@ stages:
       - --config
       - configs/baseline.yaml
 
+  - name: retrieval_quality_report
+    description: Matched-qid retrieval metrics and movement diagnostics for dense vs reranked runs.
+    command:
+      - mgq-retrieval-report
+      - compare
+      - --baseline-run
+      - outputs/week04_dense/run.tsv
+      - --candidate-run
+      - outputs/week05_reranker_full/run.tsv
+      - --baseline-name
+      - dense
+      - --candidate-name
+      - reranked
+      - --output-dir
+      - outputs/retrieval_reports/dense_vs_reranked
+
   - name: retrieval_lift_analysis
     description: Query-level diagnostics for promoted, demoted, new-hit, and lost-hit rerank cases.
     command:

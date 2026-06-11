@@ -76,6 +76,24 @@ def test_filter_and_format_rag_eval_plan(tmp_path):
     assert "outputs/bootstrap/bootstrap_ci.json" in rendered
 
 
+def test_build_rag_eval_plan_includes_retrieval_quality_report(tmp_path):
+    config_path = _write_config(tmp_path / "baseline.yaml")
+    cfg = load_rag_eval_config(config_path)
+    cfg["rag_eval"]["stages"] = ["retrieval_quality_report"]
+    cfg["rag_eval"]["retrieval_report_output_dir"] = "outputs/report_dense_vs_reranked"
+    cfg["rag_eval"]["retrieval_qrels_path"] = "data/qrels.dev.small.tsv"
+
+    plan = build_rag_eval_plan(cfg, config_path=config_path)
+
+    assert [stage.name for stage in plan] == ["retrieval_quality_report"]
+    cmd = plan[0].command
+    assert cmd[:2] == ["mgq-retrieval-report", "compare"]
+    assert cmd[cmd.index("--baseline-run") + 1] == "outputs/dense/run.tsv"
+    assert cmd[cmd.index("--candidate-run") + 1] == "outputs/reranked/run.tsv"
+    assert cmd[cmd.index("--qrels") + 1] == "data/qrels.dev.small.tsv"
+    assert "outputs/report_dense_vs_reranked/comparison.json" in plan[0].expected_outputs
+
+
 def test_build_rag_eval_plan_rejects_unknown_stage(tmp_path):
     config_path = _write_config(tmp_path / "baseline.yaml")
     cfg = load_rag_eval_config(config_path)

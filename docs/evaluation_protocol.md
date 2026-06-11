@@ -56,11 +56,12 @@ recorded in `configs/baseline.yaml` under `rag_eval`.
 1. `bm25_retrieval`
 2. `dense_retrieval`
 3. `cross_encoder_rerank`
-4. `retrieval_lift_analysis`
-5. `generation_bm25`
-6. `generation_reranked`
-7. `paired_bootstrap_ci`
-8. `grounding_audit`
+4. `retrieval_quality_report`
+5. `retrieval_lift_analysis`
+6. `generation_bm25`
+7. `generation_reranked`
+8. `paired_bootstrap_ci`
+9. `grounding_audit`
 
 Each stage writes under `outputs/`. Output directories are gitignored; metrics,
 manifests, and summaries should be copied into reports only after they are
@@ -95,6 +96,10 @@ Retrieval metrics:
 - MRR@10
 - nDCG@10
 - Recall@100 / Recall@1000, depending on stage
+
+Use `retrieval_quality_report` for matched-qid retrieval comparisons before
+interpreting deltas. Coverage counts are part of the report and should be
+checked before comparing dense, RRF, or reranked runs.
 
 Grounding metrics:
 

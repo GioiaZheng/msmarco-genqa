@@ -16,7 +16,6 @@ Use `evaluate` when a run should be scored independently:
 ```bash
 mgq-retrieval-report evaluate \
   --run outputs/week04_dense/run.tsv \
-  --qrels data/qrels.dev.small.tsv \
   --run-name dense \
   --output-dir outputs/retrieval_reports/dense
 ```
@@ -41,7 +40,6 @@ misleading comparisons when two retrieval stages cover different queries.
 mgq-retrieval-report compare \
   --baseline-run outputs/week04_dense/run.tsv \
   --candidate-run outputs/week04_hybrid_rrf/run.tsv \
-  --qrels data/qrels.dev.small.tsv \
   --baseline-name dense \
   --candidate-name rrf \
   --output-dir outputs/retrieval_reports/dense_vs_rrf
@@ -61,6 +59,10 @@ The coverage block is part of the result, not a footnote. Check
 `n_shared_without_positive_qrels` before interpreting metric deltas.
 
 ## Qrels Format
+
+If `--qrels` is omitted, the command loads MS MARCO Passage dev/small qrels
+through `ir_datasets`. Pass `--qrels` when evaluating a custom split,
+sample-specific qrels file, or downloaded TREC qrels artifact.
 
 The command accepts standard four-column TREC qrels:
 
