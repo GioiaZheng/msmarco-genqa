@@ -120,9 +120,9 @@ full-corpus MRR@10.
 Both numbers are **upper-bounded** by qrels-anchoring. The takeaway is
 the gap, not the absolute level.
 
-### Encoder horizontal ablation
+### Encoder comparison ablation
 
-[`scripts/run_encoder_horizontal.py`](../scripts/run_encoder_horizontal.py)
+[`scripts/run_encoder_comparison.py`](../scripts/run_encoder_comparison.py)
 swaps the encoder on the identical 50k sample.
 
 | Encoder | MRR@10 | nDCG@10 | Recall@100 | ms/passage |
@@ -176,11 +176,10 @@ unchanged by construction.
 Runtime on a 6-core MacBook CPU: ~4 h 37 min for the full dev/small
 (538k (query, passage) pairs at ~32 pairs/s; peak RSS ~3.3 GiB).
 
-### k-sweep ablation
+### Top-k sweep ablation
 
-[`scripts/run_k_sweep.py`](../scripts/run_k_sweep.py) varies
-`rerank_top_k` to characterise the depth/quality trade-off. (Slated
-for rename to `scripts/run_topk_sweep.py`.)
+[`scripts/run_topk_sweep.py`](../scripts/run_topk_sweep.py) varies
+`rerank_top_k` to characterise the depth/quality trade-off.
 
 ---
 
@@ -309,8 +308,8 @@ full-sample outcome determines the direction.
 | Ablation | Script | Status |
 |---|---|---|
 | Density sweep on dense retrieval (15k/30k/50k) | [`scripts/run_density_sweep.py`](../scripts/run_density_sweep.py) | Done; see Stage 2 |
-| Dense encoder horizontal | [`scripts/run_encoder_horizontal.py`](../scripts/run_encoder_horizontal.py) | Done; see Stage 2 |
-| Rerank depth (k-sweep) | [`scripts/run_k_sweep.py`](../scripts/run_k_sweep.py) | Done |
+| Dense encoder comparison | [`scripts/run_encoder_comparison.py`](../scripts/run_encoder_comparison.py) | Done; see Stage 2 |
+| Rerank depth (top-k sweep) | [`scripts/run_topk_sweep.py`](../scripts/run_topk_sweep.py) | Done |
 | Regression vs non-regression query profile | [`scripts/regression_query_profile.py`](../scripts/regression_query_profile.py) | Done |
 | Generation × retrieval source first-stage comparison | [`scripts/compare_rerank_first_stages.py`](../scripts/compare_rerank_first_stages.py) | Done |
 | Validation of full reranker run | [`scripts/validate_full_rerank.py`](../scripts/validate_full_rerank.py) | Done |
