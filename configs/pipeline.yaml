@@ -9,6 +9,15 @@ tracking:
   output_dir: outputs/pipeline_tracking
 
 stages:
+  - name: query_transformation
+    description: Deterministic query normalization or expansion audit before retrieval.
+    command:
+      - mgq-transform-queries
+      - --config
+      - configs/baseline.yaml
+      - --output-dir
+      - outputs/query_transform/none
+
   - name: bm25_retrieval
     description: Full-corpus BM25 baseline on dev/small.
     command:

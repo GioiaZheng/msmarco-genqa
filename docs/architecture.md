@@ -40,6 +40,11 @@ configuration, code, metrics, and provenance, not the corpus itself.
 
 ### Retrieval
 
+`src/msmarco_genqa/retrieval/query_transform.py` owns optional
+pre-retrieval query normalization, lexical expansion, and de-contextualization
+baselines. The default method is `none`; transformed runs must preserve the
+original query text and record the transformation config hash.
+
 Retrieval modules produce TREC-style `run.tsv` files. A retrieval run is the
 contract between the ranking layer and every downstream experiment.
 

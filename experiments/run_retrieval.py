@@ -36,6 +36,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 from msmarco_genqa.data.msmarco import load_msmarco_passage
 from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
 from msmarco_genqa.retrieval.bm25 import BM25Retriever
+from msmarco_genqa.retrieval.query_transform import materialize_query_transform
 from msmarco_genqa.util.environment import capture_environment
 from msmarco_genqa.util.manifest import (
     compute_data_fingerprint,
@@ -185,6 +186,20 @@ def main() -> None:
         load_corpus=not have_index,
         limit=corpus_limit,
     )
+    query_text_by_qid, query_transform_summary, query_transform_outputs = (
+        materialize_query_transform(
+            data.queries,
+            cfg.get("query_transform"),
+            output_dir=output_dir / "query_transform",
+        )
+    )
+    if query_transform_summary["method"] != "none":
+        logger.info(
+            "Query transformation %s changed %d / %d queries.",
+            query_transform_summary["method"],
+            query_transform_summary["n_changed"],
+            query_transform_summary["n_queries"],
+        )
 
     # ---- 2. Index ----
     index_time: float | None = None
@@ -287,7 +302,7 @@ def main() -> None:
         with open(run_path, run_file_mode) as run_f:
             for chunk_start in range(0, len(pending_qids), chunk_size):
                 chunk_qids = pending_qids[chunk_start : chunk_start + chunk_size]
-                chunk_texts = [data.queries[q] for q in chunk_qids]
+                chunk_texts = [query_text_by_qid[q] for q in chunk_qids]
 
                 t0 = time.time()
                 chunk_scores, chunk_doc_ids = retriever.retrieve_batch(
@@ -392,6 +407,8 @@ def main() -> None:
                 "first_relevant_rank_in_top10": first_rank,
                 "top_results": top_results,
             }
+            if query_transform_summary["method"] != "none":
+                example["transformed_query"] = query_text_by_qid[qid]
             f.write(json.dumps(example, ensure_ascii=False) + "\n")
     logger.info("Wrote %d examples to %s", len(sample_qids), examples_path)
 
@@ -420,6 +437,7 @@ def main() -> None:
         },
         "environment": env_dict,
         "top_k": top_k,
+        "query_transform": query_transform_summary,
         "resumed": args.resume and bool(set(qids) - set(pending_qids)),
     }
     with open(output_dir / "metrics.json", "w") as f:
@@ -439,7 +457,7 @@ def main() -> None:
         output_dir=output_dir,
         command=sys.argv,
         config_path=args.config,
-        extra_outputs=[run_path, examples_path, resolved_config_path],
+        extra_outputs=[run_path, examples_path, resolved_config_path, *query_transform_outputs],
         extra={
             "task": "retrieval",
             "backend": cfg["retrieval"].get("backend", "bm25s"),
@@ -454,6 +472,7 @@ def main() -> None:
             "resolved_config_hash": resolved_config_hash,
             "data_fingerprint": data_fingerprint,
             "env_fingerprint": env_fingerprint,
+            "query_transform": query_transform_summary,
         },
         require_clean_tree=args.require_clean_tree,
         allow_incomplete=args.allow_incomplete_manifest,

@@ -53,15 +53,16 @@ recorded in `configs/baseline.yaml` under `rag_eval`.
 
 ## Stage Order
 
-1. `bm25_retrieval`
-2. `dense_retrieval`
-3. `cross_encoder_rerank`
-4. `retrieval_quality_report`
-5. `retrieval_lift_analysis`
-6. `generation_bm25`
-7. `generation_reranked`
-8. `paired_bootstrap_ci`
-9. `grounding_audit`
+1. `query_transformation`
+2. `bm25_retrieval`
+3. `dense_retrieval`
+4. `cross_encoder_rerank`
+5. `retrieval_quality_report`
+6. `retrieval_lift_analysis`
+7. `generation_bm25`
+8. `generation_reranked`
+9. `paired_bootstrap_ci`
+10. `grounding_audit`
 
 Each stage writes under `outputs/`. Output directories are gitignored; metrics,
 manifests, and summaries should be copied into reports only after they are
@@ -100,6 +101,13 @@ Retrieval metrics:
 Use `retrieval_quality_report` for matched-qid retrieval comparisons before
 interpreting deltas. Coverage counts are part of the report and should be
 checked before comparing dense, RRF, or reranked runs.
+
+Query transformation:
+
+- Keep `query_transform.method: none` for no-transform baselines.
+- Record the `config_hash` and changed-query count for normalization or
+  expansion ablations.
+- Compare transformed and untransformed retrieval runs on matched query ids.
 
 Grounding metrics:
 

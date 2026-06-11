@@ -17,6 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 DEFAULT_STAGE_ORDER: tuple[str, ...] = (
+    "query_transformation",
     "bm25_retrieval",
     "dense_retrieval",
     "cross_encoder_rerank",
@@ -92,6 +93,15 @@ def _build_all_stages(
     bm25_run = _as_posix(Path(bm25_dir) / "run.tsv")
     dense_run = _as_posix(Path(dense_dir) / "run.tsv")
     reranker_run = _as_posix(Path(reranker_dir) / "run.tsv")
+    query_transform_settings = cfg.get("query_transform", {})
+    query_transform_output_dir = "outputs/query_transform/none"
+    if isinstance(query_transform_settings, dict):
+        query_transform_output_dir = str(
+            query_transform_settings.get("output_dir", query_transform_output_dir)
+        )
+    query_transform_dir = _as_posix(
+        settings.get("query_transform_output_dir", query_transform_output_dir)
+    )
 
     bm25_generation_dir = _as_posix(
         settings.get("bm25_generation_dir", _default_named_dir(generation_dir, "bm25_full"))
@@ -142,6 +152,21 @@ def _build_all_stages(
         retrieval_report_command.extend(["--qrels", _as_posix(retrieval_qrels_path)])
 
     return {
+        "query_transformation": RAGEvalStage(
+            name="query_transformation",
+            description="Deterministic query transformation audit artifacts before retrieval.",
+            command=[
+                "mgq-transform-queries",
+                "--config",
+                config_arg,
+                "--output-dir",
+                query_transform_dir,
+            ],
+            expected_outputs=[
+                _as_posix(Path(query_transform_dir) / "queries.jsonl"),
+                _as_posix(Path(query_transform_dir) / "summary.json"),
+            ],
+        ),
         "bm25_retrieval": RAGEvalStage(
             name="bm25_retrieval",
             description="Full-corpus BM25 retrieval on MS MARCO dev/small.",

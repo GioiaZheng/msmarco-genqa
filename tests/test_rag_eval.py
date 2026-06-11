@@ -94,6 +94,25 @@ def test_build_rag_eval_plan_includes_retrieval_quality_report(tmp_path):
     assert "outputs/report_dense_vs_reranked/comparison.json" in plan[0].expected_outputs
 
 
+def test_build_rag_eval_plan_includes_query_transformation(tmp_path):
+    config_path = _write_config(tmp_path / "baseline.yaml")
+    cfg = load_rag_eval_config(config_path)
+    cfg["query_transform"] = {"method": "normalize", "output_dir": "outputs/query_norm"}
+    cfg["rag_eval"]["stages"] = ["query_transformation"]
+
+    plan = build_rag_eval_plan(cfg, config_path=config_path)
+
+    assert [stage.name for stage in plan] == ["query_transformation"]
+    assert plan[0].command == [
+        "mgq-transform-queries",
+        "--config",
+        config_path.as_posix(),
+        "--output-dir",
+        "outputs/query_norm",
+    ]
+    assert "outputs/query_norm/queries.jsonl" in plan[0].expected_outputs
+
+
 def test_build_rag_eval_plan_rejects_unknown_stage(tmp_path):
     config_path = _write_config(tmp_path / "baseline.yaml")
     cfg = load_rag_eval_config(config_path)
