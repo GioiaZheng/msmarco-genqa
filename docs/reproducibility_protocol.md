@@ -6,7 +6,7 @@ verify a recorded run is reproducible.
 
 ## TL;DR
 
-Every run of `mgq-{retrieve, rerank, generate, evaluate}` writes:
+Every run of `mgq-{retrieve, dense, fuse, rerank, generate, evaluate}` writes:
 
 - `outputs/<run>/manifest.json` — schema-v2 provenance contract
 - `outputs/<run>/resolved_config.yaml` — config dict actually used (with CLI overrides applied)
