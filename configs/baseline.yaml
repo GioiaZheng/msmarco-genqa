@@ -34,6 +34,26 @@ retrieval:
   n_threads: 0
   bm25s_chunksize: 50
 
+query_transform:
+  # Default stays off so historical retrieval baselines remain reproducible.
+  # Set to normalize or lexical_expansion for controlled ablations.
+  method: none
+  output_dir: outputs/query_transform/none
+  lowercase: true
+  strip_terminal_punctuation: true
+  max_query_terms_for_expansion: 6
+  max_expansion_terms: 4
+  expansion_terms:
+    covid: [coronavirus]
+    fda: [food and drug administration]
+    flu: [influenza]
+    heart attack: [myocardial infarction]
+    irs: [internal revenue service]
+    nyc: [new york city]
+    u.s.: [united states]
+    uk: [united kingdom]
+    usa: [united states]
+
 eval_retrieval:
   ks_mrr: [10]
   ks_ndcg: [10]
@@ -105,6 +125,7 @@ reranker:
 # -> bootstrap -> grounding plan without duplicating stage logic.
 rag_eval:
   stages:
+    - query_transformation
     - bm25_retrieval
     - dense_retrieval
     - cross_encoder_rerank

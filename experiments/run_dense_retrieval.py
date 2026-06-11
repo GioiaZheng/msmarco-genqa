@@ -53,6 +53,7 @@ from msmarco_genqa.data.msmarco import get_docs_store, load_msmarco_passage
 from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
 from msmarco_genqa.retrieval.bm25 import BM25Retriever
 from msmarco_genqa.retrieval.dense import DenseRetriever
+from msmarco_genqa.retrieval.query_transform import materialize_query_transform
 from msmarco_genqa.retrieval.sampling import qrels_anchored_sample
 from msmarco_genqa.util.environment import capture_environment
 from msmarco_genqa.util.manifest import (
@@ -233,6 +234,20 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     data = load_msmarco_passage(cache_dir=cache_dir, load_corpus=False)
     docs_store = data.docs_store or get_docs_store(cache_dir=cache_dir)
+    query_text_by_qid, query_transform_summary, query_transform_outputs = (
+        materialize_query_transform(
+            data.queries,
+            cfg.get("query_transform"),
+            output_dir=output_dir / "query_transform",
+        )
+    )
+    if query_transform_summary["method"] != "none":
+        logger.info(
+            "Query transformation %s changed %d / %d queries.",
+            query_transform_summary["method"],
+            query_transform_summary["n_changed"],
+            query_transform_summary["n_queries"],
+        )
 
     pool_doc_ids = _load_pool_doc_ids(PROJECT_ROOT)
     sample_doc_ids = qrels_anchored_sample(
@@ -350,7 +365,7 @@ def main() -> None:
     # 4. Retrieval
     # ---------------------------------------------------------------- #
     qids = list(data.queries.keys())
-    queries_text = [data.queries[q] for q in qids]
+    queries_text = [query_text_by_qid[q] for q in qids]
     top_k_eff = min(top_k, len(sample_doc_ids))
 
     logger.info("Dense retrieval: top-%d for %d queries...", top_k_eff, len(qids))
@@ -439,6 +454,8 @@ def main() -> None:
                 "dense_top10": dense_block,
                 "dense_first_rank_in_top10": _first_rank(dense_block),
             }
+            if query_transform_summary["method"] != "none":
+                entry["transformed_query"] = query_text_by_qid[qid]
             if bm25 is not None:
                 bm25_block = _top10_block(bm25_scores, bm25_doc_ids_lists, qid, relevant)
                 entry["bm25_sample_top10"] = bm25_block
@@ -484,6 +501,7 @@ def main() -> None:
             "doc_ids_path": str(sample_path.relative_to(PROJECT_ROOT)),
         },
         "top_k": top_k_eff,
+        "query_transform": query_transform_summary,
     }
     with open(output_dir / "metrics.json", "w") as f:
         json.dump(payload, f, indent=2, default=str)
@@ -497,7 +515,13 @@ def main() -> None:
     )
     env_fingerprint = compute_env_fingerprint(env_dict)
 
-    manifest_outputs = [dense_run_path, examples_path, sample_path, resolved_config_path]
+    manifest_outputs = [
+        dense_run_path,
+        examples_path,
+        sample_path,
+        resolved_config_path,
+        *query_transform_outputs,
+    ]
     if bm25_run_path is not None:
         manifest_outputs.append(bm25_run_path)
     write_run_manifest(
@@ -519,6 +543,7 @@ def main() -> None:
             "resolved_config_hash": resolved_config_hash,
             "data_fingerprint": data_fingerprint,
             "env_fingerprint": env_fingerprint,
+            "query_transform": query_transform_summary,
         },
         require_clean_tree=args.require_clean_tree,
         allow_incomplete=args.allow_incomplete_manifest,
