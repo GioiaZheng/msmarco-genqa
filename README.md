@@ -52,6 +52,7 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/architecture.md`](docs/architecture.md) — module boundaries and artifact flow.
 - [`docs/evaluation_protocol.md`](docs/evaluation_protocol.md) — reproducible evaluation contract.
 - [`docs/failure_taxonomy.md`](docs/failure_taxonomy.md) — regression and grounding error taxonomy.
+- [`docs/retrieval_quality_reporting.md`](docs/retrieval_quality_reporting.md) — run-level retrieval metrics and matched-qid comparison reports.
 - [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md) — query-level reranker lift analysis protocol.
 - [`notebooks/rag_eval_demo.ipynb`](notebooks/rag_eval_demo.ipynb) — lightweight evaluation workflow demo.
 - [`reports/repo_report/report.pdf`](reports/repo_report/report.pdf) / [`report.html`](reports/repo_report/report.html) — repository report with the current engineering surface and historical experiment results.
@@ -79,6 +80,10 @@ auditing the experiments:
 - **Run metadata.** Major runners write `manifest.json`, `resolved_config.yaml`,
   metrics, output hashes, config hashes, git commit, dependency fingerprints,
   and sampling metadata.
+- **Retrieval quality reports.** `mgq-retrieval-report` evaluates any
+  TREC-format `run.tsv` and compares two runs on matched qids, writing JSON
+  and Markdown artifacts for BM25, dense, RRF, and reranked outputs. See
+  [`docs/retrieval_quality_reporting.md`](docs/retrieval_quality_reporting.md).
 - **Retrieval lift diagnostics.** `scripts/analyze_retrieval_lift.py` compares
   two `run.tsv` files per query, bucketizing reranker gains/losses into
   promoted, demoted, new-hit, and lost-hit cases. See
@@ -436,7 +441,7 @@ python experiments/run_retrieval.py    # script form
 mgq-retrieve                            # console form
 ```
 
-Console names: `mgq-retrieve`, `mgq-dense`, `mgq-fuse`, `mgq-rerank`, `mgq-generate`.
+Console names: `mgq-retrieve`, `mgq-dense`, `mgq-fuse`, `mgq-retrieval-report`, `mgq-rerank`, `mgq-generate`.
 The examples below use the script form.
 
 ### Stage 2 — BM25
