@@ -360,6 +360,6 @@ numbers are tied to the frozen tag below; dependency refreshes should be
 accepted only after rerunning the relevant checks or smoke tests.
 
 The frozen reference snapshot is
-[`reports/internship_report/report.pdf`](../reports/internship_report/report.pdf)
-at tag `v1.0-internship-final`; numbers in this document supersede that
+[`reports/repo_report/report.pdf`](../reports/repo_report/report.pdf)
+at tag `v1.0-first-report`; numbers in this document supersede that
 snapshot only where annotated **In flight**.
