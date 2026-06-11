@@ -143,6 +143,34 @@ def test_cli_evaluate_writes_metrics_and_markdown(tmp_path, monkeypatch):
     assert "Retrieval quality report" in (output_dir / "report.md").read_text(encoding="utf-8")
 
 
+def test_cli_evaluate_defaults_to_msmarco_qrels(tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(
+        cli,
+        "_load_qrels",
+        lambda path: ("msmarco-passage/dev/small via ir_datasets", {"q1": {"d1"}}),
+    )
+    run = tmp_path / "run.tsv"
+    run.write_text("q1\tQ0\td1\t1\t2.0\tbm25\n", encoding="utf-8")
+    output_dir = tmp_path / "outputs" / "eval_default_qrels"
+
+    cli.main(
+        [
+            "evaluate",
+            "--run",
+            str(run),
+            "--run-name",
+            "bm25",
+            "--output-dir",
+            str(output_dir),
+        ]
+    )
+
+    metrics = json.loads((output_dir / "metrics.json").read_text(encoding="utf-8"))
+    assert metrics["inputs"]["qrels"] == "msmarco-passage/dev/small via ir_datasets"
+    assert metrics["metrics"]["mrr@10"] == pytest.approx(1.0)
+
+
 def test_cli_compare_writes_comparison_and_per_query(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "PROJECT_ROOT", tmp_path)
     baseline = tmp_path / "baseline.tsv"

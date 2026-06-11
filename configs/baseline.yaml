@@ -108,6 +108,7 @@ rag_eval:
     - bm25_retrieval
     - dense_retrieval
     - cross_encoder_rerank
+    - retrieval_quality_report
     - retrieval_lift_analysis
     - generation_bm25
     - generation_reranked
@@ -119,6 +120,7 @@ rag_eval:
   reranker_resume: true
   reranked_generation_dir: outputs/week03_generation_reranked_full
   bootstrap_output_dir: outputs/week03_generation_bootstrap_full
+  retrieval_report_output_dir: outputs/retrieval_reports/dense_vs_reranked
   retrieval_lift_output_dir: outputs/week05_retrieval_lift_analysis
   grounding_output_dir: outputs/week07_grounding
   bootstrap_resamples: 10000

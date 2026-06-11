@@ -20,6 +20,7 @@ DEFAULT_STAGE_ORDER: tuple[str, ...] = (
     "bm25_retrieval",
     "dense_retrieval",
     "cross_encoder_rerank",
+    "retrieval_quality_report",
     "retrieval_lift_analysis",
     "generation_bm25",
     "generation_reranked",
@@ -104,6 +105,10 @@ def _build_all_stages(
     retrieval_lift_dir = _as_posix(
         settings.get("retrieval_lift_output_dir", "outputs/week05_retrieval_lift_analysis")
     )
+    retrieval_report_dir = _as_posix(
+        settings.get("retrieval_report_output_dir", "outputs/retrieval_reports/dense_vs_reranked")
+    )
+    retrieval_qrels_path = settings.get("retrieval_qrels_path")
     grounding_dir = _as_posix(settings.get("grounding_output_dir", "outputs/week07_grounding"))
     num_eval_queries = str(settings.get("num_eval_queries", cfg["generation"].get("num_eval_queries", 200)))
     n_resamples = str(settings.get("bootstrap_resamples", 10000))
@@ -118,6 +123,23 @@ def _build_all_stages(
     ]
     if settings.get("reranker_resume", True):
         rerank_command.append("--resume")
+
+    retrieval_report_command = [
+        "mgq-retrieval-report",
+        "compare",
+        "--baseline-run",
+        dense_run,
+        "--candidate-run",
+        reranker_run,
+        "--baseline-name",
+        "dense",
+        "--candidate-name",
+        "reranked",
+        "--output-dir",
+        retrieval_report_dir,
+    ]
+    if retrieval_qrels_path:
+        retrieval_report_command.extend(["--qrels", _as_posix(retrieval_qrels_path)])
 
     return {
         "bm25_retrieval": RAGEvalStage(
@@ -141,6 +163,16 @@ def _build_all_stages(
                 _as_posix(Path(reranker_dir) / "metrics.json"),
             ],
         ),
+        "retrieval_quality_report": RAGEvalStage(
+            name="retrieval_quality_report",
+            description="Matched-qid retrieval metric report for dense vs reranked runs.",
+            command=retrieval_report_command,
+            expected_outputs=[
+                _as_posix(Path(retrieval_report_dir) / "comparison.json"),
+                _as_posix(Path(retrieval_report_dir) / "per_query.jsonl"),
+                _as_posix(Path(retrieval_report_dir) / "report.md"),
+            ],
+        ),
         "retrieval_lift_analysis": RAGEvalStage(
             name="retrieval_lift_analysis",
             description="Query-level retrieval gain/loss buckets after reranking.",
@@ -154,7 +186,7 @@ def _build_all_stages(
                 "--output-dir",
                 retrieval_lift_dir,
             ],
-            expected_outputs=[_as_posix(Path(retrieval_lift_dir) / "summary.json")],
+            expected_outputs=[_as_posix(Path(retrieval_lift_dir) / "retrieval_lift.json")],
         ),
         "generation_bm25": RAGEvalStage(
             name="generation_bm25",
