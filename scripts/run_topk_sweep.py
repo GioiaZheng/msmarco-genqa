@@ -1,4 +1,4 @@
-"""Rerank-depth K-sweep on BM25 and dense first stages.
+"""Rerank-depth top-k sweep on BM25 and dense first stages.
 
 Drives four ``experiments/run_reranker.py`` invocations and aggregates
 the results into a single perf–latency Pareto table + figure.
@@ -43,7 +43,7 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-logger = logging.getLogger("run_k_sweep")
+logger = logging.getLogger("run_topk_sweep")
 
 
 # (label, first_stage_key_in_metrics, input_run_relpath, input_week, K, output_subdir, num_eval_queries)
@@ -248,7 +248,7 @@ def aggregate(cells: list[dict[str, Any]]) -> dict[str, Any]:
 
 def render_markdown(agg: dict[str, Any]) -> str:
     lines: list[str] = []
-    lines.append("# W5-B — rerank depth K-sweep on BM25 vs dense first stages")
+    lines.append("# W5-B — rerank depth top-k sweep on BM25 vs dense first stages")
     lines.append("")
     lines.append(
         "Cross-encoder MS-MARCO-MiniLM-L-6-v2 reranking applied at "
@@ -353,7 +353,7 @@ def main() -> None:
     fig_rel = plot_pareto(agg, args.figures_dir)
 
     summary = {
-        "task": "k_sweep",
+        "task": "topk_sweep",
         "scope": "K in {50, 100, 200}; K=50,200 on 1000-q subsample (seed 42); K=100 reuses W5 / W5-A full-dev runs",
         "cells": agg["cells"],
         "figure": fig_rel,
@@ -371,7 +371,7 @@ def main() -> None:
 
     # ---- console summary ----
     print()
-    print("=== W5-B — rerank K-sweep Pareto ===")
+    print("=== W5-B — rerank top-k Pareto ===")
     print(f"  {'cell':16s}  {'n_q':>5s}  {'rerank MRR@10':>14s}  {'Δ MRR@10':>9s}  {'sec':>6s}")
     for r in agg["cells"]:
         print(

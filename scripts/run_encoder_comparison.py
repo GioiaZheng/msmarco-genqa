@@ -1,4 +1,4 @@
-"""Same-tier dense encoder horizontal on the W4 sampled corpus.
+"""Same-tier dense encoder comparison on the W4 sampled corpus.
 
 Drives ``experiments/run_dense_retrieval.py`` for two new encoders
 (`BAAI/bge-small-en-v1.5` and `sentence-transformers/all-MiniLM-L12-v2`)
@@ -33,7 +33,7 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-logger = logging.getLogger("run_encoder_horizontal")
+logger = logging.getLogger("run_encoder_comparison")
 
 
 # (label, model_name, output_subdir, reuse_existing)
@@ -126,7 +126,7 @@ def extract(enc: dict[str, Any]) -> dict[str, Any]:
 
 def render_markdown(rows: list[dict[str, Any]]) -> str:
     lines: list[str] = []
-    lines.append("# W4-B — same-tier encoder horizontal on the W4 sampled corpus")
+    lines.append("# W4-B — same-tier encoder comparison on the W4 sampled corpus")
     lines.append("")
     lines.append(
         "Three encoders evaluated head-to-head on the same 50 k qrels-anchored "
@@ -190,7 +190,7 @@ def main() -> None:
     winner = max(rows, key=lambda r: r["dense_mrr_at_10"])
 
     summary = {
-        "task": "encoder_horizontal",
+        "task": "encoder_comparison",
         "scope": "3 encoders × same W4 50k qrels-anchored sample",
         "rows": rows,
         "best_encoder_by_mrr_at_10": winner["model_name"],
@@ -207,7 +207,7 @@ def main() -> None:
 
     # ---- console summary ----
     print()
-    print("=== W4-B — encoder horizontal ===")
+    print("=== W4-B — encoder comparison ===")
     print(f"  {'encoder':40s}  {'MRR@10':>8s}  {'nDCG@10':>8s}  {'R@100':>7s}  {'ms/p':>6s}")
     for r in rows:
         print(

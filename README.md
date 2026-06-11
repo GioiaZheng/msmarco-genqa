@@ -151,8 +151,8 @@ not against the W2 full-corpus number.
 
 **W4 follow-ups:**
 
-- *Same-tier encoder horizontal* on the identical 50 k sample
-  ([`scripts/run_encoder_horizontal.py`](scripts/run_encoder_horizontal.py)):
+- *Same-tier encoder comparison* on the identical 50 k sample
+  ([`scripts/run_encoder_comparison.py`](scripts/run_encoder_comparison.py)):
 
   | Encoder | MRR@10 | nDCG@10 | Recall@100 | ms/passage |
   |---|---:|---:|---:|---:|
@@ -377,7 +377,7 @@ data/                raw/, processed/, cache/ — all gitignored, .gitkeep track
   | Evaluation drivers | `bootstrap_generation_comparison.py`, `bertscore_paired_eval.py`, `grounding_audit.py`, `grounding_correlation.py` |
   | Failure / case analysis | `regression_failure_taxonomy.py`, `regression_query_profile.py`, `low_grounding_case_study.py` |
   | Slicing / tagging | `tag_query_forms.py`, `analyze_rerank_by_query_form.py`, `analyze_generation_rerank.py` |
-  | Ablation drivers | `run_density_sweep.py`, `run_encoder_horizontal.py`, `run_k_sweep.py`, `run_generator_capacity_sweep.py` |
+  | Ablation drivers | `run_density_sweep.py`, `run_encoder_comparison.py`, `run_topk_sweep.py`, `run_generator_capacity_sweep.py` |
   | End-to-end driver | `run_full_generation_and_analysis.py` |
   | Validation / smoke | `validate_full_rerank.py`, `smoke_test_resume.py` |
 
@@ -652,7 +652,7 @@ Limitations to be aware of:
 
 ## 8. Next
 
-- **W5-B — K-sweep Pareto.** K ∈ {50, 100, 200} perf-latency Pareto on
+- **W5-B — top-k Pareto.** K ∈ {50, 100, 200} perf-latency Pareto on
   both first stages (1 000-q subsample for K=50/200; K=100 reuses W5
   full-dev). Queued.
 - **W7-B — generator capacity, not decode budget.** The W6 closure

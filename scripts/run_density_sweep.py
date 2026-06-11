@@ -119,9 +119,9 @@ def resolve_encoder_and_baseline(args: argparse.Namespace) -> tuple[str, str]:
     """Return (encoder model_name, baseline output_dir)."""
     if args.encoder and args.baseline_dir:
         return args.encoder, args.baseline_dir
-    w4b_summary = PROJECT_ROOT / "outputs/week04_encoder_horizontal/summary.json"
-    if w4b_summary.exists():
-        with open(w4b_summary) as f:
+    encoder_summary = PROJECT_ROOT / "outputs/week04_encoder_horizontal/summary.json"
+    if encoder_summary.exists():
+        with open(encoder_summary) as f:
             summary = json.load(f)
         winner = summary["best_encoder_by_mrr_at_10"]
         # Find the corresponding output_dir from the encoder list.
