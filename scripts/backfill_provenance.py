@@ -23,7 +23,7 @@ would conclude that the run is more reproducible than it actually is.
 Usage::
 
     python3 scripts/backfill_provenance.py
-    python3 scripts/backfill_provenance.py --anchor-tag v1.0-internship-final
+    python3 scripts/backfill_provenance.py --anchor-tag v1.0-first-report
 
 The script is idempotent: re-running it overwrites the JSON in place
 and never lists the previously-written ``provenance.backfill.json`` as
@@ -193,7 +193,7 @@ def build_backfilled_provenance(
         Directory whose files are hashed and listed under
         ``outputs_on_disk_now``.
     anchor_tag, anchor_commit :
-        The git anchor (typically ``v1.0-internship-final``) and its
+        The git anchor (typically ``v1.0-first-report``) and its
         resolved short SHA.
     config_path, config_sha_16 :
         Path-at-anchor of the config file and its truncated sha256.
@@ -272,10 +272,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--anchor-tag",
-        default="v1.0-internship-final",
+        default="v1.0-first-report",
         help=(
             "Git tag treated as the latest-possible commit at which the "
-            "targeted outputs existed (default: v1.0-internship-final)."
+            "targeted outputs existed (default: v1.0-first-report)."
         ),
     )
     parser.add_argument(

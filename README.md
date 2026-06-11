@@ -54,7 +54,7 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/failure_taxonomy.md`](docs/failure_taxonomy.md) — regression and grounding error taxonomy.
 - [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md) — query-level reranker lift analysis protocol.
 - [`notebooks/rag_eval_demo.ipynb`](notebooks/rag_eval_demo.ipynb) — lightweight evaluation workflow demo.
-- [`reports/internship_report/report.pdf`](reports/internship_report/report.pdf) — frozen internship report snapshot.
+- [`reports/repo_report/report.pdf`](reports/repo_report/report.pdf) / [`report.html`](reports/repo_report/report.html) — repository report with the current engineering surface and historical experiment results.
 
 ## Engineering surface
 
@@ -109,7 +109,7 @@ auditing the experiments:
 - **`docs/`** — experiment narratives and reproducibility notes.
 - **`notebooks/`** — lightweight demos for inspecting the workflow without running heavy jobs.
 - **`reports/acl_findings/`** — ACL-Findings-style experimental report draft.
-- **`reports/internship_report/`** — frozen v1.0 PDF + sources.
+- **`reports/repo_report/`** — repository report PDF, HTML, sources, and figures.
 - **`metadata.json`** — project metadata summarising dataset scale, pipeline stages,
   headline metrics, CI, tracking, and serving support.
 
@@ -120,7 +120,7 @@ See [§2 Directory layout](#2-directory-layout) for the full breakdown.
 ### Stage 1 — EDA
 
 Dataset statistics + query/passage/answer-type distributions covered in §1 of
-[`reports/internship_report/report.pdf`](reports/internship_report/report.pdf).
+[`reports/repo_report/report.pdf`](reports/repo_report/report.pdf).
 Source figures: `figures/{query_length,passage_length,query_type,answer_type_by_query_type}_distribution.png`.
 
 ### Stage 2 — BM25 retrieval
@@ -345,7 +345,7 @@ src/                 importable library code backing experiments/ and scripts/
 tests/               pytest suite (no network, no models)
 docs/                experiments.md — pipeline narrative (BM25 → dense → rerank → gen)
 reports/
-  internship_report/   report.tex + report.pdf + figures/ (committed, frozen at v1.0)
+  repo_report/         report.tex + report.pdf + report.html + figures/
 figures/             plots used in the report (committed)
 outputs/             run.tsv, metrics.json, examples.jsonl, manifest.json per stage (gitignored)
 data/                raw/, processed/, cache/ — all gitignored, .gitkeep tracked
@@ -365,7 +365,7 @@ data/                raw/, processed/, cache/ — all gitignored, .gitkeep track
   | [`experiments/run_generation_baseline.py`](experiments/run_generation_baseline.py) | RAG generation |
 
   These runners produce the numbers cited in
-  [`reports/internship_report/report.pdf`](reports/internship_report/report.pdf)
+  [`reports/repo_report/report.pdf`](reports/repo_report/report.pdf)
   and in [`docs/experiments.md`](docs/experiments.md).
 
 - **`scripts/`** — everything that reads or analyses outputs of
@@ -628,14 +628,14 @@ All knobs live in [`configs/baseline.yaml`](configs/baseline.yaml). Key ones:
 | CI | basic | `.github/workflows/ci.yml`: pytest + ruff on push/PR to main. No slow tests, no data download. |
 | Lint | minimal | `ruff` with `F` + `W` (pyflakes + whitespace). `E` / `I` / `UP` are off on the first pass. |
 | Artifact manifest | wired | `src/msmarco_genqa/util/manifest.py` writes `outputs/<stage>/manifest.json` alongside `metrics.json`. Captures git commit + dirty flag, command, config hash, dependency-file hashes, per-output sha256 (truncated). |
-| Numbers in `reports/internship_report/report.pdf` | historical | Reflect the dev environment at tag `v1.0-internship-final`. Current dependencies are security-refreshed; use the frozen tag for archival reproduction. |
+| Historical experiment numbers in `reports/repo_report/report.pdf` | historical | Reflect the dev environment at tag `v1.0-first-report`. Current dependencies are security-refreshed; use the first-report tag for archival reproduction. |
 
 **Historical output-path naming.** `outputs/week02_bm25/`,
 `outputs/week04_dense/`, `outputs/week05_reranker/` retain
 `outputs/weekNN_<topic>/` names even though the rest of the repo
 speaks in *stages*. These are the snapshot anchors referenced by the
 `provenance.backfill.json` files committed alongside tag
-`v1.0-internship-final` (`5a35de9c18ea`); renaming them would
+`v1.0-first-report`; renaming them would
 invalidate those provenance records.
 
 Limitations to be aware of:
