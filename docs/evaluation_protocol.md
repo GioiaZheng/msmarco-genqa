@@ -108,6 +108,8 @@ Query transformation:
 - Record the `config_hash` and changed-query count for normalization or
   expansion ablations.
 - Compare transformed and untransformed retrieval runs on matched query ids.
+- Use `mgq-query-transform-ablation` to combine method summaries and optional
+  retrieval metrics into `ablation.json` and `report.md`.
 
 Grounding metrics:
 

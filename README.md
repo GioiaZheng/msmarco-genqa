@@ -441,8 +441,29 @@ python experiments/run_retrieval.py    # script form
 mgq-retrieve                            # console form
 ```
 
-Console names: `mgq-retrieve`, `mgq-dense`, `mgq-fuse`, `mgq-retrieval-report`, `mgq-rerank`, `mgq-generate`.
+Console names: `mgq-transform-queries`, `mgq-query-transform-ablation`,
+`mgq-retrieve`, `mgq-dense`, `mgq-fuse`, `mgq-retrieval-report`,
+`mgq-rerank`, `mgq-generate`.
 The examples below use the script form.
+
+### Optional pre-retrieval query transformation
+
+Query transformation is disabled for canonical baselines, but the repository
+has deterministic artifacts for normalization, lexical expansion, and
+de-contextualization ablations:
+
+```bash
+mgq-transform-queries --config configs/baseline.yaml --method normalize \
+    --output-dir outputs/query_transform/normalize
+
+mgq-query-transform-ablation \
+    --summary none=outputs/query_transform/none/summary.json \
+    --summary normalize=outputs/query_transform/normalize/summary.json \
+    --output-dir outputs/query_transform/ablation
+```
+
+Add `--metrics method=path/to/metrics.json` entries after evaluating matched
+retrieval runs to report metric deltas alongside changed-query coverage.
 
 ### Stage 2 — BM25
 

@@ -1,0 +1,97 @@
+"""``mgq-query-transform-ablation`` console entry point."""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from msmarco_genqa.evaluation.query_transform_ablation import (
+    build_query_transform_ablation,
+    extract_numeric_metrics,
+    load_json_mapping,
+    read_method_mapping,
+    write_ablation_outputs,
+)
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--summary",
+        action="append",
+        required=True,
+        help="Method summary spec in the form method=path/to/summary.json.",
+    )
+    parser.add_argument(
+        "--metrics",
+        action="append",
+        default=[],
+        help="Optional method metrics spec in the form method=path/to/metrics.json.",
+    )
+    parser.add_argument("--baseline-method", default="none")
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=PROJECT_ROOT / "outputs/query_transform/ablation",
+    )
+    return parser.parse_args(argv)
+
+
+def _resolve(path: Path) -> Path:
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+def _load_summaries(specs: list[str]) -> dict[str, dict[str, object]]:
+    try:
+        mapping = read_method_mapping(specs, value_name="summary")
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    summaries: dict[str, dict[str, object]] = {}
+    for method, path in mapping.items():
+        resolved = _resolve(path)
+        if not resolved.exists():
+            raise SystemExit(f"summary file not found for {method}: {resolved}")
+        summaries[method] = load_json_mapping(resolved)
+    return summaries
+
+
+def _load_metrics(specs: list[str]) -> dict[str, dict[str, float]]:
+    try:
+        mapping = read_method_mapping(specs, value_name="metrics")
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    metrics: dict[str, dict[str, float]] = {}
+    for method, path in mapping.items():
+        resolved = _resolve(path)
+        if not resolved.exists():
+            raise SystemExit(f"metrics file not found for {method}: {resolved}")
+        metrics[method] = extract_numeric_metrics(load_json_mapping(resolved))
+    return metrics
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
+    summaries = _load_summaries(args.summary)
+    metrics = _load_metrics(args.metrics)
+    try:
+        report = build_query_transform_ablation(
+            summaries,
+            metrics=metrics,
+            baseline_method=args.baseline_method,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+
+    output_dir = _resolve(args.output_dir)
+    write_ablation_outputs(output_dir, report)
+    print(
+        "query transformation ablation: "
+        f"{len(report['methods'])} methods, output={output_dir}"
+    )
+
+
+if __name__ == "__main__":
+    main()
