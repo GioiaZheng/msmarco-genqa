@@ -6,11 +6,13 @@ import argparse
 from pathlib import Path
 
 from msmarco_genqa.evaluation.retrieval_report import (
+    compare_run_matrix_report,
     compare_runs_report,
     evaluate_run_report,
     load_qrels_tsv,
     read_run_doc_ids,
     render_comparison_markdown,
+    render_matrix_markdown,
     render_single_run_markdown,
     write_json,
     write_jsonl,
@@ -52,6 +54,29 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     compare.add_argument("--k-recall", type=int, default=100)
     _add_metric_args(compare)
 
+    matrix = subcommands.add_parser(
+        "matrix",
+        help="Compare two or more runs on the same shared qid set.",
+    )
+    matrix.add_argument(
+        "--run",
+        action="append",
+        required=True,
+        metavar="NAME=PATH",
+        help="Named TREC-format run.tsv. Repeat for BM25, dense, RRF, reranked, etc.",
+    )
+    matrix.add_argument(
+        "--qrels",
+        type=Path,
+        default=None,
+        help="Optional qrels TSV file. Defaults to MS MARCO passage dev/small via ir_datasets.",
+    )
+    matrix.add_argument("--baseline-name", default=None)
+    matrix.add_argument("--output-dir", type=Path, required=True)
+    matrix.add_argument("--k-rank", type=int, default=10)
+    matrix.add_argument("--k-recall", type=int, default=100)
+    _add_metric_args(matrix)
+
     return parser.parse_args(argv)
 
 
@@ -83,6 +108,19 @@ def _load_qrels(path: Path | None):
     if not qrels_path.exists():
         raise SystemExit(f"qrels file not found: {qrels_path}")
     return qrels_path, load_qrels_tsv(qrels_path)
+
+
+def _parse_named_run_spec(spec: str) -> tuple[str, Path]:
+    if "=" not in spec:
+        raise SystemExit(f"run spec must be NAME=PATH, got: {spec!r}")
+    name, raw_path = spec.split("=", 1)
+    name = name.strip()
+    raw_path = raw_path.strip()
+    if not name:
+        raise SystemExit(f"run spec has an empty name: {spec!r}")
+    if not raw_path:
+        raise SystemExit(f"run spec has an empty path: {spec!r}")
+    return name, Path(raw_path)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -153,6 +191,45 @@ def main(argv: list[str] | None = None) -> None:
             encoding="utf-8",
         )
         print(f"Wrote retrieval comparison report to {output_dir}")
+        return
+
+    if args.command == "matrix":
+        parsed_runs = [_parse_named_run_spec(spec) for spec in args.run]
+        names = [name for name, _path in parsed_runs]
+        if len(parsed_runs) < 2:
+            raise SystemExit("matrix report requires at least two --run entries")
+        if len(set(names)) != len(names):
+            raise SystemExit(f"run names must be unique: {names}")
+
+        run_paths = {name: _resolve(path) for name, path in parsed_runs}
+        for name, path in run_paths.items():
+            if not path.exists():
+                raise SystemExit(f"{name} run file not found: {path}")
+        report = compare_run_matrix_report(
+            {name: read_run_doc_ids(path) for name, path in run_paths.items()},
+            qrels,
+            baseline_name=args.baseline_name,
+            k_rank=args.k_rank,
+            k_recall=args.k_recall,
+            ks_mrr=tuple(args.ks_mrr),
+            ks_ndcg=tuple(args.ks_ndcg),
+            ks_recall=tuple(args.ks_recall),
+        )
+        pairwise_rows = report.pop("pairwise_rows")
+        report["inputs"] = {
+            "runs": {name: _display_path(path) for name, path in run_paths.items()},
+            "qrels": _display_path(qrels_path) if isinstance(qrels_path, Path) else qrels_path,
+        }
+        write_json(output_dir / "matrix.json", report)
+        write_jsonl(output_dir / "pairwise_deltas.jsonl", pairwise_rows)
+        (output_dir / "report.md").write_text(
+            render_matrix_markdown(
+                report,
+                qrels_path=_display_path(qrels_path) if isinstance(qrels_path, Path) else qrels_path,
+            ),
+            encoding="utf-8",
+        )
+        print(f"Wrote retrieval matrix report to {output_dir}")
         return
 
     raise SystemExit(f"unsupported command: {args.command}")

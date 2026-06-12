@@ -32,12 +32,37 @@ stages:
       - --config
       - configs/baseline.yaml
 
+  - name: hybrid_rrf_fusion
+    description: Weighted RRF fusion over BM25-on-sample and dense first-stage runs.
+    command:
+      - python
+      - experiments/run_hybrid_fusion.py
+      - --input-run
+      - bm25_sample=outputs/W4_dense/run_bm25_sample.tsv
+      - --input-run
+      - dense=outputs/W4_dense/run.tsv
+      - --output-dir
+      - outputs/W4_hybrid_rrf
+      - --top-k
+      - "1000"
+
   - name: cross_encoder_rerank
     description: Cross-encoder reranking over dense top-100; quantifies rerank lift.
     command:
       - mgq-rerank
       - --config
       - configs/baseline.yaml
+
+  - name: hybrid_rrf_rerank
+    description: Cross-encoder reranking over the fused RRF candidate run.
+    command:
+      - python
+      - experiments/run_reranker.py
+      - --input-run
+      - outputs/W4_hybrid_rrf/run.tsv
+      - --output-dir
+      - outputs/W5_hybrid_rrf_reranker
+      - --resume
 
   - name: retrieval_quality_report
     description: Matched-qid retrieval metrics and movement diagnostics for dense vs reranked runs.
@@ -54,6 +79,24 @@ stages:
       - reranked
       - --output-dir
       - outputs/retrieval_reports/dense_vs_reranked
+
+  - name: hybrid_matrix_report
+    description: Same-qid BM25, dense, RRF, and RRF-plus-rerank retrieval matrix.
+    command:
+      - mgq-retrieval-report
+      - matrix
+      - --run
+      - bm25_sample=outputs/W4_dense/run_bm25_sample.tsv
+      - --run
+      - dense=outputs/W4_dense/run.tsv
+      - --run
+      - rrf=outputs/W4_hybrid_rrf/run.tsv
+      - --run
+      - rrf_reranked=outputs/W5_hybrid_rrf_reranker/run.tsv
+      - --baseline-name
+      - bm25_sample
+      - --output-dir
+      - outputs/retrieval_reports/hybrid_matrix
 
   - name: retrieval_lift_analysis
     description: Query-level diagnostics for promoted, demoted, new-hit, and lost-hit rerank cases.
