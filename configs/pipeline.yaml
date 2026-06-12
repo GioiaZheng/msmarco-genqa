@@ -122,6 +122,10 @@ stages:
       - outputs/W3_generation_bm25_full
       - --retrieval-source
       - bm25
+      - --restrict-to-run
+      - outputs/W5_reranker_full/run.tsv
+      - --num-eval-queries
+      - "9999"
 
   - name: generation_reranked
     description: T5 generation over cross-encoder-reranked top-3.
@@ -136,7 +140,50 @@ stages:
       - --retrieval-source
       - reranked
       - --restrict-to-run
+      - outputs/W2_bm25/run.tsv
+      - --num-eval-queries
+      - "9999"
+
+  - name: generation_reranked_packed
+    description: T5 generation over reranked passages with deterministic context packing.
+    command:
+      - mgq-generate
+      - --config
+      - configs/baseline.yaml
+      - --input-run
       - outputs/W5_reranker_full/run.tsv
+      - --output-dir
+      - outputs/W3_generation_reranked_packed
+      - --retrieval-source
+      - reranked_packed
+      - --restrict-to-run
+      - outputs/W2_bm25/run.tsv
+      - --num-eval-queries
+      - "9999"
+      - --context-packing
+      - --context-max-chars
+      - "900"
+      - --context-max-passage-chars
+      - "320"
+      - --context-sentence-selection
+      - query_overlap
+      - --context-ordering
+      - rank
+
+  - name: context_packing_report
+    description: Matched-qid answer-quality and context-cost comparison for packed prompts.
+    command:
+      - mgq-context-packing-report
+      - --baseline-predictions
+      - outputs/W3_generation_reranked_full/predictions.jsonl
+      - --compressed-predictions
+      - outputs/W3_generation_reranked_packed/predictions.jsonl
+      - --baseline-name
+      - reranked
+      - --compressed-name
+      - reranked_packed
+      - --output-dir
+      - outputs/W9_context_packing
 
   - name: paired_bootstrap_ci
     description: Paired-bootstrap confidence intervals for rerank lift.

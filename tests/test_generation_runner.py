@@ -213,3 +213,27 @@ def test_documented_reranked_invocation_parses(fake_cfg, fake_root):
     assert args.retrieval_source == "reranked"
     # restrict_to_run not set in this canonical invocation.
     assert args.restrict_to_run is None
+
+
+def test_context_packing_invocation_parses():
+    args = parse_args(
+        [
+            "--context-packing",
+            "--context-max-chars",
+            "900",
+            "--context-max-passage-chars",
+            "320",
+            "--context-sentence-selection",
+            "query_overlap",
+            "--context-ordering",
+            "rank",
+            "--no-context-deduplicate",
+        ]
+    )
+
+    assert args.context_packing is True
+    assert args.context_max_chars == 900
+    assert args.context_max_passage_chars == 320
+    assert args.context_sentence_selection == "query_overlap"
+    assert args.context_ordering == "rank"
+    assert args.no_context_deduplicate is True

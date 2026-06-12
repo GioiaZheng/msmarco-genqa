@@ -54,6 +54,7 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/failure_taxonomy.md`](docs/failure_taxonomy.md) — regression and grounding error taxonomy.
 - [`docs/retrieval_quality_reporting.md`](docs/retrieval_quality_reporting.md) — run-level retrieval metrics and matched-qid comparison reports.
 - [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md) — query-level reranker lift analysis protocol.
+- [`docs/context_packing.md`](docs/context_packing.md) — prompt compression, provenance, and packed-vs-plain generation comparison.
 - [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md) — context relevance, groundedness, and answer relevance report protocol.
 - [`notebooks/rag_eval_demo.ipynb`](notebooks/rag_eval_demo.ipynb) — lightweight evaluation workflow demo.
 - [`reports/repo_report/report.pdf`](reports/repo_report/report.pdf) / [`report.html`](reports/repo_report/report.html) — repository report with the current engineering surface and historical experiment results.
@@ -94,6 +95,11 @@ auditing the experiments:
   qrels and writes per-query context relevance, groundedness, and answer
   relevance diagnostics. See
   [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md).
+- **Context packing.** `mgq-generate --context-packing` applies deterministic
+  passage trimming, sentence selection, deduplication, and span provenance
+  before generation. `mgq-context-packing-report` compares packed and plain
+  prediction files on matched qids. See
+  [`docs/context_packing.md`](docs/context_packing.md).
 - **Experiment tracking.** `msmarco_genqa.util.tracking.ExperimentTracker`
   writes local JSONL events by default and can use MLflow or Weights & Biases
   via `pip install -e ".[tracking]"`.
@@ -449,6 +455,7 @@ mgq-retrieve                            # console form
 
 Console names: `mgq-transform-queries`, `mgq-query-transform-ablation`,
 `mgq-retrieve`, `mgq-dense`, `mgq-fuse`, `mgq-retrieval-report`,
+`mgq-context-packing-report`,
 `mgq-rag-triad`,
 `mgq-rerank`, `mgq-generate`.
 The examples below use the script form.
@@ -517,6 +524,34 @@ python experiments/run_generation_baseline.py \
 Use `--restrict-to-run <other_run.tsv>` to force two runs to evaluate on
 the same query subsample even when their upstream retrievers cover
 different sets — used in *Generation × retrieval source* above.
+
+To compare prompt compression under the same retrieval source, keep the
+baseline output untouched and write a packed run to a separate directory:
+
+```bash
+mgq-generate \
+    --config configs/baseline.yaml \
+    --input-run outputs/W5_reranker_full/run.tsv \
+    --output-dir outputs/W3_generation_reranked_packed \
+    --retrieval-source reranked_packed \
+    --restrict-to-run outputs/W2_bm25/run.tsv \
+    --num-eval-queries 9999 \
+    --context-packing \
+    --context-max-chars 900 \
+    --context-max-passage-chars 320 \
+    --context-sentence-selection query_overlap \
+    --context-ordering rank
+
+mgq-context-packing-report \
+    --baseline-predictions outputs/W3_generation_reranked_full/predictions.jsonl \
+    --compressed-predictions outputs/W3_generation_reranked_packed/predictions.jsonl \
+    --baseline-name reranked \
+    --compressed-name reranked_packed \
+    --output-dir outputs/W9_context_packing
+```
+
+The packed `predictions.jsonl` keeps `context_packing` span metadata so each
+prompt segment can be traced back to its source document id.
 
 ### Stage 4 — Dense retrieval
 
