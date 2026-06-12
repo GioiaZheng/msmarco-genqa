@@ -38,7 +38,7 @@ is [`RESULTS.md`](RESULTS.md); reproducibility entry points are documented in
 | Retrieval | BM25, dense SBERT/FAISS, and BM25-on-sample comparisons under controlled qrels-anchored evaluation. |
 | Reranking | Cross-encoder reranking with aggregate lift, first-stage comparison, and query-level promoted/demoted/new-hit/lost-hit diagnostics. |
 | Generation | Paired BM25-vs-reranked generation runs using the same generator, prompt format, query set, and top-k depth. |
-| Evaluation | Paired-bootstrap confidence intervals, BERTScore proxy checks, grounding audit, query-form slicing, and regression taxonomy. |
+| Evaluation | Paired-bootstrap confidence intervals, BERTScore proxy checks, grounding audit, RAG triad reporting, query-form slicing, and regression taxonomy. |
 | Reproducibility | Config-driven runners, manifests, output hashes, metadata, CI, report artifacts, and optional experiment tracking. |
 
 ## Reports and notes
@@ -54,6 +54,7 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/failure_taxonomy.md`](docs/failure_taxonomy.md) — regression and grounding error taxonomy.
 - [`docs/retrieval_quality_reporting.md`](docs/retrieval_quality_reporting.md) — run-level retrieval metrics and matched-qid comparison reports.
 - [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md) — query-level reranker lift analysis protocol.
+- [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md) — context relevance, groundedness, and answer relevance report protocol.
 - [`notebooks/rag_eval_demo.ipynb`](notebooks/rag_eval_demo.ipynb) — lightweight evaluation workflow demo.
 - [`reports/repo_report/report.pdf`](reports/repo_report/report.pdf) / [`report.html`](reports/repo_report/report.html) — repository report with the current engineering surface and historical experiment results.
 
@@ -68,7 +69,7 @@ auditing the experiments:
   loading data or models.
 - **Research evaluation workflow.** `rag-eval run --config configs/baseline.yaml`
   builds the end-to-end BM25, dense, rerank, paired generation, bootstrap, and
-  grounding plan from the baseline config. Use `--dry-run` to inspect the
+  grounding-plus-triad plan from the baseline config. Use `--dry-run` to inspect the
   command sequence before touching data or models.
 - **Model-stack smoke.** `python scripts/smoke_model_stack.py --config
   configs/baseline.yaml` loads the pinned generator and dense encoder, runs one
@@ -88,6 +89,10 @@ auditing the experiments:
   two `run.tsv` files per query, bucketizing reranker gains/losses into
   promoted, demoted, new-hit, and lost-hit cases. See
   [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md).
+- **RAG triad reporting.** `mgq-rag-triad` joins prediction files with optional
+  qrels and writes per-query context relevance, groundedness, and answer
+  relevance diagnostics. See
+  [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md).
 - **Experiment tracking.** `msmarco_genqa.util.tracking.ExperimentTracker`
   writes local JSONL events by default and can use MLflow or Weights & Biases
   via `pip install -e ".[tracking]"`.
@@ -345,7 +350,7 @@ src/                 importable library code backing experiments/ and scripts/
   reranking/           cross_encoder.py, io.py
   generation/          rag_generator.py — T5/BART RAG generator
   evaluation/          retrieval.py, generation.py, grounding.py, nli_grounding.py,
-                       bertscore.py, bootstrap.py, query_form.py
+                       rag_triad.py, bertscore.py, bootstrap.py, query_form.py
   util/                manifest.py, environment.py — per-run provenance
 tests/               pytest suite (no network, no models)
 docs/                experiments.md — pipeline narrative (BM25 → dense → rerank → gen)
@@ -379,7 +384,7 @@ data/                raw/, processed/, cache/ — all gitignored, .gitkeep track
 
   | Kind | Examples |
   |---|---|
-  | Evaluation drivers | `bootstrap_generation_comparison.py`, `bertscore_paired_eval.py`, `grounding_audit.py`, `grounding_correlation.py` |
+  | Evaluation drivers | `bootstrap_generation_comparison.py`, `bertscore_paired_eval.py`, `grounding_audit.py`, `grounding_correlation.py`, `mgq-rag-triad` |
   | Failure / case analysis | `regression_failure_taxonomy.py`, `regression_query_profile.py`, `low_grounding_case_study.py` |
   | Slicing / tagging | `tag_query_forms.py`, `analyze_rerank_by_query_form.py`, `analyze_generation_rerank.py` |
   | Ablation drivers | `run_density_sweep.py`, `run_encoder_comparison.py`, `run_topk_sweep.py`, `run_generator_capacity_sweep.py` |
@@ -443,6 +448,7 @@ mgq-retrieve                            # console form
 
 Console names: `mgq-transform-queries`, `mgq-query-transform-ablation`,
 `mgq-retrieve`, `mgq-dense`, `mgq-fuse`, `mgq-retrieval-report`,
+`mgq-rag-triad`,
 `mgq-rerank`, `mgq-generate`.
 The examples below use the script form.
 
@@ -588,7 +594,7 @@ python experiments/run_generation_baseline.py \
     --restrict-to-run outputs/W2_bm25/run.tsv \
     --num-eval-queries 9999
 
-# Paired bootstrap + bucket analysis + grounding:
+# Paired bootstrap + bucket analysis + grounding + triad:
 python scripts/bootstrap_generation_comparison.py \
     --bm25-dir outputs/W3_generation_bm25_full \
     --reranked-dir outputs/W3_generation_reranked_full \
@@ -599,6 +605,15 @@ python scripts/analyze_generation_rerank.py \
     --output-dir outputs/W6_analysis
 python scripts/bertscore_paired_eval.py --n-pairs 3000
 python scripts/regression_failure_taxonomy.py
+python scripts/grounding_audit.py \
+    --bm25-dir outputs/W3_generation_bm25_full \
+    --reranked-dir outputs/W3_generation_reranked_full \
+    --output-dir outputs/W7_grounding
+mgq-rag-triad \
+    --predictions bm25=outputs/W3_generation_bm25_full/predictions.jsonl \
+    --predictions reranked=outputs/W3_generation_reranked_full/predictions.jsonl \
+    --baseline-config bm25 \
+    --output-dir outputs/W8_rag_triad
 ```
 
 ## 4.5. Single-query demo

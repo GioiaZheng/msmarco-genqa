@@ -27,6 +27,7 @@ DEFAULT_STAGE_ORDER: tuple[str, ...] = (
     "generation_reranked",
     "paired_bootstrap_ci",
     "grounding_audit",
+    "rag_triad",
 )
 
 
@@ -120,6 +121,10 @@ def _build_all_stages(
     )
     retrieval_qrels_path = settings.get("retrieval_qrels_path")
     grounding_dir = _as_posix(settings.get("grounding_output_dir", "outputs/W7_grounding"))
+    triad_dir = _as_posix(settings.get("triad_output_dir", "outputs/W8_rag_triad"))
+    triad_evaluator = str(settings.get("triad_evaluator", "deterministic"))
+    triad_low_score_threshold = str(settings.get("triad_low_score_threshold", 0.5))
+    triad_context_top_k = settings.get("triad_context_top_k")
     num_eval_queries = str(settings.get("num_eval_queries", cfg["generation"].get("num_eval_queries", 200)))
     n_resamples = str(settings.get("bootstrap_resamples", 10000))
     grounding_nli_pairs = str(settings.get("grounding_nli_pairs", 0))
@@ -150,6 +155,26 @@ def _build_all_stages(
     ]
     if retrieval_qrels_path:
         retrieval_report_command.extend(["--qrels", _as_posix(retrieval_qrels_path)])
+
+    triad_command = [
+        "mgq-rag-triad",
+        "--predictions",
+        f"bm25={_as_posix(Path(bm25_generation_dir) / 'predictions.jsonl')}",
+        "--predictions",
+        f"reranked={_as_posix(Path(reranked_generation_dir) / 'predictions.jsonl')}",
+        "--output-dir",
+        triad_dir,
+        "--baseline-config",
+        "bm25",
+        "--evaluator",
+        triad_evaluator,
+        "--low-score-threshold",
+        triad_low_score_threshold,
+    ]
+    if retrieval_qrels_path:
+        triad_command.extend(["--qrels", _as_posix(retrieval_qrels_path)])
+    if triad_context_top_k is not None:
+        triad_command.extend(["--context-top-k", str(triad_context_top_k)])
 
     return {
         "query_transformation": RAGEvalStage(
@@ -296,6 +321,17 @@ def _build_all_stages(
             expected_outputs=[
                 _as_posix(Path(grounding_dir) / "summary.json"),
                 _as_posix(Path(grounding_dir) / "per_query_grounding.jsonl"),
+            ],
+        ),
+        "rag_triad": RAGEvalStage(
+            name="rag_triad",
+            description="Triad report linking context relevance, groundedness, and answer relevance.",
+            command=triad_command,
+            expected_outputs=[
+                _as_posix(Path(triad_dir) / "metrics.json"),
+                _as_posix(Path(triad_dir) / "per_query_triad.jsonl"),
+                _as_posix(Path(triad_dir) / "low_score_cases.jsonl"),
+                _as_posix(Path(triad_dir) / "report.md"),
             ],
         ),
     }

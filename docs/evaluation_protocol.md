@@ -63,6 +63,7 @@ recorded in `configs/baseline.yaml` under `rag_eval`.
 8. `generation_reranked`
 9. `paired_bootstrap_ci`
 10. `grounding_audit`
+11. `rag_triad`
 
 Each stage writes under `outputs/`. Output directories are gitignored; metrics,
 manifests, and summaries should be copied into reports only after they are
@@ -116,6 +117,19 @@ Grounding metrics:
 - lexical content-token grounding
 - n-gram grounding
 - optional NLI entailment
+
+RAG triad:
+
+- context relevance
+- groundedness
+- answer relevance
+
+Use `mgq-rag-triad` after paired generation outputs exist. With a qrels file,
+context relevance is judged by whether the shown context contains a
+qrels-relevant passage; without qrels, the CLI falls back to lexical
+query-context overlap for smoke runs and CI-friendly checks. The triad report
+is a diagnostic layer: it should be read per dimension, not as a single
+leaderboard score.
 
 Semantic proxy:
 

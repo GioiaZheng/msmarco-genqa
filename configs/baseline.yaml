@@ -122,7 +122,7 @@ reranker:
 
 # Research evaluation workflow facade. `rag-eval run --config configs/baseline.yaml`
 # reads this section to build an auditable BM25 -> dense -> rerank -> generation
-# -> bootstrap -> grounding plan without duplicating stage logic.
+# -> bootstrap -> grounding -> triad plan without duplicating stage logic.
 rag_eval:
   stages:
     - query_transformation
@@ -135,6 +135,7 @@ rag_eval:
     - generation_reranked
     - paired_bootstrap_ci
     - grounding_audit
+    - rag_triad
   num_eval_queries: 9999
   bm25_generation_dir: outputs/W3_generation_bm25_full
   reranker_output_dir: outputs/W5_reranker_full
@@ -144,6 +145,7 @@ rag_eval:
   retrieval_report_output_dir: outputs/retrieval_reports/dense_vs_reranked
   retrieval_lift_output_dir: outputs/W5_retrieval_lift_analysis
   grounding_output_dir: outputs/W7_grounding
+  triad_output_dir: outputs/W8_rag_triad
   bootstrap_resamples: 10000
   grounding_nli_pairs: 0
   tracking:

@@ -283,6 +283,8 @@ correlation</a></li>
 id="toc-w7-d-low-grounding-case-study">W7-D — low-grounding case
 study</a></li>
 </ul></li>
+<li><a href="#sec:w8-triad" id="toc-sec:w8-triad">W8 — RAG triad
+diagnostic interface</a></li>
 </ul></li>
 <li><a href="#sec:discussion" id="toc-sec:discussion">Discussion</a>
 <ul>
@@ -325,7 +327,7 @@ id="toc-sec:appendix-glossary">Glossary of cross-references</a></li>
 <hr />
 <p><strong>MS MARCO Generative QA</strong></p>
 <p><em>A Reproducible Retrieve–Rerank–Generate Pipeline<br />
-with a Grounding Audit</em></p>
+with Grounding and Triad Audits</em></p>
 <p>Repository report — updated 2026-06-12</p>
 <hr />
 <p><strong>Gioia Zheng</strong></p>
@@ -353,10 +355,10 @@ passage retrieval + QA</td>
 href="https://github.com/GioiaZheng/msmarco-genqa"><code>github.com/GioiaZheng/msmarco-genqa</code></a></p>
 </div>
 <h1 class="unnumbered" id="abstract">Abstract</h1>
-<p>This report documents an eleven-stage project that reproduces and
-analyses a complete <em>retrieve–rerank–generate</em> question-answering
-pipeline on the MS MARCO Passage Ranking benchmark <span
-class="citation"
+<p>This report documents a research-engineering project that reproduces
+and analyses a complete <em>retrieve–rerank–generate</em>
+question-answering pipeline on the MS MARCO Passage Ranking
+benchmark <span class="citation"
 data-cites="bajaj2016msmarco nguyen2016msmarcoqa">(Bajaj et al. 2016;
 Nguyen et al. 2016)</span>. Each stage is implemented from open-source
 components on a single laptop, with no GPU, no fine-tuning, and no
@@ -410,22 +412,23 @@ sign reverses (<span class="math inline"><em>Δ</em> =  − 0.145</span>
 as an artefact of fragmentary midword-cut outputs that defeat
 sentence-level NLI rather than as a true semantic regression.</p>
 <p>The report covers, in order: the dataset characterisation, the four
-modelling stages, two layers of post-hoc evaluation (semantic proxy
-&amp; grounding), an honest comparison between the initial 12-stage
-project plan and what actually shipped, and the engineering scaffolding
-(reproducibility manifests, paired-bootstrap confidence intervals,
-deterministic seeds) that lets every number in this document be
-regenerated from one command per stage.</p>
+modelling stages, post-hoc evaluation layers (semantic proxy, grounding,
+and the current triad diagnostic interface), an honest comparison
+between the initial 12-stage project plan and what actually shipped, and
+the engineering scaffolding (reproducibility manifests, paired-bootstrap
+confidence intervals, deterministic seeds) that lets every number in
+this document be regenerated from one command per stage.</p>
 <p>This 2026-06-12 update keeps the empirical claims anchored to the
 original experiment outputs while bringing the repository description up
 to date. Since the experiment window closed, the project has gained an
 installable CLI surface, the <code>rag-eval</code> workflow facade,
 optional model-stack smoke validation, local experiment tracking, a
-lightweight serving wrapper, refreshed CI, secret scanning, and a
-clearer advanced-RAG roadmap.</p>
+lightweight serving wrapper, refreshed CI, secret scanning, a
+deterministic RAG triad CLI, and a clearer advanced-RAG roadmap.</p>
 <p><em>Keywords.</em>  MS MARCO; passage retrieval; BM25; dense
 retrieval; cross-encoder reranking; retrieval-augmented generation;
-BERTScore; NLI grounding; paired bootstrap; extractive QA.</p>
+BERTScore; NLI grounding; RAG triad; paired bootstrap; extractive
+QA.</p>
 <h1 id="sec:intro">Introduction</h1>
 <h2 id="background-and-objectives">Background and objectives</h2>
 <p>The project brief was to build a complete <em>retrieve–generate</em>
@@ -565,12 +568,14 @@ a clearer operating surface:</p>
 <ul>
 <li><p><strong>Workflow facade.</strong>
 <code>rag-eval run --config configs/baseline.yaml</code> builds or
-dry-runs the configured retrieval, reranking, generation, bootstrap, and
-grounding workflow from one entry point.</p></li>
+dry-runs the configured retrieval, reranking, generation, bootstrap,
+grounding, and triad-evaluation workflow from one entry point.</p></li>
 <li><p><strong>Package and CLI surface.</strong> The project installs
 via <code>pip install -e .</code> and exposes stage-level
 <code>mgq-*</code> commands plus <code>mgq-serve</code> for local
-serving experiments.</p></li>
+serving experiments. The current evaluation surface includes
+<code>mgq-rag-triad</code> for context-relevance, groundedness, and
+answer-relevance diagnostics over existing generation outputs.</p></li>
 <li><p><strong>Validation.</strong> Default CI runs fast pytest
 coverage, <code>ruff</code>, headline-metric metadata checks, and a
 high-confidence secret scan. Heavy model and data checks stay opt-in
@@ -810,15 +815,17 @@ construction; the <em>within-sample</em> <span
 class="math inline"><em>Δ</em></span> between dense and BM25 remains the
 meaningful quantity.</p>
 <h1 id="sec:method">Methodology</h1>
-<p>This section describes the four modelling stages (W2–W5) and the two
-post-hoc analysis layers (W6–W7) in implementation order. All of W2–W5
+<p>This section describes the four modelling stages (W2–W5) and the
+post-hoc analysis layers (W6–W8) in implementation order. All of W2–W5
 ship as scripted command-line entrypoints under
 <code>experiments/run_*.py</code>, driven by a single configuration file
-at <code>configs/baseline.yaml</code>; all of W6–W7 are analysis scripts
-under <code>scripts/*.py</code> that read W3’s already-on-disk paired
-predictions and write JSON / Markdown summaries beneath
-<code>outputs/W6_*/</code> and <code>outputs/W7_*/</code>. <a
-href="#sec:reproducibility" data-reference-type="ref+Label"
+at <code>configs/baseline.yaml</code>; W6–W7 are analysis scripts under
+<code>scripts/*.py</code>, and W8 is an installable
+<code>mgq-rag-triad</code> diagnostic that reads W3’s already-on-disk
+paired predictions and writes JSON / Markdown summaries beneath
+<code>outputs/W6_*/</code>, <code>outputs/W7_*/</code>, and
+<code>outputs/W8_rag_triad/</code>. <a href="#sec:reproducibility"
+data-reference-type="ref+Label"
 data-reference="sec:reproducibility">9</a> documents the reproducibility
 scaffold.</p>
 <p><a href="#fig:pipeline" data-reference-type="ref+Label"
@@ -831,11 +838,12 @@ stages of <a href="#sec:method" data-reference-type="ref+Label"
 data-reference="sec:method">4</a>; the dashed box is the post-hoc
 evaluation layer (<a href="#sec:w6,sec:w7"
 data-reference-type="ref+Label"
-data-reference="sec:w6,sec:w7">[sec:w6,sec:w7]</a>), which consumes the
-already-on-disk W3 paired predictions and does not re-run any modelling
-stage. W2 and W4 are interchangeable first stages feeding into the same
-downstream pipeline; the W3 paired comparison of <a
-href="#sec:gen-x-retrieval" data-reference-type="ref+Label"
+data-reference="sec:w6,sec:w7">[sec:w6,sec:w7]</a>), plus the current
+triad diagnostic interface, which consumes the already-on-disk W3 paired
+predictions and does not re-run any modelling stage. W2 and W4 are
+interchangeable first stages feeding into the same downstream pipeline;
+the W3 paired comparison of <a href="#sec:gen-x-retrieval"
+data-reference-type="ref+Label"
 data-reference="sec:gen-x-retrieval">5.6</a> switches between
 them.</figcaption>
 </figure>
@@ -2271,6 +2279,24 @@ vs. <em>“compete”</em>. <strong>Zero genuine hallucinations</strong>
 (<code>parametric_or_external</code>) in the sample. This reinforces the
 W7 headline: T5-small on this prompt format is doing extractive QA even
 on its worst-grounded outputs.</p>
+<h2 id="sec:w8-triad">W8 — RAG triad diagnostic interface</h2>
+<p>The current repository adds a deterministic triad report as an
+engineering-facing diagnostic layer over the same W3 prediction schema.
+The <code>mgq-rag-triad</code> CLI writes <code>metrics.json</code>,
+<code>per_query_triad.jsonl</code>, <code>low_score_cases.jsonl</code>,
+and <code>report.md</code> for one or more generation configurations.
+The three dimensions are kept separate: context relevance (qrels hit
+when qrels are supplied, otherwise query–context lexical overlap),
+groundedness (lexical content-token support in the shown passages), and
+answer relevance (Token-F<sub>1</sub> against the stored reference
+answers).</p>
+<p>This is intentionally not promoted to a new headline result in this
+report. Its role is to make future regressions easier to diagnose: a low
+triad row can be inspected as retrieval-side evidence failure,
+unsupported generation, answer mismatch, or a combination of those
+failure modes. The CLI rejects unsupported evaluator names, so future
+model-assisted RAGAS/TruLens-style scoring must be opted into explicitly
+rather than silently mixed with deterministic scores.</p>
 <h1 id="sec:discussion">Discussion</h1>
 <h2 id="sec:discussion-where">Where does the rerank gain come from?</h2>
 <p>Combining <a href="#sec:gen-x-retrieval"
@@ -2656,9 +2682,10 @@ retrieval-sufficiency check after reranking. The sufficiency layer
 should trigger a second retrieval pass or abstention rather than forcing
 unsupported generation.</p></li>
 <li><p><strong>Evaluation hardening.</strong> Extend the current paired
-bootstrap protocol with full-sample <code>roberta-large</code>
-BERTScore, an alternative-family faithfulness scorer,
-multiple-comparison correction, and TREC-DL qrels loaders.</p></li>
+bootstrap protocol and deterministic triad report with full-sample
+<code>roberta-large</code> BERTScore, an alternative-family faithfulness
+scorer, multiple-comparison correction, and TREC-DL qrels
+loaders.</p></li>
 <li><p><strong>Offline/online separation.</strong> Split batch indexing
 from online query handling: an offline job should read data, chunk
 passages, embed, build FAISS, and persist the index; the online path
@@ -2702,12 +2729,13 @@ Papineni et al. 2002)</span>.</p>
 <h2 id="one-config-workflow-facade-and-stage-runners">One config,
 workflow facade, and stage runners</h2>
 <p>All four W2–W5 runners are driven by a single configuration file at
-<code>configs/baseline.yaml</code>; the W6/W7 analysis scripts read the
-on-disk W3 paired predictions directly. The current repository also
-exposes a workflow facade through <code>rag-eval</code> and installable
-<code>mgq-*</code> console scripts. <a href="#tab:repro-cmds"
-data-reference-type="ref+Label" data-reference="tab:repro-cmds">16</a>
-records the canonical command family for each layer.</p>
+<code>configs/baseline.yaml</code>; the W6/W7 analysis scripts and W8
+triad CLI read the on-disk W3 paired predictions directly. The current
+repository also exposes a workflow facade through <code>rag-eval</code>
+and installable <code>mgq-*</code> console scripts. <a
+href="#tab:repro-cmds" data-reference-type="ref+Label"
+data-reference="tab:repro-cmds">16</a> records the canonical command
+family for each layer.</p>
 <div id="tab:repro-cmds">
 <table>
 <caption>One canonical command per stage. All commands assume the
@@ -2781,6 +2809,11 @@ scripts/run_full_generation_and_analysis.py –max-new-tokens 128
 <tr>
 <td style="text-align: left;">W7-A NLI</td>
 <td style="text-align: left;">same script with –nli-n-pairs 3000</td>
+</tr>
+<tr>
+<td style="text-align: left;">W8 triad</td>
+<td style="text-align: left;">mgq-rag-triad –predictions bm25=…
+–predictions reranked=… –output-dir outputs/W8_rag_triad</td>
 </tr>
 <tr>
 <td style="text-align: left;">Model-stack smoke</td>
@@ -2931,6 +2964,10 @@ downstream correlation; W7-D low-grounding case study. Outputs:
 <code>outputs/W7_grounding/</code>,
 <code>outputs/W7_grounding_correlation/</code>,
 <code>outputs/W7_low_grounding_cases/</code>.</p></li>
+<li><p><strong>W8 triad:</strong> deterministic context relevance,
+groundedness, and answer relevance diagnostics over one or more
+generation prediction files. Output:
+<code>outputs/W8_rag_triad/</code>.</p></li>
 </ul>
 <div id="refs" class="references csl-bib-body hanging-indent"
 role="list">

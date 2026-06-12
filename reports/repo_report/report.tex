@@ -106,13 +106,13 @@
 % --- PDF metadata -----------------------------------------------------------
 \hypersetup{
   pdftitle={MS MARCO Generative QA: A Reproducible Retrieve--Rerank--Generate
-            Pipeline with a Grounding Audit},
+            Pipeline with Grounding and Triad Audits},
   pdfauthor={GioiaZheng},
   pdfsubject={Repository report --- updated 2026-06-12;
               experiment window 2026-03-06 to 2026-05-21},
   pdfkeywords={MS MARCO; BM25; dense retrieval; cross-encoder reranking;
                retrieval-augmented generation; BERTScore; NLI;
-               extractive QA; paired bootstrap}
+               RAG triad; extractive QA; paired bootstrap}
 }
 
 % --- Convenience macros -----------------------------------------------------
@@ -157,7 +157,7 @@
   {\Huge\bfseries MS\,MARCO Generative QA\par}
   \vspace{0.55cm}
   {\Large\itshape A Reproducible Retrieve--Rerank--Generate Pipeline\\[0.25em]
-   with a Grounding Audit\par}
+   with Grounding and Triad Audits\par}
   \vspace{0.35cm}
   {\large Repository report --- updated 2026-06-12\par}
   \vspace{1.05cm}
@@ -198,8 +198,8 @@
 \thispagestyle{empty}
 \section*{Abstract}
 
-This report documents an eleven-stage project that
-reproduces and analyses a complete \emph{retrieve--rerank--generate}
+This report documents a research-engineering project that reproduces
+and analyses a complete \emph{retrieve--rerank--generate}
 question-answering pipeline on the \msmarco{} Passage Ranking
 benchmark~\cite{bajaj2016msmarco,nguyen2016msmarcoqa}.  Each stage is
 implemented from open-source components on a single laptop, with no
@@ -242,8 +242,9 @@ fragmentary midword-cut outputs that defeat sentence-level NLI rather
 than as a true semantic regression.
 
 The report covers, in order: the dataset characterisation, the four
-modelling stages, two layers of post-hoc evaluation (semantic proxy
-\& grounding), an honest comparison between the initial 12-stage
+modelling stages, post-hoc evaluation layers (semantic proxy,
+grounding, and the current triad diagnostic interface), an honest
+comparison between the initial 12-stage
 project plan and what actually shipped, and the engineering
 scaffolding (reproducibility manifests, paired-bootstrap confidence
 intervals, deterministic seeds) that lets every number in this
@@ -255,12 +256,13 @@ up to date.  Since the experiment window closed, the project has
 gained an installable CLI surface, the \texttt{rag-eval} workflow
 facade, optional model-stack smoke validation, local experiment
 tracking, a lightweight serving wrapper, refreshed CI, secret
-scanning, and a clearer advanced-RAG roadmap.
+scanning, a deterministic RAG triad CLI, and a clearer advanced-RAG
+roadmap.
 
 \vspace{2em}
 \noindent\textit{Keywords.}~~MS~MARCO; passage retrieval; \bmtwofive{};
 dense retrieval; cross-encoder reranking; retrieval-augmented
-generation; \bertscore{}; NLI grounding; paired bootstrap;
+generation; \bertscore{}; NLI grounding; RAG triad; paired bootstrap;
 extractive QA.
 
 \newpage
@@ -400,12 +402,15 @@ has a clearer operating surface:
 \begin{itemize}
   \item \textbf{Workflow facade.}  \texttt{rag-eval run --config
         configs/baseline.yaml} builds or dry-runs the configured
-        retrieval, reranking, generation, bootstrap, and grounding
-        workflow from one entry point.
+        retrieval, reranking, generation, bootstrap, grounding, and
+        triad-evaluation workflow from one entry point.
   \item \textbf{Package and CLI surface.}  The project installs via
         \texttt{pip install -e .} and exposes stage-level
         \texttt{mgq-*} commands plus \texttt{mgq-serve} for local
-        serving experiments.
+        serving experiments.  The current evaluation surface includes
+        \texttt{mgq-rag-triad} for context-relevance, groundedness,
+        and answer-relevance diagnostics over existing generation
+        outputs.
   \item \textbf{Validation.}  Default CI runs fast pytest coverage,
         \texttt{ruff}, headline-metric metadata checks, and a
         high-confidence secret scan.  Heavy model and data checks stay
@@ -642,13 +647,15 @@ the meaningful quantity.
 \label{sec:method}
 
 This section describes the four modelling stages (W2--W5) and the
-two post-hoc analysis layers (W6--W7) in implementation order.  All
+post-hoc analysis layers (W6--W8) in implementation order.  All
 of W2--W5 ship as scripted command-line entrypoints under
 \texttt{experiments/run\_*.py}, driven by a single configuration
-file at \texttt{configs/baseline.yaml}; all of W6--W7 are analysis
-scripts under \texttt{scripts/*.py} that read W3's already-on-disk
-paired predictions and write JSON / Markdown summaries beneath
-\texttt{outputs/W6\_*/} and \texttt{outputs/W7\_*/}.
+file at \texttt{configs/baseline.yaml}; W6--W7 are analysis scripts
+under \texttt{scripts/*.py}, and W8 is an installable
+\texttt{mgq-rag-triad} diagnostic that reads W3's already-on-disk
+paired predictions and writes JSON / Markdown summaries beneath
+\texttt{outputs/W6\_*/}, \texttt{outputs/W7\_*/}, and
+\texttt{outputs/W8\_rag\_triad/}.
 \Cref{sec:reproducibility} documents the reproducibility scaffold.
 
 \Cref{fig:pipeline} sketches the end-to-end flow and the place each
@@ -680,12 +687,13 @@ stage occupies in it.
     \draw[flow] (gen) -- (ans);
 
     \node[aux, below=10mm of gen]             (eval)
-      {\textbf{W6}~semantic proxy\\\textbf{W7}~grounding audit};
+      {\textbf{W6}~semantic proxy\\\textbf{W7}~grounding audit\\\textbf{W8}~triad report};
     \draw[side] (gen.south) -- (eval.north);
   \end{tikzpicture}
   \caption{End-to-end pipeline.  Solid boxes are the four modelling
   stages of \Cref{sec:method}; the dashed box is the post-hoc
-  evaluation layer (\Cref{sec:w6,sec:w7}), which consumes the
+  evaluation layer (\Cref{sec:w6,sec:w7}), plus the current triad
+  diagnostic interface, which consumes the
   already-on-disk W3 paired predictions and does not re-run any
   modelling stage.  W2 and W4 are interchangeable first stages
   feeding into the same downstream pipeline; the W3 paired
@@ -1751,6 +1759,28 @@ in the sample.  This reinforces the W7 headline: T5-small on this
 prompt format is doing extractive QA even on its worst-grounded
 outputs.
 
+\subsection{W8 --- RAG triad diagnostic interface}
+\label{sec:w8-triad}
+
+The current repository adds a deterministic triad report as an
+engineering-facing diagnostic layer over the same W3 prediction
+schema.  The \texttt{mgq-rag-triad} CLI writes
+\texttt{metrics.json}, \texttt{per\_query\_triad.jsonl},
+\texttt{low\_score\_cases.jsonl}, and \texttt{report.md} for one or
+more generation configurations.  The three dimensions are kept
+separate: context relevance (qrels hit when qrels are supplied,
+otherwise query--context lexical overlap), groundedness (lexical
+content-token support in the shown passages), and answer relevance
+(\Tokenf{} against the stored reference answers).
+
+This is intentionally not promoted to a new headline result in this
+report.  Its role is to make future regressions easier to diagnose:
+a low triad row can be inspected as retrieval-side evidence failure,
+unsupported generation, answer mismatch, or a combination of those
+failure modes.  The CLI rejects unsupported evaluator names, so
+future model-assisted RAGAS/TruLens-style scoring must be opted into
+explicitly rather than silently mixed with deterministic scores.
+
 % =============================================================================
 \clearpage\section{Discussion}
 \label{sec:discussion}
@@ -2048,9 +2078,10 @@ stage number:
         sufficiency layer should trigger a second retrieval pass or
         abstention rather than forcing unsupported generation.
   \item \textbf{Evaluation hardening.}  Extend the current paired
-        bootstrap protocol with full-sample \texttt{roberta-large}
-        \bertscore{}, an alternative-family faithfulness scorer,
-        multiple-comparison correction, and TREC-DL qrels loaders.
+        bootstrap protocol and deterministic triad report with
+        full-sample \texttt{roberta-large} \bertscore{}, an
+        alternative-family faithfulness scorer, multiple-comparison
+        correction, and TREC-DL qrels loaders.
   \item \textbf{Offline/online separation.}  Split batch indexing
         from online query handling: an offline job should read data,
         chunk passages, embed, build FAISS, and persist the index;
@@ -2101,8 +2132,8 @@ metric libraries~\cite{lin2004rouge,papineni2002bleu}.
 \subsection{One config, workflow facade, and stage runners}
 
 All four W2--W5 runners are driven by a single configuration file
-at \texttt{configs/baseline.yaml}; the W6/W7 analysis scripts read
-the on-disk W3 paired predictions directly.  The current repository
+at \texttt{configs/baseline.yaml}; the W6/W7 analysis scripts and
+W8 triad CLI read the on-disk W3 paired predictions directly.  The current repository
 also exposes a workflow facade through \texttt{rag-eval} and
 installable \texttt{mgq-*} console scripts.  \Cref{tab:repro-cmds}
 records the canonical command family for each layer.
@@ -2130,6 +2161,7 @@ records the canonical command family for each layer.
     W6-A/B/C     & scripts/tag\_query\_forms.py \ /\ analyze\_rerank\_by\_query\_form.py \ /\ regression\_query\_profile.py \\
     W7 grounding & python scripts/grounding\_audit.py \\
     W7-A NLI     & same script with \mbox{--nli-n-pairs}~3000 \\
+    W8 triad     & mgq-rag-triad \mbox{--predictions} bm25=\ldots{} \mbox{--predictions} reranked=\ldots{} \mbox{--output-dir} outputs/W8\_rag\_triad \\
     Model-stack smoke & python scripts/smoke\_model\_stack.py \mbox{--config} configs/baseline.yaml \mbox{--device} cpu \\
     Serving smoke & mgq-serve \quad{\normalfont(after installing the \texttt{serve} extra)} \\
     \bottomrule
@@ -2267,6 +2299,10 @@ or worsened.
         \code{outputs/W7\_\allowbreak grounding/},
         \code{outputs/W7\_\allowbreak grounding\_\allowbreak correlation/},
         \code{outputs/W7\_\allowbreak low\_\allowbreak grounding\_\allowbreak cases/}.
+  \item \textbf{W8 triad:} deterministic context relevance,
+        groundedness, and answer relevance diagnostics over one or
+        more generation prediction files.  Output:
+        \code{outputs/W8\_\allowbreak rag\_\allowbreak triad/}.
 \end{itemize}
 \endgroup
 
