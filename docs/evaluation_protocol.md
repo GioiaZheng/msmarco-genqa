@@ -101,7 +101,9 @@ Retrieval metrics:
 
 Use `retrieval_quality_report` for matched-qid retrieval comparisons before
 interpreting deltas. Coverage counts are part of the report and should be
-checked before comparing dense, RRF, or reranked runs.
+checked before comparing dense, RRF, or reranked runs. For BM25 vs dense vs
+RRF vs RRF-plus-rerank claims, use the `mgq-retrieval-report matrix`
+subcommand so every row is evaluated on the same shared positive-qrels qid set.
 
 Query transformation:
 

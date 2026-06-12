@@ -186,6 +186,135 @@ def compare_runs_report(
     }
 
 
+def compare_run_matrix_report(
+    named_runs: Mapping[str, RunDocs],
+    qrels: Qrels,
+    *,
+    baseline_name: str | None = None,
+    k_rank: int = 10,
+    k_recall: int = 100,
+    ks_mrr: Sequence[int] = (10,),
+    ks_ndcg: Sequence[int] = (10,),
+    ks_recall: Sequence[int] = (100, 1000),
+) -> dict[str, Any]:
+    """Evaluate two or more runs on one shared qid set.
+
+    The matrix view is intended for BM25 / dense / RRF / reranked comparisons:
+    every metric is computed on qids that appear in every run and have a
+    positive qrel, so table rows are directly comparable.
+    """
+    if len(named_runs) < 2:
+        raise ValueError("matrix report requires at least two runs")
+    names = list(named_runs)
+    if len(set(names)) != len(names):
+        raise ValueError("run names must be unique")
+    baseline = baseline_name or names[0]
+    if baseline not in named_runs:
+        raise ValueError(f"baseline run {baseline!r} is not one of: {names}")
+
+    run_qids = {name: set(runs) for name, runs in named_runs.items()}
+    shared_qids = set.intersection(*run_qids.values())
+    positive_qrels = qrels_with_positive_labels(qrels)
+    matched_qids = sorted(shared_qids & positive_qrels)
+    matched_qrels = {qid: set(qrels[qid]) for qid in matched_qids}
+
+    run_summaries: dict[str, Any] = {}
+    for name, runs in named_runs.items():
+        matched_run = {qid: list(runs[qid]) for qid in matched_qids}
+        run_summaries[name] = evaluate_run_report(
+            matched_run,
+            matched_qrels,
+            run_name=name,
+            ks_mrr=ks_mrr,
+            ks_ndcg=ks_ndcg,
+            ks_recall=ks_recall,
+        )
+
+    metric_keys = sorted(
+        set.intersection(*(set(summary["metrics"]) for summary in run_summaries.values()))
+    )
+    baseline_metrics = run_summaries[baseline]["metrics"]
+    deltas_vs_baseline = {
+        name: {
+            key: run_summaries[name]["metrics"][key] - baseline_metrics[key]
+            for key in metric_keys
+        }
+        for name in names
+        if name != baseline
+    }
+
+    pairwise_rows = []
+    diagnostics_vs_baseline: dict[str, Any] = {}
+    baseline_docs = {qid: list(named_runs[baseline][qid]) for qid in matched_qids}
+    rr_key = f"rr_delta@{k_rank}"
+    recall_key = f"recall_delta@{k_recall}"
+    for name in names:
+        if name == baseline:
+            continue
+        candidate_docs = {qid: list(named_runs[name][qid]) for qid in matched_qids}
+        deltas = {
+            key: run_summaries[name]["metrics"][key] - baseline_metrics[key]
+            for key in metric_keys
+        }
+        per_query = compare_retrieval_runs_per_query(
+            baseline_docs,
+            candidate_docs,
+            matched_qrels,
+            k_rank=k_rank,
+            k_recall=k_recall,
+        )
+        bucket_counts = Counter(str(row["bucket"]) for row in per_query)
+        diagnostics_vs_baseline[name] = {
+            "buckets": dict(sorted(bucket_counts.items())),
+            f"mean_{rr_key}": _mean([row[rr_key] for row in per_query]),
+            f"mean_{recall_key}": _mean([row[recall_key] for row in per_query]),
+        }
+        pairwise_rows.append(
+            {
+                "baseline": baseline,
+                "candidate": name,
+                "deltas": deltas,
+                "diagnostics": diagnostics_vs_baseline[name],
+            }
+        )
+
+    best_by_metric: dict[str, Any] = {}
+    for key in metric_keys:
+        best_name = max(names, key=lambda name: float(run_summaries[name]["metrics"][key]))
+        best_by_metric[key] = {
+            "run_name": best_name,
+            "value": run_summaries[best_name]["metrics"][key],
+        }
+
+    return {
+        "baseline": baseline,
+        "run_order": names,
+        "runs": run_summaries,
+        "metric_keys": metric_keys,
+        "deltas_vs_baseline": deltas_vs_baseline,
+        "diagnostics_vs_baseline": diagnostics_vs_baseline,
+        "pairwise_rows": pairwise_rows,
+        "best_by_metric": best_by_metric,
+        "coverage": {
+            "n_input_runs": len(names),
+            "n_positive_qrels_qids": len(positive_qrels),
+            "n_shared_qids": len(shared_qids),
+            "n_matched_evaluable_qids": len(matched_qids),
+            "n_qids_not_shared_by_run": {
+                name: len(run_qids[name] - shared_qids) for name in names
+            },
+            "n_shared_without_positive_qrels": len(shared_qids - positive_qrels),
+        },
+        "settings": {
+            "k_rank": k_rank,
+            "k_recall": k_recall,
+            "ks_mrr": list(ks_mrr),
+            "ks_ndcg": list(ks_ndcg),
+            "ks_recall": list(ks_recall),
+        },
+    }
+
+
 def _mean(values: Sequence[float | int]) -> float:
     return mean([float(value) for value in values]) if values else 0.0
 
@@ -261,6 +390,75 @@ def render_comparison_markdown(report: Mapping[str, Any], *, qrels_path: str) ->
         lines.append(f"| {bucket} | {count} |")
     lines.append("")
     lines.append("Metric deltas are candidate minus baseline on the matched qid set.")
+    return "\n".join(lines) + "\n"
+
+
+def render_matrix_markdown(report: Mapping[str, Any], *, qrels_path: str) -> str:
+    metric_keys = list(report["metric_keys"])
+    lines = [
+        "# Retrieval matrix report",
+        "",
+        f"- Baseline for deltas: `{report['baseline']}`",
+        f"- Qrels: `{qrels_path}`",
+        f"- Matched evaluable qids: **{report['coverage']['n_matched_evaluable_qids']}**",
+        "",
+        "## Metrics",
+        "",
+        "| run | " + " | ".join(metric_keys) + " |",
+        "|---|" + "|".join("---:" for _ in metric_keys) + "|",
+    ]
+    for name in report["run_order"]:
+        metrics = report["runs"][name]["metrics"]
+        values = " | ".join(f"{float(metrics[key]):.4f}" for key in metric_keys)
+        lines.append(f"| {name} | {values} |")
+
+    lines.extend(
+        [
+            "",
+            "## Delta vs baseline",
+            "",
+            "| candidate | " + " | ".join(metric_keys) + " |",
+            "|---|" + "|".join("---:" for _ in metric_keys) + "|",
+        ]
+    )
+    for name in report["run_order"]:
+        if name == report["baseline"]:
+            continue
+        deltas = report["deltas_vs_baseline"][name]
+        values = " | ".join(f"{float(deltas[key]):+.4f}" for key in metric_keys)
+        lines.append(f"| {name} | {values} |")
+
+    lines.extend(
+        [
+            "",
+            "## Best run by metric",
+            "",
+            "| metric | run | value |",
+            "|---|---|---:|",
+        ]
+    )
+    for key in metric_keys:
+        best = report["best_by_metric"][key]
+        lines.append(f"| {key} | {best['run_name']} | {float(best['value']):.4f} |")
+
+    lines.extend(
+        [
+            "",
+            "## Coverage",
+            "",
+            "| field | value |",
+            "|---|---:|",
+        ]
+    )
+    for key, value in sorted(report["coverage"].items()):
+        if isinstance(value, Mapping):
+            continue
+        lines.append(f"| {key} | {value} |")
+    lines.append("")
+    lines.append(
+        "All metric rows use the qids shared by every input run and positive qrels; "
+        "candidate deltas are candidate minus baseline on that same qid set."
+    )
     return "\n".join(lines) + "\n"
 
 

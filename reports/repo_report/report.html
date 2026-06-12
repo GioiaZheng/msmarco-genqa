@@ -540,11 +540,12 @@ href="#sec:results" data-reference-type="ref+Label"
 data-reference="sec:results">5</a> is the central empirical chapter,
 presenting the W2–W5 retrieval numbers, the load-bearing W3 paired
 generation comparison, the W5-A first-stage head-to-head, the W6
-evaluation layer, and the W7 grounding audit. <a href="#sec:discussion"
-data-reference-type="ref+Label" data-reference="sec:discussion">6</a>
-discusses what the combination of W6 closure and W7 grounding actually
-means about where the gain comes from, treats the NLI sign flip on its
-own terms, and compares ship versus plan. <a href="#sec:limitations"
+evaluation layer, the W7 grounding audit, and the W8 triad diagnostic
+interface. <a href="#sec:discussion" data-reference-type="ref+Label"
+data-reference="sec:discussion">6</a> discusses what the combination of
+W6 closure, W7 grounding, and W8 triad diagnostics actually means about
+where the gain comes from, treats the NLI sign flip on its own terms,
+and compares ship versus plan. <a href="#sec:limitations"
 data-reference-type="ref+Label" data-reference="sec:limitations">7</a>
 states the limitations. <a href="#sec:conclusion"
 data-reference-type="ref+Label" data-reference="sec:conclusion">8</a>
@@ -574,8 +575,10 @@ grounding, and triad-evaluation workflow from one entry point.</p></li>
 via <code>pip install -e .</code> and exposes stage-level
 <code>mgq-*</code> commands plus <code>mgq-serve</code> for local
 serving experiments. The current evaluation surface includes
-<code>mgq-rag-triad</code> for context-relevance, groundedness, and
-answer-relevance diagnostics over existing generation outputs.</p></li>
+<code>mgq-retrieval-report matrix</code> for same-qid BM25 / dense / RRF
+/ reranked comparison tables and <code>mgq-rag-triad</code> for
+context-relevance, groundedness, and answer-relevance diagnostics over
+existing generation outputs.</p></li>
 <li><p><strong>Validation.</strong> Default CI runs fast pytest
 coverage, <code>ruff</code>, headline-metric metadata checks, and a
 high-confidence secret scan. Heavy model and data checks stay opt-in
@@ -586,9 +589,9 @@ records command lines, dependency-file hashes, config hashes, git state,
 output hashes, and cache/profile metadata. The documentation separates
 quick local checks from heavyweight data/model reproduction.</p></li>
 <li><p><strong>Research backlog.</strong> Follow-up issues now separate
-hybrid retrieval fusion, learned sparse retrieval, stronger rerankers,
-chunking protocols, query transformation, offline/online indexing, RAG
-triad evaluation, and adaptive retrieval sufficiency checks.</p></li>
+learned sparse retrieval, stronger rerankers, chunking protocols, query
+transformation, offline/online indexing, citation-aware generation, and
+adaptive retrieval sufficiency checks.</p></li>
 </ul>
 <h1 id="sec:relwork">Related Work</h1>
 <h4 id="the-ms-marco-ecosystem.">The MS MARCO ecosystem.</h4>
@@ -2664,10 +2667,10 @@ window. The next steps are grouped by what they test rather than by
 stage number:</p>
 <ul>
 <li><p><strong>Retrieval fusion and retrieval measurement.</strong>
-Introduce reciprocal-rank fusion for BM25 and dense retrieval, add
-learned sparse retrieval as a SPLADE-style baseline, and report MRR@10 /
-nDCG@10 consistently across first-stage, reranked, and fused retrieval
-outputs.</p></li>
+Extend the current reciprocal-rank-fusion runner and same-qid matrix
+report with learned sparse retrieval as a SPLADE-style baseline, then
+report MRR@10 / nDCG@10 consistently across first-stage, reranked, and
+fused retrieval outputs.</p></li>
 <li><p><strong>Reranker alternatives.</strong> Evaluate BGE-style
 cross-encoder reranking and a ColBERT-style late-interaction path
 against the current MiniLM cross-encoder under matched candidate sets,

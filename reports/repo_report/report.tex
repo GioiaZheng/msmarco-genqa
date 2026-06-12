@@ -380,9 +380,10 @@ actually used.  \Cref{sec:method} steps through the four modelling
 stages (W1--W5) in implementation order.  \Cref{sec:results} is the
 central empirical chapter, presenting the W2--W5 retrieval numbers,
 the load-bearing W3 paired generation comparison, the W5-A
-first-stage head-to-head, the W6 evaluation layer, and the W7
-grounding audit.  \Cref{sec:discussion} discusses what the
-combination of W6 closure and W7 grounding actually means about
+first-stage head-to-head, the W6 evaluation layer, the W7
+grounding audit, and the W8 triad diagnostic interface.
+\Cref{sec:discussion} discusses what the combination of W6 closure,
+W7 grounding, and W8 triad diagnostics actually means about
 where the gain comes from, treats the NLI sign flip on its own
 terms, and compares ship versus plan.  \Cref{sec:limitations} states
 the limitations.  \Cref{sec:conclusion} concludes.
@@ -408,6 +409,8 @@ has a clearer operating surface:
         \texttt{pip install -e .} and exposes stage-level
         \texttt{mgq-*} commands plus \texttt{mgq-serve} for local
         serving experiments.  The current evaluation surface includes
+        \texttt{mgq-retrieval-report matrix} for same-qid
+        \bmtwofive{} / dense / RRF / reranked comparison tables and
         \texttt{mgq-rag-triad} for context-relevance, groundedness,
         and answer-relevance diagnostics over existing generation
         outputs.
@@ -422,9 +425,9 @@ has a clearer operating surface:
         documentation separates quick local checks from heavyweight
         data/model reproduction.
   \item \textbf{Research backlog.}  Follow-up issues now separate
-        hybrid retrieval fusion, learned sparse retrieval, stronger
-        rerankers, chunking protocols, query transformation,
-        offline/online indexing, RAG triad evaluation, and adaptive
+        learned sparse retrieval, stronger rerankers, chunking
+        protocols, query transformation, offline/online indexing,
+        citation-aware generation, and adaptive
         retrieval sufficiency checks.
 \end{itemize}
 
@@ -2059,10 +2062,11 @@ stage number:
 
 \begin{itemize}
   \item \textbf{Retrieval fusion and retrieval measurement.}
-        Introduce reciprocal-rank fusion for \bmtwofive{} and dense
-        retrieval, add learned sparse retrieval as a SPLADE-style
-        baseline, and report \mrr{} / \ndcg{} consistently across
-        first-stage, reranked, and fused retrieval outputs.
+        Extend the current reciprocal-rank-fusion runner and
+        same-qid matrix report with learned sparse retrieval as a
+        SPLADE-style baseline, then report \mrr{} / \ndcg{}
+        consistently across first-stage, reranked, and fused
+        retrieval outputs.
   \item \textbf{Reranker alternatives.}  Evaluate BGE-style
         cross-encoder reranking and a ColBERT-style late-interaction
         path against the current MiniLM cross-encoder under matched

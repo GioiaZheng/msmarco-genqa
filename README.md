@@ -64,7 +64,8 @@ The repository includes engineering support for running, validating, and
 auditing the experiments:
 
 - **Config-driven pipeline.** `configs/pipeline.yaml` defines the BM25 → dense
-  → rerank → generation → paired-bootstrap → generator-capacity sequence.
+  → hybrid RRF → rerank → retrieval-matrix → generation → paired-bootstrap
+  → generator-capacity sequence.
   `python scripts/run_pipeline.py --dry-run` prints the executable plan without
   loading data or models.
 - **Research evaluation workflow.** `rag-eval run --config configs/baseline.yaml`
@@ -82,8 +83,8 @@ auditing the experiments:
   metrics, output hashes, config hashes, git commit, dependency fingerprints,
   and sampling metadata.
 - **Retrieval quality reports.** `mgq-retrieval-report` evaluates any
-  TREC-format `run.tsv` and compares two runs on matched qids, writing JSON
-  and Markdown artifacts for BM25, dense, RRF, and reranked outputs. See
+  TREC-format `run.tsv`, compares two runs on matched qids, and builds
+  multi-run matrices for BM25, dense, RRF, and reranked outputs. See
   [`docs/retrieval_quality_reporting.md`](docs/retrieval_quality_reporting.md).
 - **Retrieval lift diagnostics.** `scripts/analyze_retrieval_lift.py` compares
   two `run.tsv` files per query, bucketizing reranker gains/losses into
@@ -551,6 +552,27 @@ python experiments/run_hybrid_fusion.py \
 Pass `--qrels <path>` to compute MRR, nDCG, and recall in `metrics.json`.
 The runner always writes `run.tsv`, `provenance.jsonl`, `metrics.json`,
 `resolved_config.yaml`, and `manifest.json`.
+
+For a same-qid RRF comparison table, rerank the fused run and then build a
+matrix over BM25-on-sample, dense, RRF, and RRF-plus-rerank:
+
+```bash
+python experiments/run_reranker.py \
+    --input-run outputs/W4_hybrid_rrf/run.tsv \
+    --output-dir outputs/W5_hybrid_rrf_reranker \
+    --resume
+
+mgq-retrieval-report matrix \
+    --run bm25_sample=outputs/W4_dense/run_bm25_sample.tsv \
+    --run dense=outputs/W4_dense/run.tsv \
+    --run rrf=outputs/W4_hybrid_rrf/run.tsv \
+    --run rrf_reranked=outputs/W5_hybrid_rrf_reranker/run.tsv \
+    --baseline-name bm25_sample \
+    --output-dir outputs/retrieval_reports/hybrid_matrix
+```
+
+The matrix report writes `matrix.json`, `pairwise_deltas.jsonl`, and
+`report.md`; every row is restricted to the qids shared by all four runs.
 
 ### Stage 5 — Cross-encoder reranking
 

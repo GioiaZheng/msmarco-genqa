@@ -58,6 +58,35 @@ The coverage block is part of the result, not a footnote. Check
 `n_baseline_only_qids`, `n_candidate_only_qids`, and
 `n_shared_without_positive_qrels` before interpreting metric deltas.
 
+## Multi-Run Matrix
+
+Use `matrix` when a research claim compares more than two systems, such as
+BM25-on-sample, dense, RRF, and RRF followed by cross-encoder reranking. The
+command restricts every row to qids shared by all input runs and positive
+qrels before computing metrics:
+
+```bash
+mgq-retrieval-report matrix \
+  --run bm25_sample=outputs/W4_dense/run_bm25_sample.tsv \
+  --run dense=outputs/W4_dense/run.tsv \
+  --run rrf=outputs/W4_hybrid_rrf/run.tsv \
+  --run rrf_reranked=outputs/W5_hybrid_rrf_reranker/run.tsv \
+  --baseline-name bm25_sample \
+  --output-dir outputs/retrieval_reports/hybrid_matrix
+```
+
+Artifacts:
+
+- `matrix.json`: run order, per-run metrics, candidate-minus-baseline deltas,
+  best run per metric, shared-qid coverage, and movement diagnostics.
+- `pairwise_deltas.jsonl`: one row per candidate vs the named baseline.
+- `report.md`: Markdown tables for the metrics matrix, deltas, best run per
+  metric, and coverage.
+
+Prefer this command over hand-copying metrics from separate runs. Separate
+`metrics.json` files may cover different query sets; the matrix report makes
+the shared-qid restriction explicit and repeatable.
+
 ## Qrels Format
 
 If `--qrels` is omitted, the command loads MS MARCO Passage dev/small qrels
