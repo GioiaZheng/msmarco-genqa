@@ -113,6 +113,26 @@ def test_build_rag_eval_plan_includes_query_transformation(tmp_path):
     assert "outputs/query_norm/queries.jsonl" in plan[0].expected_outputs
 
 
+def test_build_rag_eval_plan_includes_rag_triad(tmp_path):
+    config_path = _write_config(tmp_path / "baseline.yaml")
+    cfg = load_rag_eval_config(config_path)
+    cfg["rag_eval"]["stages"] = ["rag_triad"]
+    cfg["rag_eval"]["triad_output_dir"] = "outputs/triad"
+    cfg["rag_eval"]["triad_context_top_k"] = 3
+
+    plan = build_rag_eval_plan(cfg, config_path=config_path)
+
+    assert [stage.name for stage in plan] == ["rag_triad"]
+    cmd = plan[0].command
+    assert cmd[:2] == ["mgq-rag-triad", "--predictions"]
+    assert "bm25=outputs/gen_bm25/predictions.jsonl" in cmd
+    assert "reranked=outputs/gen_reranked/predictions.jsonl" in cmd
+    assert cmd[cmd.index("--output-dir") + 1] == "outputs/triad"
+    assert cmd[cmd.index("--baseline-config") + 1] == "bm25"
+    assert cmd[cmd.index("--context-top-k") + 1] == "3"
+    assert "outputs/triad/per_query_triad.jsonl" in plan[0].expected_outputs
+
+
 def test_build_rag_eval_plan_rejects_unknown_stage(tmp_path):
     config_path = _write_config(tmp_path / "baseline.yaml")
     cfg = load_rag_eval_config(config_path)
