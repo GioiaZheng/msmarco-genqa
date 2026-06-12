@@ -103,4 +103,4 @@ clean-pycache:
 # `mgq-retrieve` directly with `--allow-incomplete-manifest`.
 reproduce-baseline: install
 	mgq-retrieve --require-clean-tree
-	$(PYTHON) scripts/verify_reproduction.py outputs/week02_bm25
+	$(PYTHON) scripts/verify_reproduction.py outputs/W2_bm25

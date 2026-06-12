@@ -3,14 +3,14 @@
 Inputs (both produced by ``experiments/run_generation_baseline.py`` with
 different ``--input-run`` upstreams):
 
-- ``outputs/week03_generation_bm25_full/predictions.jsonl``
-- ``outputs/week03_generation_reranked_full/predictions.jsonl``
+- ``outputs/W3_generation_bm25_full/predictions.jsonl``
+- ``outputs/W3_generation_reranked_full/predictions.jsonl``
 
 The two prediction files MUST cover the same set of query_ids (this is
 enforced by running both generators on the same eligible-query pool —
 see ``--restrict-to-run`` in the generation runner).
 
-Outputs (under ``outputs/week06_analysis/``):
+Outputs (under ``outputs/W6_analysis/``):
 
 - ``per_query_metrics.jsonl``   — one row per qid with both sides' metrics
 - ``summary.json``              — headline metric table + category breakdown
@@ -37,9 +37,9 @@ Buckets, in priority order (a qid lands in the first one that fits):
 Usage::
 
     python scripts/analyze_generation_rerank.py \\
-        --bm25-dir outputs/week03_generation_bm25_full \\
-        --reranked-dir outputs/week03_generation_reranked_full \\
-        --output-dir outputs/week06_analysis
+        --bm25-dir outputs/W3_generation_bm25_full \\
+        --reranked-dir outputs/W3_generation_reranked_full \\
+        --output-dir outputs/W6_analysis
 
 The analysis is pure-Python on the prediction files — no model load,
 no docs_store, no network beyond ``ms_marco`` for the ``query_type``
@@ -73,17 +73,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--bm25-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week03_generation_bm25_full",
+        default=PROJECT_ROOT / "outputs/W3_generation_bm25_full",
     )
     parser.add_argument(
         "--reranked-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week03_generation_reranked_full",
+        default=PROJECT_ROOT / "outputs/W3_generation_reranked_full",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week06_analysis",
+        default=PROJECT_ROOT / "outputs/W6_analysis",
     )
     parser.add_argument(
         "--cache-dir",

@@ -1,4 +1,4 @@
-"""Week 4: dense retrieval baseline on a *sampled* MS MARCO sub-corpus.
+"""W4: dense retrieval baseline on a *sampled* MS MARCO sub-corpus.
 
 Pipeline:
 
@@ -11,10 +11,10 @@ Pipeline:
    BM25-vs-dense is a head-to-head comparison on the same restricted pool.
 6. Retrieve top-K from both and evaluate MRR@10 / nDCG@10 / Recall@100,1000.
 7. Persist:
-   - ``outputs/week04_dense/metrics.json``  (unified schema, both retrievers)
-   - ``outputs/week04_dense/run.tsv``       (dense run, TREC format)
-   - ``outputs/week04_dense/run_bm25_sample.tsv`` (BM25 on sample)
-   - ``outputs/week04_dense/examples.jsonl``
+   - ``outputs/W4_dense/metrics.json``  (unified schema, both retrievers)
+   - ``outputs/W4_dense/run.tsv``       (dense run, TREC format)
+   - ``outputs/W4_dense/run_bm25_sample.tsv`` (BM25 on sample)
+   - ``outputs/W4_dense/examples.jsonl``
 
 Usage::
 
@@ -114,7 +114,7 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help=(
-            "Override the output directory. Defaults to ``outputs/week04_dense``. "
+            "Override the output directory. Defaults to ``outputs/W4_dense``. "
             "Pass a fresh path per-encoder so W4-B runs don't collide."
         ),
     )
@@ -142,7 +142,7 @@ def parse_args() -> argparse.Namespace:
 def _load_pool_doc_ids(project_root: Path) -> list[str]:
     """Return the universe of doc_ids to sample from.
 
-    We reuse the ``doc_ids.json`` already produced by Week 2's BM25 index
+    We reuse the ``doc_ids.json`` already produced by W2's BM25 index
     build (96 MB) so we don't have to iterate the full corpus a second time.
     """
     cached = project_root / "data/processed/bm25_index_msmarco/doc_ids.json"
@@ -552,7 +552,7 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     # 9. Friendly summary
     # ---------------------------------------------------------------- #
-    print("\n=== Week 4 dense retrieval (sampled corpus) ===")
+    print("\n=== W4 dense retrieval (sampled corpus) ===")
     print(f"sample size: {len(sample_doc_ids):,}  |  eval queries: {n_examples_total}")
     print(f"  {'metric':14s}  {'dense':>10s}  {'bm25_sample':>12s}  {'Δ':>9s}")
     for key in ("mrr@10", "ndcg@10", "recall@100", "recall@1000"):

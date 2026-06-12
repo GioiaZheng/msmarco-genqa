@@ -76,7 +76,7 @@ def test_schema_string_and_distinctness(tmp_path: Path):
     ``provenance.backfill.json`` with ``manifest.json`` would assume the
     run has tighter provenance than it actually does.
     """
-    output_dir = _make_output_dir(tmp_path, "week_schema")
+    output_dir = _make_output_dir(tmp_path, "stage_schema")
     doc = _build(tmp_path, output_dir)
 
     assert doc["schema"] == "msmarco-genqa.backfilled-provenance.v1"
@@ -90,7 +90,7 @@ def test_unknown_block_has_all_eight_keys(tmp_path: Path):
     """The ``unknown`` block enumerates exactly the eight unrecoverable
     dimensions of runtime provenance. Tests pin this set down so a
     well-meaning refactor doesn't quietly drop one of the explanations."""
-    output_dir = _make_output_dir(tmp_path, "week_unknown")
+    output_dir = _make_output_dir(tmp_path, "stage_unknown")
     doc = _build(tmp_path, output_dir)
 
     assert isinstance(doc["unknown"], dict)
@@ -104,7 +104,7 @@ def test_unknown_seed_block_references_seeding_patch(tmp_path: Path):
     """The seed-effectiveness footnote is the file's reason-for-being.
     It must mention the seeding patch commit so a future reader can
     trace why the file is distinct from a real manifest."""
-    output_dir = _make_output_dir(tmp_path, "week_seed_note")
+    output_dir = _make_output_dir(tmp_path, "stage_seed_note")
     doc = _build(tmp_path, output_dir)
 
     seed_note = doc["unknown"]["production_random_seed_effectiveness"]
@@ -116,7 +116,7 @@ def test_unknown_seed_block_references_seeding_patch(tmp_path: Path):
 def test_anchor_and_config_blocks(tmp_path: Path):
     """``anchor`` and ``config_at_anchor`` carry the tag/commit/hash
     triple and a comment explaining what the hash does *not* prove."""
-    output_dir = _make_output_dir(tmp_path, "week_anchor")
+    output_dir = _make_output_dir(tmp_path, "stage_anchor")
     doc = _build(tmp_path, output_dir)
 
     assert doc["anchor"]["tag"] == "v1.0-fake"
@@ -131,7 +131,7 @@ def test_anchor_and_config_blocks(tmp_path: Path):
 def test_outputs_listing_is_repo_relative_and_hashed(tmp_path: Path):
     """Each entry in ``outputs_on_disk_now`` has a repo-relative path,
     a 16-char sha256, and a non-zero size."""
-    output_dir = _make_output_dir(tmp_path, "week_outputs")
+    output_dir = _make_output_dir(tmp_path, "stage_outputs")
     doc = _build(tmp_path, output_dir)
 
     outputs = doc["outputs_on_disk_now"]
@@ -150,7 +150,7 @@ def test_idempotence_excludes_self(tmp_path: Path):
     """If a stale ``provenance.backfill.json`` is already in the output
     dir (re-running the backfill), the regenerated listing must NOT
     record itself — otherwise its own hash drifts on every run."""
-    output_dir = _make_output_dir(tmp_path, "week_idempotent")
+    output_dir = _make_output_dir(tmp_path, "stage_idempotent")
     (output_dir / "provenance.backfill.json").write_text('{"stale": true}\n')
 
     doc = _build(tmp_path, output_dir)
@@ -164,7 +164,7 @@ def test_idempotence_excludes_self(tmp_path: Path):
 def test_write_backfill_for_dir_round_trips(tmp_path: Path):
     """End-to-end: ``write_backfill_for_dir`` writes valid JSON that
     parses back to the same schema string and ``unknown`` keys."""
-    output_dir = _make_output_dir(tmp_path, "week_writeback")
+    output_dir = _make_output_dir(tmp_path, "stage_writeback")
 
     written = bp.write_backfill_for_dir(
         output_dir=output_dir,
@@ -185,7 +185,7 @@ def test_write_backfill_for_dir_round_trips(tmp_path: Path):
 def test_timestamp_is_iso_utc(tmp_path: Path):
     """``backfill_created_at`` is an ISO 8601 UTC timestamp; pinning the
     format here so accidental locale-formatting regressions are caught."""
-    output_dir = _make_output_dir(tmp_path, "week_ts")
+    output_dir = _make_output_dir(tmp_path, "stage_ts")
     doc = _build(tmp_path, output_dir)
 
     ts = doc["backfill_created_at"]
@@ -198,7 +198,7 @@ def test_skips_subdirectories_when_listing_outputs(tmp_path: Path):
     """``outputs_on_disk_now`` lists files one level deep; nested dirs
     are not recursed into (kept simple on purpose — the canonical
     output dirs are flat)."""
-    output_dir = _make_output_dir(tmp_path, "week_subdir")
+    output_dir = _make_output_dir(tmp_path, "stage_subdir")
     (output_dir / "nested").mkdir()
     (output_dir / "nested" / "leaf.txt").write_text("ignored\n")
 
@@ -238,9 +238,9 @@ def test_schema_constants_are_exported():
     holding the documented values."""
     assert bp.SCHEMA == "msmarco-genqa.backfilled-provenance.v1"
     assert bp.PRODUCED_BY == "scripts/backfill_provenance.py"
-    assert "outputs/week02_bm25" in bp.DEFAULT_TARGETS
-    assert "outputs/week04_dense" in bp.DEFAULT_TARGETS
-    assert "outputs/week05_reranker" in bp.DEFAULT_TARGETS
+    assert "outputs/W2_bm25" in bp.DEFAULT_TARGETS
+    assert "outputs/W4_dense" in bp.DEFAULT_TARGETS
+    assert "outputs/W5_reranker" in bp.DEFAULT_TARGETS
 
 
 @pytest.mark.parametrize("commit", ["abcdef012345", "5a35de9c18ea"])

@@ -49,9 +49,9 @@ SCHEMA = "msmarco-genqa.backfilled-provenance.v1"
 PRODUCED_BY = "scripts/backfill_provenance.py"
 
 DEFAULT_TARGETS = [
-    "outputs/week02_bm25",
-    "outputs/week04_dense",
-    "outputs/week05_reranker",
+    "outputs/W2_bm25",
+    "outputs/W4_dense",
+    "outputs/W5_reranker",
 ]
 CONFIG_PATH = "configs/baseline.yaml"
 

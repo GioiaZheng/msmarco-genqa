@@ -15,7 +15,7 @@ Use `evaluate` when a run should be scored independently:
 
 ```bash
 mgq-retrieval-report evaluate \
-  --run outputs/week04_dense/run.tsv \
+  --run outputs/W4_dense/run.tsv \
   --run-name dense \
   --output-dir outputs/retrieval_reports/dense
 ```
@@ -38,8 +38,8 @@ misleading comparisons when two retrieval stages cover different queries.
 
 ```bash
 mgq-retrieval-report compare \
-  --baseline-run outputs/week04_dense/run.tsv \
-  --candidate-run outputs/week04_hybrid_rrf/run.tsv \
+  --baseline-run outputs/W4_dense/run.tsv \
+  --candidate-run outputs/W4_hybrid_rrf/run.tsv \
   --baseline-name dense \
   --candidate-name rrf \
   --output-dir outputs/retrieval_reports/dense_vs_rrf

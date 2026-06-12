@@ -460,11 +460,11 @@ python experiments/run_retrieval.py --resume         # picks up at next chunk bo
 python experiments/run_retrieval.py --rebuild-index  # force fresh index
 ```
 
-Outputs: `outputs/week02_bm25/{metrics.json, run.tsv, examples.jsonl, manifest.json}`.
+Outputs: `outputs/W2_bm25/{metrics.json, run.tsv, examples.jsonl, manifest.json}`.
 
 ### Stage 3 — RAG generation
 
-Requires Stage 2 output `outputs/week02_bm25/run.tsv`.
+Requires Stage 2 output `outputs/W2_bm25/run.tsv`.
 
 ```bash
 python experiments/run_generation_baseline.py
@@ -481,8 +481,8 @@ The runner is retrieval-source agnostic — feed it any TREC-format
 
 ```bash
 python experiments/run_generation_baseline.py \
-    --input-run outputs/week05_reranker/run.tsv \
-    --output-dir outputs/week03_generation_reranked \
+    --input-run outputs/W5_reranker/run.tsv \
+    --output-dir outputs/W3_generation_reranked \
     --retrieval-source reranked
 ```
 
@@ -515,9 +515,9 @@ candidate pool and qrels caveat.
 
 ```bash
 python experiments/run_hybrid_fusion.py \
-    --input-run bm25_sample=outputs/week04_dense/run_bm25_sample.tsv \
-    --input-run dense=outputs/week04_dense/run.tsv \
-    --output-dir outputs/week04_hybrid_rrf \
+    --input-run bm25_sample=outputs/W4_dense/run_bm25_sample.tsv \
+    --input-run dense=outputs/W4_dense/run.tsv \
+    --output-dir outputs/W4_hybrid_rrf \
     --top-k 1000
 ```
 
@@ -527,7 +527,7 @@ The runner always writes `run.tsv`, `provenance.jsonl`, `metrics.json`,
 
 ### Stage 5 — Cross-encoder reranking
 
-Requires Stage 4 output `outputs/week04_dense/run.tsv`.
+Requires Stage 4 output `outputs/W4_dense/run.tsv`.
 
 ```bash
 python experiments/run_reranker.py
@@ -554,28 +554,28 @@ The block reproduced in *Generation × retrieval source*:
 ```bash
 # Generation on full dev/small (~1 h each on a 6-core CPU; mutually restricted):
 python experiments/run_generation_baseline.py \
-    --input-run outputs/week02_bm25/run.tsv \
-    --output-dir outputs/week03_generation_bm25_full \
+    --input-run outputs/W2_bm25/run.tsv \
+    --output-dir outputs/W3_generation_bm25_full \
     --retrieval-source bm25 \
-    --restrict-to-run outputs/week05_reranker_full/run.tsv \
+    --restrict-to-run outputs/W5_reranker_full/run.tsv \
     --num-eval-queries 9999
 
 python experiments/run_generation_baseline.py \
-    --input-run outputs/week05_reranker_full/run.tsv \
-    --output-dir outputs/week03_generation_reranked_full \
+    --input-run outputs/W5_reranker_full/run.tsv \
+    --output-dir outputs/W3_generation_reranked_full \
     --retrieval-source reranked \
-    --restrict-to-run outputs/week02_bm25/run.tsv \
+    --restrict-to-run outputs/W2_bm25/run.tsv \
     --num-eval-queries 9999
 
 # Paired bootstrap + bucket analysis + grounding:
 python scripts/bootstrap_generation_comparison.py \
-    --bm25-dir outputs/week03_generation_bm25_full \
-    --reranked-dir outputs/week03_generation_reranked_full \
-    --output-dir outputs/week03_generation_bootstrap_full
+    --bm25-dir outputs/W3_generation_bm25_full \
+    --reranked-dir outputs/W3_generation_reranked_full \
+    --output-dir outputs/W3_generation_bootstrap_full
 python scripts/analyze_generation_rerank.py \
-    --bm25-dir outputs/week03_generation_bm25_full \
-    --reranked-dir outputs/week03_generation_reranked_full \
-    --output-dir outputs/week06_analysis
+    --bm25-dir outputs/W3_generation_bm25_full \
+    --reranked-dir outputs/W3_generation_reranked_full \
+    --output-dir outputs/W6_analysis
 python scripts/bertscore_paired_eval.py --n-pairs 3000
 python scripts/regression_failure_taxonomy.py
 ```
@@ -654,13 +654,11 @@ All knobs live in [`configs/baseline.yaml`](configs/baseline.yaml). Key ones:
 | Artifact manifest | wired | `src/msmarco_genqa/util/manifest.py` writes `outputs/<stage>/manifest.json` alongside `metrics.json`. Captures git commit + dirty flag, command, config hash, dependency-file hashes, per-output sha256 (truncated). |
 | Historical experiment numbers in `reports/repo_report/report.pdf` | historical | Reflect the dev environment at tag `v1.0-first-report`. Current dependencies are security-refreshed; use the first-report tag for archival reproduction. |
 
-**Historical output-path naming.** `outputs/week02_bm25/`,
-`outputs/week04_dense/`, `outputs/week05_reranker/` retain
-`outputs/weekNN_<topic>/` names even though the rest of the repo
-speaks in *stages*. These are the snapshot anchors referenced by the
-`provenance.backfill.json` files committed alongside tag
-`v1.0-first-report`; renaming them would
-invalidate those provenance records.
+**Historical output-path naming.** Historical snapshot anchors now use
+stage-oriented names such as `outputs/W2_bm25/`, `outputs/W4_dense/`,
+and `outputs/W5_reranker/`. Their committed `provenance.backfill.json`
+files remain the archival reproduction anchors for tag
+`v1.0-first-report`.
 
 Limitations to be aware of:
 

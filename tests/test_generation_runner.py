@@ -81,8 +81,8 @@ class TestLoadRuns:
 @pytest.fixture
 def fake_cfg() -> dict:
     return {
-        "eval_retrieval": {"output_dir": "outputs/week02_bm25"},
-        "generation": {"output_dir": "outputs/week03_generation"},
+        "eval_retrieval": {"output_dir": "outputs/W2_bm25"},
+        "generation": {"output_dir": "outputs/W3_generation"},
     }
 
 
@@ -95,13 +95,13 @@ class TestResolveInputRun:
     def test_default_is_bm25_w2_run(self, fake_cfg, fake_root):
         args = parse_args([])
         assert resolve_input_run(args, fake_cfg, fake_root) == (
-            fake_root / "outputs/week02_bm25/run.tsv"
+            fake_root / "outputs/W2_bm25/run.tsv"
         )
 
     def test_cli_override_relative(self, fake_cfg, fake_root):
-        args = parse_args(["--input-run", "outputs/week05_reranker/run.tsv"])
+        args = parse_args(["--input-run", "outputs/W5_reranker/run.tsv"])
         assert resolve_input_run(args, fake_cfg, fake_root) == (
-            fake_root / "outputs/week05_reranker/run.tsv"
+            fake_root / "outputs/W5_reranker/run.tsv"
         )
 
     def test_cli_override_absolute(self, fake_cfg, fake_root, tmp_path):
@@ -115,13 +115,13 @@ class TestResolveOutputDir:
     def test_default_is_w3_output_dir(self, fake_cfg, fake_root):
         args = parse_args([])
         assert resolve_output_dir(args, fake_cfg, fake_root) == (
-            fake_root / "outputs/week03_generation"
+            fake_root / "outputs/W3_generation"
         )
 
     def test_cli_override(self, fake_cfg, fake_root):
-        args = parse_args(["--output-dir", "outputs/week03_generation_reranked"])
+        args = parse_args(["--output-dir", "outputs/W3_generation_reranked"])
         assert resolve_output_dir(args, fake_cfg, fake_root) == (
-            fake_root / "outputs/week03_generation_reranked"
+            fake_root / "outputs/W3_generation_reranked"
         )
 
 
@@ -134,13 +134,13 @@ class TestInferRetrievalSource:
     @pytest.mark.parametrize(
         "path, expected",
         [
-            (Path("outputs/week02_bm25/run.tsv"), "bm25"),
+            (Path("outputs/W2_bm25/run.tsv"), "bm25"),
             (Path("outputs/bm25_full/run.tsv"), "bm25"),
-            (Path("outputs/week04_dense/run.tsv"), "dense"),
+            (Path("outputs/W4_dense/run.tsv"), "dense"),
             (Path("outputs/dense_minilm/run.tsv"), "dense"),
-            (Path("outputs/week05_reranker/run.tsv"), "reranked"),
+            (Path("outputs/W5_reranker/run.tsv"), "reranked"),
             (Path("outputs/some_rerank/run.tsv"), "reranked"),
-            (Path("outputs/week06_mystery/run.tsv"), "unknown"),
+            (Path("outputs/W6_mystery/run.tsv"), "unknown"),
         ],
     )
     def test_labels(self, path: Path, expected: str):
@@ -197,18 +197,18 @@ def test_documented_reranked_invocation_parses(fake_cfg, fake_root):
     """
     argv = [
         "--input-run",
-        "outputs/week05_reranker/run.tsv",
+        "outputs/W5_reranker/run.tsv",
         "--output-dir",
-        "outputs/week03_generation_reranked",
+        "outputs/W3_generation_reranked",
         "--retrieval-source",
         "reranked",
     ]
     args = parse_args(argv)
     assert resolve_input_run(args, fake_cfg, fake_root) == (
-        fake_root / "outputs/week05_reranker/run.tsv"
+        fake_root / "outputs/W5_reranker/run.tsv"
     )
     assert resolve_output_dir(args, fake_cfg, fake_root) == (
-        fake_root / "outputs/week03_generation_reranked"
+        fake_root / "outputs/W3_generation_reranked"
     )
     assert args.retrieval_source == "reranked"
     # restrict_to_run not set in this canonical invocation.

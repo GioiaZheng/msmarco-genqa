@@ -21,7 +21,7 @@ This driver chains:
 4. ``scripts/grounding_audit.py --nli-n-pairs 3000`` for lex / 3-gram /
    NLI grounding Δ.
 
-Output: ``outputs/week07b_generator_comparison/`` with a side-by-side
+Output: ``outputs/W7b_generator_comparison/`` with a side-by-side
 table of every (generator, arm) cell and the cross-generator
 Δ-of-Δ on the NLI metric (the load-bearing comparison).
 
@@ -50,17 +50,17 @@ logger = logging.getLogger("run_generator_capacity_sweep")
 # headline metrics we pull from to populate the comparison table.
 T5_SMALL_CELLS = {
     "bm25": {
-        "predictions": "outputs/week03_generation_bm25_full",
+        "predictions": "outputs/W3_generation_bm25_full",
         "label": "T5-small × BM25",
     },
     "rerank": {
-        "predictions": "outputs/week03_generation_reranked_full",
+        "predictions": "outputs/W3_generation_reranked_full",
         "label": "T5-small × Reranked",
     },
 }
-T5_SMALL_BOOTSTRAP = "outputs/week03_generation_bootstrap_full/bootstrap_ci.json"
-T5_SMALL_BERTSCORE = "outputs/week06_bertscore_proxy/bertscore_proxy_ci.json"
-T5_SMALL_GROUNDING = "outputs/week07_grounding/summary.json"
+T5_SMALL_BOOTSTRAP = "outputs/W3_generation_bootstrap_full/bootstrap_ci.json"
+T5_SMALL_BERTSCORE = "outputs/W6_bertscore_proxy/bertscore_proxy_ci.json"
+T5_SMALL_GROUNDING = "outputs/W7_grounding/summary.json"
 
 
 def parse_args() -> argparse.Namespace:
@@ -93,7 +93,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week07b_generator_comparison",
+        default=PROJECT_ROOT / "outputs/W7b_generator_comparison",
     )
     return p.parse_args()
 
@@ -116,8 +116,8 @@ def step_generate_t5_base(args: argparse.Namespace) -> dict[str, str]:
     Mutual ``--restrict-to-run`` so the two arms cover the same qids.
     """
     safe = model_safe_name(args.model_name)
-    out_bm25 = f"outputs/week07b_generation_{safe}_bm25"
-    out_rerank = f"outputs/week07b_generation_{safe}_reranked"
+    out_bm25 = f"outputs/W7b_generation_{safe}_bm25"
+    out_rerank = f"outputs/W7b_generation_{safe}_reranked"
     if args.skip_generation:
         return {"bm25": out_bm25, "rerank": out_rerank}
 
@@ -130,19 +130,19 @@ def step_generate_t5_base(args: argparse.Namespace) -> dict[str, str]:
     ]
     run_subproc(
         common + [
-            "--input-run", "outputs/week02_bm25/run.tsv",
+            "--input-run", "outputs/W2_bm25/run.tsv",
             "--output-dir", out_bm25,
             "--retrieval-source", "bm25",
-            "--restrict-to-run", "outputs/week05_reranker_full/run.tsv",
+            "--restrict-to-run", "outputs/W5_reranker_full/run.tsv",
         ],
         f"generate {args.model_name} × BM25",
     )
     run_subproc(
         common + [
-            "--input-run", "outputs/week05_reranker_full/run.tsv",
+            "--input-run", "outputs/W5_reranker_full/run.tsv",
             "--output-dir", out_rerank,
             "--retrieval-source", "reranked",
-            "--restrict-to-run", "outputs/week02_bm25/run.tsv",
+            "--restrict-to-run", "outputs/W2_bm25/run.tsv",
         ],
         f"generate {args.model_name} × Reranked",
     )
@@ -150,7 +150,7 @@ def step_generate_t5_base(args: argparse.Namespace) -> dict[str, str]:
 
 
 def step_bootstrap(args: argparse.Namespace, gen_dirs: dict[str, str]) -> str:
-    out_dir = f"outputs/week07b_bootstrap_{model_safe_name(args.model_name)}"
+    out_dir = f"outputs/W7b_bootstrap_{model_safe_name(args.model_name)}"
     if args.skip_bootstrap:
         return out_dir
     run_subproc(
@@ -167,7 +167,7 @@ def step_bootstrap(args: argparse.Namespace, gen_dirs: dict[str, str]) -> str:
 
 
 def step_bertscore(args: argparse.Namespace, gen_dirs: dict[str, str]) -> str:
-    out_dir = f"outputs/week07b_bertscore_{model_safe_name(args.model_name)}"
+    out_dir = f"outputs/W7b_bertscore_{model_safe_name(args.model_name)}"
     if args.skip_bertscore:
         return out_dir
     run_subproc(
@@ -185,7 +185,7 @@ def step_bertscore(args: argparse.Namespace, gen_dirs: dict[str, str]) -> str:
 
 
 def step_grounding(args: argparse.Namespace, gen_dirs: dict[str, str]) -> str:
-    out_dir = f"outputs/week07b_grounding_{model_safe_name(args.model_name)}"
+    out_dir = f"outputs/W7b_grounding_{model_safe_name(args.model_name)}"
     if args.skip_grounding:
         return out_dir
     run_subproc(

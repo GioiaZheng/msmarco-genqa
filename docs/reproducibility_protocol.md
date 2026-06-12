@@ -23,7 +23,7 @@ make reproduce-baseline
 To audit a recorded run:
 
 ```bash
-python scripts/verify_reproduction.py outputs/week02_bm25
+python scripts/verify_reproduction.py outputs/W2_bm25
 ```
 
 ## Manifest schema v2
@@ -153,7 +153,7 @@ queries, full corpus).
 ### 2. Verify
 
 ```bash
-python scripts/verify_reproduction.py outputs/week02_bm25
+python scripts/verify_reproduction.py outputs/W2_bm25
 ```
 
 Five checks (any failure → exit 1):
