@@ -72,6 +72,11 @@ Generation consumes a `run.tsv`, retrieves the top-k passages, writes
 the model. That persisted prompt context is what makes later grounding audits
 possible without re-running generation.
 
+Optional context packing runs between passage lookup and prompt construction.
+Packed runs must preserve source document ids and span metadata so downstream
+grounding, triad, and context-cost reports can still explain what evidence was
+shown to the model.
+
 The current generator is frozen T5-small. Current evidence suggests it mostly
 extracts from the prompt. Future generator work should therefore treat prompt
 format, passage structure, citation behaviour, and model capacity as
@@ -85,6 +90,8 @@ bootstrap confidence intervals are meaningful.
 
 Evaluation scripts read committed code and gitignored outputs. They should
 write machine-readable summaries first, then console tables as a convenience.
+Context-packing comparisons are evaluated on matched prediction query ids and
+should be interpreted as a cost-quality tradeoff, not as a new retrieval result.
 
 ## Orchestration
 

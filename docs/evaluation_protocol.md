@@ -114,6 +114,14 @@ Query transformation:
 - Use `mgq-query-transform-ablation` to combine method summaries and optional
   retrieval metrics into `ablation.json` and `report.md`.
 
+Context packing:
+
+- Keep uncompressed generation outputs as the baseline.
+- Write packed-prompt generation outputs to a separate directory.
+- Compare with `mgq-context-packing-report` on matched query ids.
+- Interpret context-character savings together with Token-F1, exact match,
+  grounding, and RAG triad outputs.
+
 Grounding metrics:
 
 - lexical content-token grounding

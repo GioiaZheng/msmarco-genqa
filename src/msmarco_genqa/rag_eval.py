@@ -25,6 +25,8 @@ DEFAULT_STAGE_ORDER: tuple[str, ...] = (
     "retrieval_lift_analysis",
     "generation_bm25",
     "generation_reranked",
+    "generation_reranked_packed",
+    "context_packing_report",
     "paired_bootstrap_ci",
     "grounding_audit",
     "rag_triad",
@@ -110,6 +112,12 @@ def _build_all_stages(
     reranked_generation_dir = _as_posix(
         settings.get("reranked_generation_dir", _default_named_dir(generation_dir, "reranked_full"))
     )
+    packed_generation_dir = _as_posix(
+        settings.get("packed_generation_dir", "outputs/W3_generation_reranked_packed")
+    )
+    context_packing_report_dir = _as_posix(
+        settings.get("context_packing_report_dir", "outputs/W9_context_packing")
+    )
     bootstrap_dir = _as_posix(
         settings.get("bootstrap_output_dir", _default_named_dir(generation_dir, "bootstrap_full"))
     )
@@ -128,6 +136,10 @@ def _build_all_stages(
     num_eval_queries = str(settings.get("num_eval_queries", cfg["generation"].get("num_eval_queries", 200)))
     n_resamples = str(settings.get("bootstrap_resamples", 10000))
     grounding_nli_pairs = str(settings.get("grounding_nli_pairs", 0))
+    context_max_chars = str(settings.get("context_max_chars", 900))
+    context_max_passage_chars = str(settings.get("context_max_passage_chars", 320))
+    context_sentence_selection = str(settings.get("context_sentence_selection", "query_overlap"))
+    context_ordering = str(settings.get("context_ordering", "rank"))
 
     rerank_command = [
         "mgq-rerank",
@@ -175,6 +187,33 @@ def _build_all_stages(
         triad_command.extend(["--qrels", _as_posix(retrieval_qrels_path)])
     if triad_context_top_k is not None:
         triad_command.extend(["--context-top-k", str(triad_context_top_k)])
+
+    packed_generation_command = [
+        "mgq-generate",
+        "--config",
+        config_arg,
+        "--input-run",
+        reranker_run,
+        "--output-dir",
+        packed_generation_dir,
+        "--retrieval-source",
+        "reranked_packed",
+        "--restrict-to-run",
+        bm25_run,
+        "--num-eval-queries",
+        num_eval_queries,
+        "--context-packing",
+        "--context-max-chars",
+        context_max_chars,
+        "--context-max-passage-chars",
+        context_max_passage_chars,
+        "--context-sentence-selection",
+        context_sentence_selection,
+        "--context-ordering",
+        context_ordering,
+    ]
+    if settings.get("context_deduplicate", True) is False:
+        packed_generation_command.append("--no-context-deduplicate")
 
     return {
         "query_transformation": RAGEvalStage(
@@ -282,6 +321,37 @@ def _build_all_stages(
             expected_outputs=[
                 _as_posix(Path(reranked_generation_dir) / "predictions.jsonl"),
                 _as_posix(Path(reranked_generation_dir) / "metrics.json"),
+            ],
+        ),
+        "generation_reranked_packed": RAGEvalStage(
+            name="generation_reranked_packed",
+            description="Generation from reranked passages with deterministic context packing.",
+            command=packed_generation_command,
+            expected_outputs=[
+                _as_posix(Path(packed_generation_dir) / "predictions.jsonl"),
+                _as_posix(Path(packed_generation_dir) / "metrics.json"),
+            ],
+        ),
+        "context_packing_report": RAGEvalStage(
+            name="context_packing_report",
+            description="Matched-qid answer-quality and context-cost report for packed prompts.",
+            command=[
+                "mgq-context-packing-report",
+                "--baseline-predictions",
+                _as_posix(Path(reranked_generation_dir) / "predictions.jsonl"),
+                "--compressed-predictions",
+                _as_posix(Path(packed_generation_dir) / "predictions.jsonl"),
+                "--baseline-name",
+                "reranked",
+                "--compressed-name",
+                "reranked_packed",
+                "--output-dir",
+                context_packing_report_dir,
+            ],
+            expected_outputs=[
+                _as_posix(Path(context_packing_report_dir) / "comparison.json"),
+                _as_posix(Path(context_packing_report_dir) / "per_query.jsonl"),
+                _as_posix(Path(context_packing_report_dir) / "report.md"),
             ],
         ),
         "paired_bootstrap_ci": RAGEvalStage(

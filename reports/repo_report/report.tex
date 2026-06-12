@@ -403,14 +403,17 @@ has a clearer operating surface:
 \begin{itemize}
   \item \textbf{Workflow facade.}  \texttt{rag-eval run --config
         configs/baseline.yaml} builds or dry-runs the configured
-        retrieval, reranking, generation, bootstrap, grounding, and
-        triad-evaluation workflow from one entry point.
+        retrieval, reranking, generation, context-packing,
+        bootstrap, grounding, and triad-evaluation workflow from one
+        entry point.
   \item \textbf{Package and CLI surface.}  The project installs via
         \texttt{pip install -e .} and exposes stage-level
         \texttt{mgq-*} commands plus \texttt{mgq-serve} for local
         serving experiments.  The current evaluation surface includes
         \texttt{mgq-retrieval-report matrix} for same-qid
         \bmtwofive{} / dense / RRF / reranked comparison tables and
+        \texttt{mgq-context-packing-report} for packed-vs-plain
+        generation prompt comparisons, plus
         \texttt{mgq-rag-triad} for context-relevance, groundedness,
         and answer-relevance diagnostics over existing generation
         outputs.
@@ -654,11 +657,13 @@ post-hoc analysis layers (W6--W8) in implementation order.  All
 of W2--W5 ship as scripted command-line entrypoints under
 \texttt{experiments/run\_*.py}, driven by a single configuration
 file at \texttt{configs/baseline.yaml}; W6--W7 are analysis scripts
-under \texttt{scripts/*.py}, and W8 is an installable
-\texttt{mgq-rag-triad} diagnostic that reads W3's already-on-disk
-paired predictions and writes JSON / Markdown summaries beneath
-\texttt{outputs/W6\_*/}, \texttt{outputs/W7\_*/}, and
-\texttt{outputs/W8\_rag\_triad/}.
+under \texttt{scripts/*.py}, W8 is an installable
+\texttt{mgq-rag-triad} diagnostic, and W9 is an installable
+\texttt{mgq-context-packing-report} comparison over packed versus
+plain generation predictions.  These layers write JSON / Markdown
+summaries beneath \texttt{outputs/W6\_*/}, \texttt{outputs/W7\_*/},
+\texttt{outputs/W8\_rag\_triad/}, and
+\texttt{outputs/W9\_context\_packing/}.
 \Cref{sec:reproducibility} documents the reproducibility scaffold.
 
 \Cref{fig:pipeline} sketches the end-to-end flow and the place each
@@ -733,7 +738,8 @@ costs the full hour.
 \devsmall{} qrels.  \mrr{} follows the standard \msmarco{}
 definition (reciprocal rank of the first relevant document in the
 top-$10$, zero if none); \recallH{} and \recallK{} are computed at
-$K\!\in\!\{100,1000\}$; \ndcg{} uses binary gain.
+$K\!\in\!\{100,1000\}$; \ndcg{} uses binary gain following the
+standard discounted cumulative gain formulation~\cite{jarvelin2002ndcg}.
 
 \subsection{W3 --- RAG generation baseline}
 \label{sec:w3}
@@ -1784,6 +1790,29 @@ failure modes.  The CLI rejects unsupported evaluator names, so
 future model-assisted RAGAS/TruLens-style scoring must be opted into
 explicitly rather than silently mixed with deterministic scores.
 
+\subsection{W9 --- context packing and prompt compression}
+\label{sec:w9-context-packing}
+
+The current repository also adds a deterministic context-packing
+layer for generation runs.  It is disabled for the historical
+baselines, but can be enabled with \texttt{mgq-generate
+--context-packing}.  The packer uses character budgets as a
+CPU-friendly proxy for token cost, supports per-passage trimming,
+query-overlap sentence selection, deduplication, and rank-preserving
+ordering, and records span metadata that maps the packed prompt
+context back to source document ids.
+
+The paired report is produced by
+\texttt{mgq-context-packing-report}.  It compares an uncompressed
+\texttt{predictions.jsonl} file against a compressed one on matched
+query ids, then writes \texttt{comparison.json},
+\texttt{per\_query.jsonl}, and \texttt{report.md}.  The report keeps
+answer-quality deltas (\Tokenf{} and exact match) separate from
+context-character savings, so compression can be evaluated as a
+cost--quality trade-off rather than as a hidden prompt-format change.
+Grounding and W8 triad reports should be read alongside this output
+before treating a packed prompt as a better RAG configuration.
+
 % =============================================================================
 \clearpage\section{Discussion}
 \label{sec:discussion}
@@ -2093,9 +2122,9 @@ stage number:
         generation requests through a narrow API.
   \item \textbf{Generator and prompt ablations.}  Continue the
         T5-base / FLAN-T5 capacity sweep, citation-aware prompts, and
-        prompt-compression work to test whether the current
-        extractive-grounding ceiling can be moved without sacrificing
-        faithfulness.
+        tokenizer-aware prompt-compression work to test whether the
+        current extractive-grounding ceiling can be moved without
+        sacrificing faithfulness.
 \end{itemize}
 
 The reproducibility scaffold (\Cref{sec:reproducibility}) is
@@ -2166,6 +2195,7 @@ records the canonical command family for each layer.
     W7 grounding & python scripts/grounding\_audit.py \\
     W7-A NLI     & same script with \mbox{--nli-n-pairs}~3000 \\
     W8 triad     & mgq-rag-triad \mbox{--predictions} bm25=\ldots{} \mbox{--predictions} reranked=\ldots{} \mbox{--output-dir} outputs/W8\_rag\_triad \\
+    W9 context packing & mgq-context-packing-report \mbox{--baseline-predictions} \ldots{} \mbox{--compressed-predictions} \ldots{} \mbox{--output-dir} outputs/W9\_context\_packing \\
     Model-stack smoke & python scripts/smoke\_model\_stack.py \mbox{--config} configs/baseline.yaml \mbox{--device} cpu \\
     Serving smoke & mgq-serve \quad{\normalfont(after installing the \texttt{serve} extra)} \\
     \bottomrule
@@ -2307,6 +2337,10 @@ or worsened.
         groundedness, and answer relevance diagnostics over one or
         more generation prediction files.  Output:
         \code{outputs/W8\_\allowbreak rag\_\allowbreak triad/}.
+  \item \textbf{W9 context packing:} matched-qid comparison of
+        plain versus packed generation prediction files, including
+        answer-quality deltas and context-character savings.  Output:
+        \code{outputs/W9\_\allowbreak context\_\allowbreak packing/}.
 \end{itemize}
 \endgroup
 

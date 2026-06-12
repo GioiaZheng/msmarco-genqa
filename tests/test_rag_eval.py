@@ -133,6 +133,37 @@ def test_build_rag_eval_plan_includes_rag_triad(tmp_path):
     assert "outputs/triad/per_query_triad.jsonl" in plan[0].expected_outputs
 
 
+def test_build_rag_eval_plan_includes_context_packing_report(tmp_path):
+    config_path = _write_config(tmp_path / "baseline.yaml")
+    cfg = load_rag_eval_config(config_path)
+    cfg["rag_eval"]["stages"] = ["generation_reranked_packed", "context_packing_report"]
+    cfg["rag_eval"]["packed_generation_dir"] = "outputs/gen_reranked_packed"
+    cfg["rag_eval"]["context_packing_report_dir"] = "outputs/context_packing"
+    cfg["rag_eval"]["context_max_chars"] = 700
+    cfg["rag_eval"]["context_max_passage_chars"] = 250
+    cfg["rag_eval"]["context_ordering"] = "shorter_first"
+    cfg["rag_eval"]["context_deduplicate"] = False
+
+    plan = build_rag_eval_plan(cfg, config_path=config_path)
+
+    assert [stage.name for stage in plan] == [
+        "generation_reranked_packed",
+        "context_packing_report",
+    ]
+    packed_cmd = plan[0].command
+    assert packed_cmd[packed_cmd.index("--input-run") + 1] == "outputs/reranked/run.tsv"
+    assert packed_cmd[packed_cmd.index("--output-dir") + 1] == "outputs/gen_reranked_packed"
+    assert packed_cmd[packed_cmd.index("--context-max-chars") + 1] == "700"
+    assert packed_cmd[packed_cmd.index("--context-max-passage-chars") + 1] == "250"
+    assert packed_cmd[packed_cmd.index("--context-ordering") + 1] == "shorter_first"
+    assert "--no-context-deduplicate" in packed_cmd
+    report_cmd = plan[1].command
+    assert report_cmd[:1] == ["mgq-context-packing-report"]
+    assert "outputs/gen_reranked/predictions.jsonl" in report_cmd
+    assert "outputs/gen_reranked_packed/predictions.jsonl" in report_cmd
+    assert "outputs/context_packing/comparison.json" in plan[1].expected_outputs
+
+
 def test_build_rag_eval_plan_rejects_unknown_stage(tmp_path):
     config_path = _write_config(tmp_path / "baseline.yaml")
     cfg = load_rag_eval_config(config_path)

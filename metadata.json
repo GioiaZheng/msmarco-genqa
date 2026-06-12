@@ -14,6 +14,7 @@
     "cross_encoder_reranking",
     "retrieval_lift_diagnostics",
     "rag_generation",
+    "context_packing_evaluation",
     "paired_bootstrap_evaluation",
     "semantic_grounding_audit",
     "rag_triad_evaluation"
@@ -36,6 +37,7 @@
     "manifested_runs": true,
     "query_level_retrieval_diagnostics": true,
     "retrieval_matrix_reporting": true,
+    "context_packing_reporting": true,
     "rag_triad_reporting": true,
     "experiment_tracking": ["jsonl", "mlflow_optional", "wandb_optional"],
     "serving": ["fastapi_optional"]

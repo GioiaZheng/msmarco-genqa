@@ -285,6 +285,8 @@ study</a></li>
 </ul></li>
 <li><a href="#sec:w8-triad" id="toc-sec:w8-triad">W8 — RAG triad
 diagnostic interface</a></li>
+<li><a href="#sec:w9-context-packing" id="toc-sec:w9-context-packing">W9
+— context packing and prompt compression</a></li>
 </ul></li>
 <li><a href="#sec:discussion" id="toc-sec:discussion">Discussion</a>
 <ul>
@@ -569,16 +571,18 @@ a clearer operating surface:</p>
 <ul>
 <li><p><strong>Workflow facade.</strong>
 <code>rag-eval run --config configs/baseline.yaml</code> builds or
-dry-runs the configured retrieval, reranking, generation, bootstrap,
-grounding, and triad-evaluation workflow from one entry point.</p></li>
+dry-runs the configured retrieval, reranking, generation,
+context-packing, bootstrap, grounding, and triad-evaluation workflow
+from one entry point.</p></li>
 <li><p><strong>Package and CLI surface.</strong> The project installs
 via <code>pip install -e .</code> and exposes stage-level
 <code>mgq-*</code> commands plus <code>mgq-serve</code> for local
 serving experiments. The current evaluation surface includes
 <code>mgq-retrieval-report matrix</code> for same-qid BM25 / dense / RRF
-/ reranked comparison tables and <code>mgq-rag-triad</code> for
-context-relevance, groundedness, and answer-relevance diagnostics over
-existing generation outputs.</p></li>
+/ reranked comparison tables and <code>mgq-context-packing-report</code>
+for packed-vs-plain generation prompt comparisons, plus
+<code>mgq-rag-triad</code> for context-relevance, groundedness, and
+answer-relevance diagnostics over existing generation outputs.</p></li>
 <li><p><strong>Validation.</strong> Default CI runs fast pytest
 coverage, <code>ruff</code>, headline-metric metadata checks, and a
 high-confidence secret scan. Heavy model and data checks stay opt-in
@@ -823,11 +827,13 @@ post-hoc analysis layers (W6–W8) in implementation order. All of W2–W5
 ship as scripted command-line entrypoints under
 <code>experiments/run_*.py</code>, driven by a single configuration file
 at <code>configs/baseline.yaml</code>; W6–W7 are analysis scripts under
-<code>scripts/*.py</code>, and W8 is an installable
-<code>mgq-rag-triad</code> diagnostic that reads W3’s already-on-disk
-paired predictions and writes JSON / Markdown summaries beneath
-<code>outputs/W6_*/</code>, <code>outputs/W7_*/</code>, and
-<code>outputs/W8_rag_triad/</code>. <a href="#sec:reproducibility"
+<code>scripts/*.py</code>, W8 is an installable
+<code>mgq-rag-triad</code> diagnostic, and W9 is an installable
+<code>mgq-context-packing-report</code> comparison over packed versus
+plain generation predictions. These layers write JSON / Markdown
+summaries beneath <code>outputs/W6_*/</code>,
+<code>outputs/W7_*/</code>, <code>outputs/W8_rag_triad/</code>, and
+<code>outputs/W9_context_packing/</code>. <a href="#sec:reproducibility"
 data-reference-type="ref+Label"
 data-reference="sec:reproducibility">9</a> documents the reproducibility
 scaffold.</p>
@@ -881,7 +887,9 @@ definition (reciprocal rank of the first relevant document in the
 top-<span class="math inline">10</span>, zero if none); Recall@100 and
 Recall@1000 are computed at <span
 class="math inline"><em>K</em> ∈ {100, 1000}</span>; nDCG@10 uses binary
-gain.</p>
+gain following the standard discounted cumulative gain formulation <span
+class="citation" data-cites="jarvelin2002ndcg">(Järvelin and Kekäläinen
+2002)</span>.</p>
 <h2 id="sec:w3">W3 — RAG generation baseline</h2>
 <h4 id="generator.">Generator.</h4>
 <p>A frozen T5-small <span class="citation"
@@ -2300,6 +2308,26 @@ unsupported generation, answer mismatch, or a combination of those
 failure modes. The CLI rejects unsupported evaluator names, so future
 model-assisted RAGAS/TruLens-style scoring must be opted into explicitly
 rather than silently mixed with deterministic scores.</p>
+<h2 id="sec:w9-context-packing">W9 — context packing and prompt
+compression</h2>
+<p>The current repository also adds a deterministic context-packing
+layer for generation runs. It is disabled for the historical baselines,
+but can be enabled with <code>mgq-generate --context-packing</code>. The
+packer uses character budgets as a CPU-friendly proxy for token cost,
+supports per-passage trimming, query-overlap sentence selection,
+deduplication, and rank-preserving ordering, and records span metadata
+that maps the packed prompt context back to source document ids.</p>
+<p>The paired report is produced by
+<code>mgq-context-packing-report</code>. It compares an uncompressed
+<code>predictions.jsonl</code> file against a compressed one on matched
+query ids, then writes <code>comparison.json</code>,
+<code>per_query.jsonl</code>, and <code>report.md</code>. The report
+keeps answer-quality deltas (Token-F<sub>1</sub> and exact match)
+separate from context-character savings, so compression can be evaluated
+as a cost–quality trade-off rather than as a hidden prompt-format
+change. Grounding and W8 triad reports should be read alongside this
+output before treating a packed prompt as a better RAG
+configuration.</p>
 <h1 id="sec:discussion">Discussion</h1>
 <h2 id="sec:discussion-where">Where does the rerank gain come from?</h2>
 <p>Combining <a href="#sec:gen-x-retrieval"
@@ -2696,8 +2724,9 @@ should load the index and serve retrieval or generation requests through
 a narrow API.</p></li>
 <li><p><strong>Generator and prompt ablations.</strong> Continue the
 T5-base / FLAN-T5 capacity sweep, citation-aware prompts, and
-prompt-compression work to test whether the current extractive-grounding
-ceiling can be moved without sacrificing faithfulness.</p></li>
+tokenizer-aware prompt-compression work to test whether the current
+extractive-grounding ceiling can be moved without sacrificing
+faithfulness.</p></li>
 </ul>
 <p>The reproducibility scaffold (<a href="#sec:reproducibility"
 data-reference-type="ref+Label"
@@ -2817,6 +2846,12 @@ scripts/run_full_generation_and_analysis.py –max-new-tokens 128
 <td style="text-align: left;">W8 triad</td>
 <td style="text-align: left;">mgq-rag-triad –predictions bm25=…
 –predictions reranked=… –output-dir outputs/W8_rag_triad</td>
+</tr>
+<tr>
+<td style="text-align: left;">W9 context packing</td>
+<td style="text-align: left;">mgq-context-packing-report
+–baseline-predictions … –compressed-predictions … –output-dir
+outputs/W9_context_packing</td>
 </tr>
 <tr>
 <td style="text-align: left;">Model-stack smoke</td>
@@ -2971,6 +3006,10 @@ downstream correlation; W7-D low-grounding case study. Outputs:
 groundedness, and answer relevance diagnostics over one or more
 generation prediction files. Output:
 <code>outputs/W8_rag_triad/</code>.</p></li>
+<li><p><strong>W9 context packing:</strong> matched-qid comparison of
+plain versus packed generation prediction files, including
+answer-quality deltas and context-character savings. Output:
+<code>outputs/W9_context_packing/</code>.</p></li>
 </ul>
 <div id="refs" class="references csl-bib-body hanging-indent"
 role="list">
@@ -2989,6 +3028,11 @@ Embedding Sharing.”</span> <em>ICLR</em>.
 Honovich, Or, Roee Aharoni, Jonathan Herzig, et al. 2022.
 <span>“<span>TRUE</span>: Re-Evaluating Factual Consistency
 Evaluation.”</span> <em>NAACL</em>.
+</div>
+<div id="ref-jarvelin2002ndcg" class="csl-entry" role="listitem">
+Järvelin, Kalervo, and Jaana Kekäläinen. 2002. <span>“Cumulated
+Gain-Based Evaluation of <span>IR</span> Techniques.”</span> <em>ACM
+Transactions on Information Systems (TOIS)</em> 20 (4): 422–46.
 </div>
 <div id="ref-ji2023hallucination" class="csl-entry" role="listitem">
 Ji, Ziwei, Nayeon Lee, Rita Frieske, et al. 2023. <span>“Survey of
