@@ -313,6 +313,8 @@ id="toc-sec:reproducibility">Configuration and reproducibility</a>
 id="toc-one-config-workflow-facade-and-stage-runners">One config,
 workflow facade, and stage runners</a></li>
 <li><a href="#manifests" id="toc-manifests">Manifests</a></li>
+<li><a href="#input-validation-boundary"
+id="toc-input-validation-boundary">Input validation boundary</a></li>
 <li><a href="#determinism" id="toc-determinism">Determinism</a></li>
 <li><a href="#what-is-and-isnt-committed"
 id="toc-what-is-and-isnt-committed">What is and isn’t committed</a></li>
@@ -426,7 +428,9 @@ to date. Since the experiment window closed, the project has gained an
 installable CLI surface, the <code>rag-eval</code> workflow facade,
 optional model-stack smoke validation, local experiment tracking, a
 lightweight serving wrapper, refreshed CI, secret scanning, a
-deterministic RAG triad CLI, and a clearer advanced-RAG roadmap.</p>
+deterministic RAG triad CLI, stricter input-validation boundaries for
+run files / JSONL / serving calls, and a clearer advanced-RAG
+roadmap.</p>
 <p><em>Keywords.</em>  MS MARCO; passage retrieval; BM25; dense
 retrieval; cross-encoder reranking; retrieval-augmented generation;
 BERTScore; NLI grounding; RAG triad; paired bootstrap; extractive
@@ -2854,6 +2858,10 @@ scripts/run_full_generation_and_analysis.py –max-new-tokens 128
 outputs/W9_context_packing</td>
 </tr>
 <tr>
+<td style="text-align: left;">Input validation</td>
+<td style="text-align: left;">docs/input_validation.md</td>
+</tr>
+<tr>
 <td style="text-align: left;">Model-stack smoke</td>
 <td style="text-align: left;">python scripts/smoke_model_stack.py
 –config configs/baseline.yaml –device cpu</td>
@@ -2874,6 +2882,20 @@ requirements/lockfile/pyproject SHA-256s, and a per-output SHA-256
 (truncated) for every file the runner emits. This is sufficient to
 verify that a re-run produced byte-identical outputs, or to identify
 exactly which input changed if the outputs differ.</p>
+<h2 id="input-validation-boundary">Input validation boundary</h2>
+<p>The repository now distinguishes research-data assumptions from
+production-facing inputs. TREC <code>run.tsv</code> readers reject
+malformed six-column rows, empty identifiers, invalid or duplicate
+ranks, duplicate documents within a query, non-finite scores, and
+non-UTF-8 bytes before expensive generation or analysis starts.
+Generation prompt assembly normalises whitespace, rejects empty queries,
+drops empty optional passages, and applies deterministic character
+truncation before tokenizer-level truncation. Serving JSONL loaders
+reject duplicate ids, missing fields, invalid JSON,
+replacement-character-heavy text, and non-object records. The FastAPI
+wrapper maps these typed validation failures to structured
+<code>422</code> payloads with <code>error.type</code>,
+<code>error.message</code>, and <code>error.field</code>.</p>
 <h2 id="determinism">Determinism</h2>
 <p>Seed 42 is used everywhere a random choice enters: the W4
 qrels-anchored distractor sample, the W6 BERTScore subsample selection,

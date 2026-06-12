@@ -163,6 +163,17 @@ def test_read_run_tsv_roundtrip(tmp_path):
     assert runs["q2"] == [("d_x", 9.9)]
 
 
+def test_read_run_tsv_orders_by_rank(tmp_path):
+    path = tmp_path / "run.tsv"
+    path.write_text(
+        "q1\tQ0\td3\t3\t1.0\tdense\n"
+        "q1\tQ0\td1\t1\t3.0\tdense\n"
+        "q1\tQ0\td2\t2\t2.0\tdense\n",
+        encoding="utf-8",
+    )
+    assert read_run_tsv(path)["q1"] == [("d1", 3.0), ("d2", 2.0), ("d3", 1.0)]
+
+
 @pytest.mark.parametrize(
     ("line", "message"),
     [
@@ -173,6 +184,7 @@ def test_read_run_tsv_roundtrip(tmp_path):
         ("q1\tQ0\td1\tNOT_A_RANK\t1.0\tdense\n", "rank is not an integer"),
         ("q1\tQ0\td1\t1\tNOT_A_SCORE\tdense\n", "score is not numeric"),
         ("q1\tQ0\td1\t1\tnan\tdense\n", "score must be finite"),
+        ("q1\tQ0\td1\t1\t1.0\t\n", "empty system name"),
         ("q1\tQ0\td\ufffd\t1\t1.0\tdense\n", "replacement character"),
     ],
 )

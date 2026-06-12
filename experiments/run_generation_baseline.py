@@ -51,6 +51,7 @@ from msmarco_genqa.data.msmarco import get_docs_store, load_msmarco_passage
 from msmarco_genqa.evaluation.generation import evaluate_generation
 from msmarco_genqa.generation.context_packing import ContextPackingConfig, pack_context
 from msmarco_genqa.generation.rag_generator import RAGGenerationConfig, RAGGenerator
+from msmarco_genqa.reranking.io import read_run_tsv
 from msmarco_genqa.util.environment import capture_environment
 from msmarco_genqa.util.manifest import (
     compute_data_fingerprint,
@@ -246,22 +247,10 @@ def compute_eligible(
 
 def load_runs(run_path: Path) -> dict[str, list[str]]:
     """Read a TREC-format run file into qid -> ranked doc_ids."""
-    runs: dict[str, list[str]] = {}
-    with open(run_path) as f:
-        for line in f:
-            parts = line.rstrip("\n").split("\t")
-            if len(parts) < 4:
-                continue
-            qid, _, doc_id, rank = parts[0], parts[1], parts[2], int(parts[3])
-            bucket = runs.setdefault(qid, [])
-            # Pad if rank is sparse / out-of-order
-            while len(bucket) < rank:
-                bucket.append(None)  # type: ignore[arg-type]
-            bucket[rank - 1] = doc_id
-    # Drop any None gaps (rank gaps shouldn't really exist for our writer)
-    for q in runs:
-        runs[q] = [d for d in runs[q] if d is not None]
-    return runs
+    return {
+        qid: [doc_id for doc_id, _score in docs]
+        for qid, docs in read_run_tsv(run_path).items()
+    }
 
 
 def load_qa_references(cache_dir: Path | None) -> dict[str, list[str]]:

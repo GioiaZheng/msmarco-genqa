@@ -39,6 +39,7 @@
     "retrieval_matrix_reporting": true,
     "context_packing_reporting": true,
     "rag_triad_reporting": true,
+    "input_validation": true,
     "experiment_tracking": ["jsonl", "mlflow_optional", "wandb_optional"],
     "serving": ["fastapi_optional"]
   }

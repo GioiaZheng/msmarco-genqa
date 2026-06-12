@@ -256,8 +256,9 @@ up to date.  Since the experiment window closed, the project has
 gained an installable CLI surface, the \texttt{rag-eval} workflow
 facade, optional model-stack smoke validation, local experiment
 tracking, a lightweight serving wrapper, refreshed CI, secret
-scanning, a deterministic RAG triad CLI, and a clearer advanced-RAG
-roadmap.
+scanning, a deterministic RAG triad CLI, stricter input-validation
+boundaries for run files / JSONL / serving calls, and a clearer
+advanced-RAG roadmap.
 
 \vspace{2em}
 \noindent\textit{Keywords.}~~MS~MARCO; passage retrieval; \bmtwofive{};
@@ -2196,6 +2197,7 @@ records the canonical command family for each layer.
     W7-A NLI     & same script with \mbox{--nli-n-pairs}~3000 \\
     W8 triad     & mgq-rag-triad \mbox{--predictions} bm25=\ldots{} \mbox{--predictions} reranked=\ldots{} \mbox{--output-dir} outputs/W8\_rag\_triad \\
     W9 context packing & mgq-context-packing-report \mbox{--baseline-predictions} \ldots{} \mbox{--compressed-predictions} \ldots{} \mbox{--output-dir} outputs/W9\_context\_packing \\
+    Input validation & docs/input\_validation.md \\
     Model-stack smoke & python scripts/smoke\_model\_stack.py \mbox{--config} configs/baseline.yaml \mbox{--device} cpu \\
     Serving smoke & mgq-serve \quad{\normalfont(after installing the \texttt{serve} extra)} \\
     \bottomrule
@@ -2212,6 +2214,22 @@ the requirements/lockfile/pyproject SHA-256s, and a per-output
 SHA-256 (truncated) for every file the runner emits.  This is
 sufficient to verify that a re-run produced byte-identical outputs,
 or to identify exactly which input changed if the outputs differ.
+
+\subsection{Input validation boundary}
+
+The repository now distinguishes research-data assumptions from
+production-facing inputs.  TREC \texttt{run.tsv} readers reject
+malformed six-column rows, empty identifiers, invalid or duplicate
+ranks, duplicate documents within a query, non-finite scores, and
+non-UTF-8 bytes before expensive generation or analysis starts.
+Generation prompt assembly normalises whitespace, rejects empty
+queries, drops empty optional passages, and applies deterministic
+character truncation before tokenizer-level truncation.  Serving
+JSONL loaders reject duplicate ids, missing fields, invalid JSON,
+replacement-character-heavy text, and non-object records.  The
+FastAPI wrapper maps these typed validation failures to structured
+\texttt{422} payloads with \texttt{error.type},
+\texttt{error.message}, and \texttt{error.field}.
 
 \subsection{Determinism}
 

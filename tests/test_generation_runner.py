@@ -24,6 +24,8 @@ from experiments.run_generation_baseline import (
     resolve_input_run,
     resolve_output_dir,
 )
+from msmarco_genqa.generation.rag_generator import RAGGenerationConfig, RAGGenerator
+from msmarco_genqa.reranking.io import RunTsvFormatError
 
 
 # --------------------------------------------------------------------------- #
@@ -53,11 +55,11 @@ class TestLoadRuns:
         runs = load_runs(run)
         assert runs == {"q1": ["d_a", "d_b", "d_c"], "q2": ["d_x"]}
 
-    def test_skips_malformed_short_lines(self, tmp_path: Path):
+    def test_rejects_malformed_short_lines(self, tmp_path: Path):
         run = tmp_path / "run.tsv"
         run.write_text("q1\tQ0\td_a\t1\t9.0\ttest\nbroken\nq2\tQ0\td_x\t1\t1.0\ttest\n")
-        runs = load_runs(run)
-        assert runs == {"q1": ["d_a"], "q2": ["d_x"]}
+        with pytest.raises(RunTsvFormatError, match="expected 6 tab-separated fields"):
+            load_runs(run)
 
     def test_handles_out_of_order_ranks(self, tmp_path: Path):
         run = tmp_path / "run.tsv"
@@ -71,6 +73,18 @@ class TestLoadRuns:
         )
         runs = load_runs(run)
         assert runs["q1"] == ["d_a", "d_b", "d_c"]
+
+    def test_rejects_duplicate_document_ids(self, tmp_path: Path):
+        run = tmp_path / "run.tsv"
+        _write_run(
+            run,
+            [
+                ("q1", "d_a", 1, 9.0),
+                ("q1", "d_a", 2, 8.0),
+            ],
+        )
+        with pytest.raises(RunTsvFormatError, match="duplicate document id"):
+            load_runs(run)
 
 
 # --------------------------------------------------------------------------- #
@@ -237,3 +251,19 @@ def test_context_packing_invocation_parses():
     assert args.context_sentence_selection == "query_overlap"
     assert args.context_ordering == "rank"
     assert args.no_context_deduplicate is True
+
+
+def test_rag_generator_prompt_normalizes_and_truncates_without_model_load():
+    generator = RAGGenerator.__new__(RAGGenerator)
+    generator.config = RAGGenerationConfig(
+        top_k_passages=2,
+        max_query_chars=16,
+        max_passage_chars=9,
+    )
+
+    prompt = generator.build_prompt(
+        "  what   is dense retrieval exactly? ",
+        [" first passage text ", "", "third passage"],
+    )
+
+    assert prompt == "question: what is dense context: first"
