@@ -29,11 +29,12 @@ class RunTsvFormatError(ValueError):
 def read_run_tsv(path: Path | str) -> dict[str, list[tuple[str, float]]]:
     """Parse a TREC run file into ``{qid: [(doc_id, score), ...]}``.
 
-    Lines are returned in the order they appear in the file (which is
-    already the rank order produced by the upstream retriever).
+    Entries are returned in ascending rank order within each query. Malformed
+    records fail fast with a line-numbered ``RunTsvFormatError`` instead of
+    being skipped silently.
     """
     p = Path(path)
-    runs: dict[str, list[tuple[str, float]]] = {}
+    rows_by_qid: dict[str, list[tuple[int, str, float]]] = {}
     seen_qid_rank: set[tuple[str, int]] = set()
     seen_qid_doc: set[tuple[str, str]] = set()
     try:
@@ -54,6 +55,8 @@ def read_run_tsv(path: Path | str) -> dict[str, list[tuple[str, float]]]:
                     raise RunTsvFormatError(p, line_number, "empty query id")
                 if not doc_id:
                     raise RunTsvFormatError(p, line_number, "empty document id")
+                if not system:
+                    raise RunTsvFormatError(p, line_number, "empty system name")
                 if "\ufffd" in qid or "\ufffd" in doc_id or "\ufffd" in system:
                     raise RunTsvFormatError(
                         p,
@@ -104,10 +107,13 @@ def read_run_tsv(path: Path | str) -> dict[str, list[tuple[str, float]]]:
                         line_number,
                         f"score must be finite, got {score_text!r}",
                     )
-                runs.setdefault(qid, []).append((doc_id, score))
+                rows_by_qid.setdefault(qid, []).append((rank, doc_id, score))
     except UnicodeDecodeError as exc:
         raise RunTsvFormatError(p, None, f"file is not valid UTF-8: {exc}") from exc
-    return runs
+    return {
+        qid: [(doc_id, score) for _rank, doc_id, score in sorted(rows)]
+        for qid, rows in rows_by_qid.items()
+    }
 
 
 def truncate_top_k(

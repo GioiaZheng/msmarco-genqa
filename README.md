@@ -56,6 +56,7 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md) — query-level reranker lift analysis protocol.
 - [`docs/context_packing.md`](docs/context_packing.md) — prompt compression, provenance, and packed-vs-plain generation comparison.
 - [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md) — context relevance, groundedness, and answer relevance report protocol.
+- [`docs/input_validation.md`](docs/input_validation.md) — run-file, JSONL, prompt, and serving input validation contract.
 - [`notebooks/rag_eval_demo.ipynb`](notebooks/rag_eval_demo.ipynb) — lightweight evaluation workflow demo.
 - [`reports/repo_report/report.pdf`](reports/repo_report/report.pdf) / [`report.html`](reports/repo_report/report.html) — repository report with the current engineering surface and historical experiment results.
 
@@ -100,12 +101,18 @@ auditing the experiments:
   before generation. `mgq-context-packing-report` compares packed and plain
   prediction files on matched qids. See
   [`docs/context_packing.md`](docs/context_packing.md).
+- **Input validation.** Shared validation rejects malformed `run.tsv` rows,
+  corrupted JSONL records, empty queries, duplicate ids, invalid ranks,
+  non-finite scores, and replacement-character-heavy text before expensive
+  runners or serving calls proceed. See
+  [`docs/input_validation.md`](docs/input_validation.md).
 - **Experiment tracking.** `msmarco_genqa.util.tracking.ExperimentTracker`
   writes local JSONL events by default and can use MLflow or Weights & Biases
   via `pip install -e ".[tracking]"`.
 - **Model serving.** `mgq-serve` exposes a lightweight FastAPI wrapper around
   the generator (`pip install -e ".[serve]"`), with `/health` and `/generate`
-  endpoints for local demos or integration tests. See
+  endpoints for local demos or integration tests. Validation failures are
+  returned as structured 422 payloads. See
   `examples/demo_payload.json` for a minimal request body:
 
   ```bash

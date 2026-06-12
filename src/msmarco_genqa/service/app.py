@@ -8,13 +8,18 @@ FastAPI. Install the `serve` extra and run `mgq-serve` to expose `/health` and
 from __future__ import annotations
 
 import argparse
-import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
 from msmarco_genqa.generation.rag_generator import RAGGenerationConfig, RAGGenerator
+from msmarco_genqa.util.input_validation import (
+    InputValidationError,
+    iter_jsonl_objects,
+    normalize_passage_list,
+    normalize_text,
+)
 
 
 @dataclass
@@ -22,22 +27,53 @@ class GenerationService:
     generator: object
 
     def answer(self, query: str, passages: Sequence[str]) -> dict[str, object]:
-        prediction = self.generator.generate(query, list(passages))
+        clean_query = normalize_text(query, field="query", max_chars=2048)
+        clean_passages = normalize_passage_list(
+            passages,
+            max_passage_chars=4096,
+            allow_empty_list=True,
+        )
+        prediction = self.generator.generate(clean_query, clean_passages)
         return {
-            "query": query,
+            "query": clean_query,
             "answer": prediction,
-            "n_passages": len(passages),
+            "n_passages": len(clean_passages),
         }
 
 
 def load_passages_jsonl(path: str | Path) -> dict[str, str]:
     passages: dict[str, str] = {}
-    with Path(path).open(encoding="utf-8") as f:
-        for line in f:
-            if not line.strip():
-                continue
-            row = json.loads(line)
-            passages[str(row["id"])] = str(row["text"])
+    for line_number, row in iter_jsonl_objects(path):
+        if "id" not in row:
+            raise InputValidationError("missing id", field="id", line_number=line_number, path=Path(path))
+        if "text" not in row:
+            raise InputValidationError(
+                "missing text",
+                field="text",
+                line_number=line_number,
+                path=Path(path),
+            )
+        doc_id = normalize_text(
+            row["id"],
+            field="id",
+            line_number=line_number,
+            path=Path(path),
+        )
+        if doc_id in passages:
+            raise InputValidationError(
+                f"duplicate passage id {doc_id!r}",
+                field="id",
+                line_number=line_number,
+                path=Path(path),
+            )
+        passages[doc_id] = normalize_text(
+            row["text"],
+            field="text",
+            allow_empty=False,
+            max_chars=4096,
+            line_number=line_number,
+            path=Path(path),
+        )
     return passages
 
 
@@ -51,6 +87,8 @@ def build_generator_from_env() -> RAGGenerator:
             top_k_passages=int(os.getenv("MGQ_TOP_K_PASSAGES", "3")),
             device=os.getenv("MGQ_DEVICE") or None,
             batch_size=int(os.getenv("MGQ_BATCH_SIZE", "4")),
+            max_query_chars=int(os.getenv("MGQ_MAX_QUERY_CHARS", "2048")),
+            max_passage_chars=int(os.getenv("MGQ_MAX_PASSAGE_CHARS", "4096")),
         )
     )
 
@@ -58,6 +96,7 @@ def build_generator_from_env() -> RAGGenerator:
 def create_app(generator: object | None = None):
     try:
         from fastapi import FastAPI
+        from fastapi.responses import JSONResponse
         from pydantic import BaseModel, Field
     except ImportError as exc:
         raise RuntimeError("Install the serving extra first: pip install -e '.[serve]'") from exc
@@ -68,6 +107,19 @@ def create_app(generator: object | None = None):
 
     app = FastAPI(title="MS MARCO GenQA", version="0.1.0")
     service = GenerationService(generator or build_generator_from_env())
+
+    @app.exception_handler(InputValidationError)
+    def input_validation_error(_request, exc: InputValidationError):
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": {
+                    "type": "input_validation",
+                    "message": exc.message,
+                    "field": exc.field,
+                }
+            },
+        )
 
     @app.get("/health")
     def health() -> dict[str, str]:

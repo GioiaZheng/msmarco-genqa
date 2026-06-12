@@ -37,6 +37,7 @@ from msmarco_genqa.data.msmarco import load_msmarco_passage
 from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
 from msmarco_genqa.retrieval.bm25 import BM25Retriever
 from msmarco_genqa.retrieval.query_transform import materialize_query_transform
+from msmarco_genqa.reranking.io import read_run_tsv
 from msmarco_genqa.util.environment import capture_environment
 from msmarco_genqa.util.manifest import (
     compute_data_fingerprint,
@@ -132,26 +133,11 @@ def _read_done_qids(run_path: Path, top_k: int) -> set[str]:
 
 def _read_runs_from_tsv(run_path: Path) -> tuple[dict[str, list[str]], dict[str, list[float]]]:
     """Read run.tsv into ``{qid: [doc_id sorted by rank]}`` and ``{qid: [score sorted by rank]}``."""
-    by_qid: dict[str, list[tuple[int, str, float]]] = {}
-    with open(run_path) as f:
-        for line in f:
-            parts = line.rstrip("\n").split("\t")
-            if len(parts) < 6:
-                continue
-            qid, _q0, doc_id, rank_str, score_str, _sys = parts[:6]
-            try:
-                rank = int(rank_str)
-                score = float(score_str)
-            except ValueError:
-                continue
-            by_qid.setdefault(qid, []).append((rank, doc_id, score))
-    runs: dict[str, list[str]] = {}
-    scores: dict[str, list[float]] = {}
-    for qid, triples in by_qid.items():
-        triples.sort(key=lambda t: t[0])
-        runs[qid] = [t[1] for t in triples]
-        scores[qid] = [t[2] for t in triples]
-    return runs, scores
+    parsed = read_run_tsv(run_path)
+    return (
+        {qid: [doc_id for doc_id, _score in docs] for qid, docs in parsed.items()},
+        {qid: [score for _doc_id, score in docs] for qid, docs in parsed.items()},
+    )
 
 
 def main() -> None:

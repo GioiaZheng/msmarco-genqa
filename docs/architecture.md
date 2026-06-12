@@ -47,6 +47,10 @@ original query text and record the transformation config hash.
 
 Retrieval modules produce TREC-style `run.tsv` files. A retrieval run is the
 contract between the ranking layer and every downstream experiment.
+Downstream readers use strict validation for six-field TREC rows, positive
+ranks, finite scores, duplicate query-document pairs, duplicate ranks, and
+UTF-8-safe identifiers. Malformed runs should fail before generation or
+analysis starts.
 
 Important outputs:
 
@@ -81,6 +85,11 @@ The current generator is frozen T5-small. Current evidence suggests it mostly
 extracts from the prompt. Future generator work should therefore treat prompt
 format, passage structure, citation behaviour, and model capacity as
 experimental variables.
+
+Prompt construction normalizes whitespace, rejects empty queries, drops empty
+optional passages, and applies deterministic character truncation before model
+tokenization. The serving wrapper maps validation failures to structured 422
+responses; batch runners raise typed errors with file or field context.
 
 ### Evaluation
 
