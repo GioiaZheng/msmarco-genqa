@@ -186,6 +186,9 @@ When updating `RESULTS.md` or a report:
 - State the exact paired query count.
 - State the generator checkpoint and decoding budget.
 - State bootstrap seed, resample count, and confidence level.
+- Refresh checked LaTeX fragments with `python scripts/export_report_tables.py`
+  when a report table is backed by `reports/generated/artifacts/*.json`.
+- Commit the matching `.sources.json` sidecar for each refreshed table fragment.
 - Separate confirmed results from hypotheses and queued follow-ups.
 
 Avoid language that implies general QA capability. The current system is an

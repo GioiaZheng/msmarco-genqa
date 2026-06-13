@@ -14,13 +14,18 @@
 #                 collectbox subfig oberdiek zref
 
 LATEXMK ?= latexmk
+PYTHON  ?= python
 TEX     ?= report.tex
 PDF     := $(TEX:.tex=.pdf)
+PROJECT_ROOT ?= ../..
 
-.PHONY: pdf clean purge
+.PHONY: pdf tables clean purge
 .DEFAULT_GOAL := pdf
 
-pdf:
+tables:
+	cd $(PROJECT_ROOT) && $(PYTHON) scripts/export_report_tables.py
+
+pdf: tables
 	$(LATEXMK) -pdf -interaction=nonstopmode $(TEX)
 
 clean:

@@ -134,10 +134,21 @@ auditing the experiments:
 - **`notebooks/`** — lightweight demos for inspecting the workflow without running heavy jobs.
 - **`reports/acl_findings/`** — ACL-Findings-style experimental report draft.
 - **`reports/repo_report/`** — repository report PDF, HTML, sources, and figures.
+- **`reports/generated/artifacts/`** — checked machine-readable report table inputs.
+- **`reports/generated/tables/`** — LaTeX table fragments plus source sidecars.
 - **`metadata.json`** — project metadata summarising dataset scale, pipeline stages,
   headline metrics, CI, tracking, and serving support.
 
 See [§2 Directory layout](#2-directory-layout) for the full breakdown.
+
+Refresh report table fragments after metrics artifacts change:
+
+```bash
+python scripts/export_report_tables.py
+```
+
+CI runs the same exporter and fails if `reports/generated/tables/` drifts
+from the checked artifacts.
 
 ## 1. Status
 

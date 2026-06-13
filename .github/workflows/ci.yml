@@ -53,6 +53,11 @@ jobs:
       - name: Check headline metric metadata
         run: python scripts/check_headline_metrics.py
 
+      - name: Check generated report tables
+        run: |
+          python scripts/export_report_tables.py
+          git diff --exit-code reports/generated/tables
+
   lint:
     name: ruff
     runs-on: ubuntu-latest

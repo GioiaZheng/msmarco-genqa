@@ -1,0 +1,84 @@
+{
+  "schema": "msmarco-genqa.table-artifact.v1",
+  "artifact_id": "retrieval_w4_w5",
+  "metric_schema": "retrieval.sample_rerank.v1",
+  "query_set": {
+    "id": "msmarco-dev-small-qrels-anchored-50k",
+    "n_queries": 6980
+  },
+  "model_revision": {
+    "dense_encoder": "sentence-transformers/all-MiniLM-L6-v2",
+    "reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "candidate_depth": 100
+  },
+  "tables": [
+    {
+      "id": "w4_dense_sample",
+      "columns": [
+        {
+          "heading": "Metric",
+          "align": "l"
+        },
+        {
+          "heading": "\\bmtwofive{} (sample)",
+          "align": "r"
+        },
+        {
+          "heading": "Dense (sample)",
+          "align": "r"
+        },
+        {
+          "heading": "$\\Delta$ (dense $-$ \\bmtwofive{})",
+          "align": "r"
+        }
+      ],
+      "rows": [
+        {
+          "cells": ["\\mrr{}", "0.6948", "0.8830", "$+0.1882$"]
+        },
+        {
+          "cells": ["\\ndcg{}", "0.7270", "0.9041", "$+0.1771$"]
+        },
+        {
+          "cells": ["\\recallH{}", "0.9338", "0.9946", "$+0.0608$"]
+        },
+        {
+          "cells": ["\\recallK{}", "0.9686", "0.9991", "$+0.0305$"]
+        }
+      ]
+    },
+    {
+      "id": "w5_dense_rerank",
+      "columns": [
+        {
+          "heading": "Metric",
+          "align": "l"
+        },
+        {
+          "heading": "Dense (W4)",
+          "align": "r"
+        },
+        {
+          "heading": "Dense $+$ CE rerank",
+          "align": "r"
+        },
+        {
+          "heading": "$\\Delta$",
+          "align": "r"
+        }
+      ],
+      "rows": [
+        {
+          "cells": ["\\mrr{}", "0.8830", "0.9304", "$\\mathbf{+0.0474}$"]
+        },
+        {
+          "cells": ["\\ndcg{}", "0.9041", "0.9434", "$+0.0393$"]
+        },
+        {
+          "cells": ["\\recallH{}", "0.9946", "0.9946", "$\\phantom{+}0.0000$"]
+        }
+      ]
+    }
+  ]
+}
+

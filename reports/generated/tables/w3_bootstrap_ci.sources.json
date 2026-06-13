@@ -1,0 +1,23 @@
+{
+  "schema": "msmarco-genqa.table-sources.v1",
+  "table_id": "w3_bootstrap_ci",
+  "sources": [
+    {
+      "path": "reports/generated/artifacts/generation_surface_w3.json",
+      "sha256_16": "cd96659b4d912add",
+      "artifact_schema": "msmarco-genqa.table-artifact.v1",
+      "artifact_id": "generation_surface_w3",
+      "metric_schema": "generation.surface_and_bootstrap.v1",
+      "query_set": {
+        "id": "msmarco-dev-small-paired",
+        "n_queries": 6980
+      },
+      "model_revision": {
+        "generator": "t5-small",
+        "retrieval_depth": 3,
+        "bm25_arm": "W2 top-3",
+        "reranked_arm": "W5 cross-encoder reranked top-3"
+      }
+    }
+  ]
+}

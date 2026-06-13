@@ -1,0 +1,10 @@
+% Refresh with: python scripts/export_report_tables.py
+\begin{tabular}{lrrrr}
+    \toprule
+    Retrieval $\to$ T5-small & \rougel{} & BLEU & EM & \Tokenf{} \\
+    \midrule
+    \bmtwofive{} top-3 & 0.1859 & 0.0717 & 0.0135 & 0.1966 \\
+    Reranked top-3 & \textbf{0.3621} & \textbf{0.2922} & \textbf{0.0606} & \textbf{0.3677} \\
+    $\Delta$ (rerank $-$ \bmtwofive{}) & $\mathbf{+0.1763}$ & $\mathbf{+0.2206}$ & $\mathbf{+0.0471}$ & $\mathbf{+0.1711}$ \\
+    \bottomrule
+\end{tabular}
