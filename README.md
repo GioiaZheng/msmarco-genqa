@@ -449,6 +449,9 @@ pip install -r requirements-lock.txt
 pip install -e .
 ```
 
+CI dry-runs the lockfile resolver so pinned direct dependencies remain
+installable together.
+
 Or, equivalently:
 
 ```bash

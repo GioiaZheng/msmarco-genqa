@@ -53,6 +53,9 @@ jobs:
       - name: Check headline metric metadata
         run: python scripts/check_headline_metrics.py
 
+      - name: Check lockfile resolver consistency
+        run: python -m pip install --dry-run -r requirements-lock.txt
+
       - name: Check demo notebooks
         run: python scripts/check_notebooks.py
 
