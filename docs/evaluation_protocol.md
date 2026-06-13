@@ -189,6 +189,8 @@ When updating `RESULTS.md` or a report:
 - Refresh checked LaTeX fragments with `python scripts/export_report_tables.py`
   when a report table is backed by `reports/generated/artifacts/*.json`.
 - Commit the matching `.sources.json` sidecar for each refreshed table fragment.
+- Keep notebooks as output-free demos over package APIs or dry-run CLIs; runnable
+  experiment logic belongs in `src/`, `scripts/`, and config files.
 - Separate confirmed results from hypotheses and queued follow-ups.
 
 Avoid language that implies general QA capability. The current system is an

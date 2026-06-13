@@ -131,7 +131,8 @@ auditing the experiments:
 - **`scripts/`** — analyses, ablations, validation, integration smokes that read `experiments/` outputs.
 - **`src/`** — importable library code backing both.
 - **`docs/`** — experiment narratives and reproducibility notes.
-- **`notebooks/`** — lightweight demos for inspecting the workflow without running heavy jobs.
+- **`notebooks/`** — lightweight demos over package APIs and CLI dry runs; they are
+  not required for metric reproduction.
 - **`reports/acl_findings/`** — ACL-Findings-style experimental report draft.
 - **`reports/repo_report/`** — repository report PDF, HTML, sources, and figures.
 - **`reports/generated/artifacts/`** — checked machine-readable report table inputs.
@@ -149,6 +150,15 @@ python scripts/export_report_tables.py
 
 CI runs the same exporter and fails if `reports/generated/tables/` drifts
 from the checked artifacts.
+
+Notebook demos are kept output-free and lightweight:
+
+```bash
+python scripts/check_notebooks.py
+```
+
+Use package entry points, scripts, and configs for reproducible experiments;
+notebooks are only for interactive inspection.
 
 ## 1. Status
 
