@@ -10,13 +10,12 @@
 % --- Encoding & language ----------------------------------------------------
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage[scaled=0.95]{helvet}
-\renewcommand{\familydefault}{\sfdefault}
+\usepackage{lmodern}
 \usepackage{microtype}
 % Allow line breaks inside long \texttt{} paths so the per-output
 % directory names in the appendices don't push the right margin.
 \usepackage{seqsplit}
-\usepackage[htt]{hyphenat}
+\usepackage{hyphenat}
 % Slightly more open vertical rhythm than article's default; paragraphs
 % separated by a blank line rather than indentation (engineering-report style).
 \usepackage{parskip}
@@ -25,9 +24,9 @@
 % Section header polish: smaller sans-serif headings, slightly tighter
 % spacing above so a section doesn't push its first paragraph too far down.
 \usepackage[explicit]{titlesec}
-\titleformat{\section}{\Large\bfseries\sffamily}{\thesection}{0.6em}{#1}
-\titleformat{\subsection}{\large\bfseries\sffamily}{\thesubsection}{0.55em}{#1}
-\titleformat{\subsubsection}{\normalsize\bfseries\sffamily}{\thesubsubsection}{0.5em}{#1}
+\titleformat{\section}{\Large\bfseries}{\thesection}{0.6em}{#1}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{0.55em}{#1}
+\titleformat{\subsubsection}{\normalsize\bfseries}{\thesubsubsection}{0.5em}{#1}
 \titlespacing*{\section}{0pt}{1.4em plus 0.4em}{0.6em}
 \titlespacing*{\subsection}{0pt}{1.0em plus 0.3em}{0.4em}
 \titlespacing*{\subsubsection}{0pt}{0.8em plus 0.2em}{0.3em}
@@ -36,7 +35,7 @@
 % Global mild sloppiness: lets TeX stretch lines a little to avoid
 % overfull boxes on lines with long unbreakable tokens (code paths,
 % URLs, citation clusters).  Standard remedy in IEEE / ACM templates.
-\setlength{\emergencystretch}{2.2em}
+\setlength{\emergencystretch}{3em}
 
 % --- Page geometry & headers ------------------------------------------------
 \usepackage[a4paper,margin=2.4cm,headheight=14pt]{geometry}
@@ -785,7 +784,7 @@ scores comparable across queries with one versus three references.
 \label{sec:w4}
 
 \paragraph{Encoder \& index.}  The W4 dense retriever uses
-\texttt{sentence-transformers/all-MiniLM-L6-v2}~\cite{reimers2019sbert,wang2020minilm}
+\texttt{\seqsplit{sentence-transformers/all-MiniLM-L6-v2}}~\cite{reimers2019sbert,wang2020minilm}
 --- a generic semantic-similarity encoder, deliberately
 \emph{not} \msmarco{}-tuned --- to embed both queries and passages
 into a 384-dimensional space.  Embeddings are L2-normalised and
@@ -922,7 +921,7 @@ together the right words in the wrong order'' cases the bag-of-
 content-tokens score misses.
 
 \paragraph{NLI-entailment grounding (W7-A).}  An NLI cross-encoder
-(\texttt{cross-encoder/nli-deberta-v3-small}~\cite{he2023debertav3,williams2018mnli})
+(\texttt{\seqsplit{cross-encoder/nli-deberta-v3-small}}~\cite{he2023debertav3,williams2018mnli})
 scores \emph{entailment}$(\text{passages} \to \text{prediction})$ on
 the same 3\,000-paired-qid subsample used by the W6 \bertscore{}
 proxy.  Same paired-bootstrap-CI machinery.  This is the semantic-
@@ -1001,16 +1000,7 @@ Both columns evaluate on the same \fdev{} queries.
   the qrels-anchored sampling design (\Cref{sec:w4-sampling-caveat});
   the meaningful comparison is the same-sample $\Delta$.}
   \label{tab:w4-results}
-  \begin{tabular}{lrrr}
-    \toprule
-    Metric        & \bmtwofive{} (sample) & Dense (sample) & $\Delta$ (dense $-$ \bmtwofive{}) \\
-    \midrule
-    \mrr{}        & 0.6948 & 0.8830 & $+0.1882$ \\
-    \ndcg{}       & 0.7270 & 0.9041 & $+0.1771$ \\
-    \recallH{}    & 0.9338 & 0.9946 & $+0.0608$ \\
-    \recallK{}    & 0.9686 & 0.9991 & $+0.0305$ \\
-    \bottomrule
-  \end{tabular}
+  \input{../generated/tables/w4_dense_sample.tex}
 \end{table}
 
 Two observations:
@@ -1139,15 +1129,7 @@ W4 dense top-100, on the full \fdev{} \devsmall{} queries.
   (MRR $\Delta\!=\!+0.0435$, nDCG $\Delta\!=\!+0.0398$), so the
   full-dev gain is not a subsample artefact.}
   \label{tab:w5-results}
-  \begin{tabular}{lrrr}
-    \toprule
-    Metric        & Dense (W4) & Dense $+$ CE rerank & $\Delta$ \\
-    \midrule
-    \mrr{}        & 0.8830 & 0.9304 & $\mathbf{+0.0474}$ \\
-    \ndcg{}       & 0.9041 & 0.9434 & $+0.0393$ \\
-    \recallH{}    & 0.9946 & 0.9946 & $\phantom{+}0.0000$ \\
-    \bottomrule
-  \end{tabular}
+  \input{../generated/tables/w5_dense_rerank.tex}
 \end{table}
 
 The reranker buys $\sim\!+0.05$ MRR even with recall saturated: it
@@ -1180,15 +1162,7 @@ arms.
   \fdev{} shared qid set.  Same T5-small, same prompt, same top-3
   passage count; only the upstream retrieval source differs.}
   \label{tab:w3-headline}
-  \begin{tabular}{lrrrr}
-    \toprule
-    Retrieval $\to$ T5-small & \rougel{} & BLEU & EM & \Tokenf{} \\
-    \midrule
-    \bmtwofive{} top-3       & 0.1859 & 0.0717 & 0.0135 & 0.1966 \\
-    Reranked top-3           & \textbf{0.3621} & \textbf{0.2922} & \textbf{0.0606} & \textbf{0.3677} \\
-    $\Delta$ (rerank $-$ \bmtwofive{}) & $\mathbf{+0.1763}$ & $\mathbf{+0.2206}$ & $\mathbf{+0.0471}$ & $\mathbf{+0.1711}$ \\
-    \bottomrule
-  \end{tabular}
+  \input{../generated/tables/w3_headline_generation.tex}
 \end{table}
 
 \textbf{Reranking the first stage roughly doubles every
@@ -1208,16 +1182,7 @@ zero, with negligible overlap (\Cref{tab:w3-ci}).
   interval.  Two-sided $p$ from the bootstrap is $<\!0.001$ in every
   case.}
   \label{tab:w3-ci}
-  \begin{tabular}{lrrrr}
-    \toprule
-    Metric            & \bmtwofive{} (per-q mean) & Reranked & $\Delta$ & 95\,\% CI on $\Delta$ \\
-    \midrule
-    \rougel{}         & 0.1934 & 0.3677 & $+0.1742$ & $[+0.1663,\,+0.1820]$ \\
-    BLEU (sentence)   & 0.0423 & 0.1754 & $+0.1330$ & $[+0.1265,\,+0.1395]$ \\
-    Exact-Match       & 0.0135 & 0.0606 & $+0.0471$ & $[+0.0417,\,+0.0527]$ \\
-    \Tokenf{}         & 0.1966 & 0.3677 & $+0.1711$ & $[+0.1632,\,+0.1789]$ \\
-    \bottomrule
-  \end{tabular}
+  \input{../generated/tables/w3_bootstrap_ci.tex}
 \end{table}
 
 \Cref{fig:headline-forest} renders the same four CIs as a forest
@@ -1885,7 +1850,7 @@ grounding and downstream metrics (\Cref{sec:w7}), but the
 sentence-completeness confound is unresolved.
 
 \paragraph{(iii) NLI checkpoint artefact.}  The NLI cross-encoder
-in W7-A is \texttt{cross-encoder/nli-deberta-v3-small} ---
+in W7-A is \texttt{\seqsplit{cross-encoder/nli-deberta-v3-small}} ---
 distilled, MNLI-trained~\cite{he2023debertav3,williams2018mnli}.
 It is not domain-adapted to \msmarco{}-style passages and could
 behave differently from a larger NLI scorer on the project's
@@ -1911,9 +1876,9 @@ de-scoped.
 
 \small
 \begin{longtable}{@{}
-    p{0.90cm}
+    p{1.10cm}
     >{\raggedright\arraybackslash}p{3.70cm}
-    >{\raggedright\arraybackslash}p{7.55cm}
+    >{\raggedright\arraybackslash}p{7.35cm}
     >{\raggedright\arraybackslash}p{2.10cm}@{}}
 \toprule
 \textbf{Stage} & \textbf{Plan} & \textbf{Actual} & \textbf{Status} \\
