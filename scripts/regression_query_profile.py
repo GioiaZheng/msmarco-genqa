@@ -244,12 +244,12 @@ def plot_boxes(
     figures_dir.mkdir(parents=True, exist_ok=True)
 
     primary: list[tuple[str, str, str]] = [
-        ("query_length_tokens", "Query length (tokens)", "w6c_regression_vs_other_query_length.png"),
-        ("n_qrels", "Qrels per query", "w6c_regression_vs_other_n_qrels.png"),
+        ("query_length_tokens", "Query length (tokens)", "grounding_delta_vs_query_length.png"),
+        ("n_qrels", "Qrels per query", "grounding_delta_vs_n_qrels.png"),
         (
             "rerank_top3_avg_passage_length_tokens",
             "Rerank top-3 mean passage length (tokens)",
-            "w6c_regression_vs_other_top3_passage_length.png",
+            "grounding_delta_vs_top3_passage_length.png",
         ),
     ]
     out: dict[str, str] = {}

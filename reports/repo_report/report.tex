@@ -1088,7 +1088,7 @@ baseline at each size.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.78\linewidth]{w4a_density_curve.png}
+  \includegraphics[width=0.78\linewidth]{dense_vs_bm25_density_curve.png}
   \caption{W4-A --- \mrr{} vs.\ qrel-density on the same three
   qrels-anchored samples as \Cref{tab:w4a-density}.  Encoder:
   \texttt{BAAI/bge-small-en-v1.5}.  Density decreases left-to-right
@@ -1564,7 +1564,7 @@ T5-small less material to extract.  See
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.62\linewidth]{w6c_regression_vs_other_query_length.png}
+  \includegraphics[width=0.62\linewidth]{grounding_delta_vs_query_length.png}
   \caption{W6-C --- query-length distribution, regression bucket
   (n=233) vs.\ rest (n=6\,747).  Indistinguishable; Mann--Whitney
   $p\!=\!0.96$, effect size $r\!=\!-0.002$.}
@@ -1573,7 +1573,7 @@ T5-small less material to extract.  See
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.62\linewidth]{w6c_regression_vs_other_n_qrels.png}
+  \includegraphics[width=0.62\linewidth]{grounding_delta_vs_n_qrels.png}
   \caption{W6-C --- number of relevance judgements per query.  A
   very small downward shift in the regression bucket
   ($p\!=\!0.009$, effect size $r\!=\!-0.040$); not meaningfully
@@ -1583,7 +1583,7 @@ T5-small less material to extract.  See
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.62\linewidth]{w6c_regression_vs_other_top3_passage_length.png}
+  \includegraphics[width=0.62\linewidth]{grounding_delta_vs_top3_passage_length.png}
   \caption{W6-C --- average rerank top-3 passage length.  The only
   feature with a detectable effect: regression-arm top-3 passages
   are $\sim\!2.7$ tokens shorter at the median

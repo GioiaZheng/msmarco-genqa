@@ -27,7 +27,7 @@ Output: ``outputs/dense_density_sweep/`` with::
     sample_15k/, sample_30k/    # raw dense runs at the two new densities
     summary.json
     summary.md
-    figures/w4a_density_curve.png
+    figures/dense_vs_bm25_density_curve.png
 """
 
 from __future__ import annotations
@@ -223,7 +223,7 @@ def plot_density_curve(rows: list[dict[str, Any]], figures_dir: Path) -> str:
     ax.grid(True, linestyle=":", alpha=0.5)
     ax.legend()
     fig.tight_layout()
-    out_path = figures_dir / "w4a_density_curve.png"
+    out_path = figures_dir / "dense_vs_bm25_density_curve.png"
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     return f"figures/{out_path.name}"

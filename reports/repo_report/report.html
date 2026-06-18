@@ -1275,7 +1275,7 @@ data-reference="tab:w4a-density">[tab:w4a-density]</a> sweeps three
 sample sizes (15k, 30k, 50k) with bge-small (W4-B winner) and the same
 BM25-on-sample baseline at each size.</p>
 <figure id="fig:w4a-density-curve" data-latex-placement="H">
-<img src="w4a_density_curve.png" style="width:78.0%" />
+<img src="dense_vs_bm25_density_curve.png" style="width:78.0%" />
 <figcaption>W4-A — MRR@10 vs. qrel-density on the same three
 qrels-anchored samples as <a href="#tab:w4a-density"
 data-reference-type="ref+Label"
@@ -2053,7 +2053,7 @@ href="#fig:w6c-query-length,fig:w6c-n-qrels,fig:w6c-top3-passage"
 data-reference-type="ref+Label"
 data-reference="fig:w6c-query-length,fig:w6c-n-qrels,fig:w6c-top3-passage">[fig:w6c-query-length,fig:w6c-n-qrels,fig:w6c-top3-passage]</a>.</p>
 <figure id="fig:w6c-query-length" data-latex-placement="H">
-<img src="w6c_regression_vs_other_query_length.png"
+<img src="grounding_delta_vs_query_length.png"
 style="width:62.0%" />
 <figcaption>W6-C — query-length distribution, regression bucket (n=233)
 vs. rest (n=6 747). Indistinguishable; Mann–Whitney <span
@@ -2061,7 +2061,7 @@ class="math inline"><em>p</em> = 0.96</span>, effect size <span
 class="math inline"><em>r</em> =  − 0.002</span>.</figcaption>
 </figure>
 <figure id="fig:w6c-n-qrels" data-latex-placement="H">
-<img src="w6c_regression_vs_other_n_qrels.png" style="width:62.0%" />
+<img src="grounding_delta_vs_n_qrels.png" style="width:62.0%" />
 <figcaption>W6-C — number of relevance judgements per query. A very
 small downward shift in the regression bucket (<span
 class="math inline"><em>p</em> = 0.009</span>, effect size <span
@@ -2069,7 +2069,7 @@ class="math inline"><em>r</em> =  − 0.040</span>); not meaningfully
 different from zero.</figcaption>
 </figure>
 <figure id="fig:w6c-top3-passage" data-latex-placement="H">
-<img src="w6c_regression_vs_other_top3_passage_length.png"
+<img src="grounding_delta_vs_top3_passage_length.png"
 style="width:62.0%" />
 <figcaption>W6-C — average rerank top-3 passage length. The only feature
 with a detectable effect: regression-arm top-3 passages are <span
