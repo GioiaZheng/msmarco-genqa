@@ -377,17 +377,17 @@ This report contributes the following:
 \Cref{sec:relwork} surveys the related work that anchors the design
 choices.  \Cref{sec:dataset} characterises the \msmarco{} subset
 actually used.  \Cref{sec:method} steps through the four modelling
-stages (W1--W5) in implementation order.  \Cref{sec:results} is the
-central empirical chapter, presenting the W2--W5 retrieval numbers,
-the load-bearing W3 paired generation comparison, the W5-A
-first-stage head-to-head, the W6 evaluation layer, the W7
-grounding audit, and the W8 triad diagnostic interface.
-\Cref{sec:discussion} discusses what the combination of W6 closure,
-W7 grounding, and W8 triad diagnostics actually means about
+stages in implementation order.  \Cref{sec:results} is the
+central empirical chapter, presenting the retrieval numbers,
+the load-bearing paired generation comparison, the
+first-stage head-to-head, the evaluation layer, the
+grounding audit, and the triad diagnostic interface.
+\Cref{sec:discussion} discusses what the combination of evaluation-layer closure,
+grounding, and triad diagnostics actually means about
 where the gain comes from, treats the NLI sign flip on its own
 terms, and compares ship versus plan.  \Cref{sec:limitations} states
 the limitations.  \Cref{sec:conclusion} concludes.
-The question-form breakdown is reported inline with the rest of W6
+The question-form breakdown is reported inline with the rest of the evaluation layer
 (\Cref{tab:w6b}).  Appendices cover the configuration and
 reproducibility scaffolding (\Cref{sec:reproducibility}), the full
 five-way bucket counts (\Cref{sec:appendix-buckets}), and a
@@ -468,10 +468,10 @@ shared embedding space.  ANCE~\cite{xiong2021ance} and subsequent
 \msmarco{}-tuned encoders established that dense retrieval can
 substantially outperform \bmtwofive{} on this benchmark.  This project
 uses a \emph{generic} (non-domain-tuned)
-\texttt{all-MiniLM-L6-v2}~\cite{wang2020minilm} encoder as the W4
+\texttt{all-MiniLM-L6-v2}~\cite{wang2020minilm} encoder as the dense
 baseline, deliberately leaving the \msmarco{}-tuned variant
 (\texttt{msmarco-MiniLM-L6-cos-v5}) and a stronger generic encoder
-(BGE small~\cite{xiao2024bge}) for the W4-B follow-up.  Exact
+(BGE small~\cite{xiao2024bge}) for the same-tier encoder comparison.  Exact
 similarity search is via FAISS \texttt{IndexFlatIP}~\cite{johnson2019faiss}
 on L2-normalised embeddings (cosine similarity); no approximate
 nearest-neighbour index is used, since the
@@ -484,7 +484,7 @@ known single-stage reranking quality on \msmarco{}.  The reranker used
 throughout this project is \texttt{cross-encoder/ms-marco-MiniLM-L-6-v2},
 a small distilled cross-encoder~\cite{wang2020minilm} trained on
 \msmarco{} qrels.  Reranking depth is fixed to $K\!=\!100$ throughout
-the report; the K-sweep (\{50, 100, 200\}) is queued as W5-B
+the report; the K-sweep (\{50, 100, 200\}) is queued as the top-k sweep
 (\Cref{sec:plan-vs-actual}).
 
 \paragraph{Retrieval-augmented generation.}  RAG~\cite{lewis2020rag}
@@ -535,15 +535,15 @@ The project consumes two distinct slices of \msmarco{}:
 \begin{itemize}
   \item \textbf{\msmarco{} Passage Ranking} (the retrieval corpus): 8.8M
         English passages, $\sim\!400$~bytes median length.  All
-        retrieval baselines (W2 \bmtwofive{}, W4 dense, W5 rerank, and
-        the W3 generator's upstream context) index this corpus.  Used
+        retrieval baselines (\bmtwofive{}, dense, rerank, and
+        the generator's upstream context) index this corpus.  Used
         the official \texttt{ir\_datasets}
         loader~\cite{macavaney2021irdatasets} for both the corpus and
         the \devsmall{} relevance judgements.
   \item \textbf{\msmarco{} Q\&A v2.1 validation split}: $\sim\!101$k
         queries, each with up to ten candidate passages and one or
-        more human-written reference answers.  W1 (EDA) uses the
-        first 5\,000 rows of this split; W3 generation evaluation
+        more human-written reference answers.  The EDA uses the
+        first 5\,000 rows of this split; the generation evaluation
         uses the references attached to the \fdev{} \devsmall{}
         queries on which \bmtwofive{} and the reranker both produce a
         top-3 (\Cref{sec:gen-x-retrieval}).
@@ -552,28 +552,28 @@ The project consumes two distinct slices of \msmarco{}:
 \subsection{Query and passage shape}
 
 \Cref{fig:query-length,fig:passage-length} report the empirical
-length distributions on the W1 5\,000-row validation sample.
+length distributions on the EDA 5\,000-row validation sample.
 Queries are short (median $\approx\!6$ tokens; the long tail beyond
 $\sim\!15$ tokens is small), consistent with web-search behaviour;
 passages are roughly $10\times$ longer (median $\approx\!50$
-tokens), short enough that the W3 generator can fit three of them
+tokens), short enough that the generator can fit three of them
 into a T5-small 512-token input window without per-passage
 truncation in the common case.
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.78\linewidth]{query_length_distribution.png}
-  \caption{Query-length distribution on the W1 5\,000-row \msmarco{}
+  \caption{Query-length distribution on the EDA 5\,000-row \msmarco{}
   Q\&A v2.1 validation sample.  Median $\approx\!6$ tokens; the
   $\geq\!15$-token tail is small.  Sets the sizing target for the
-  W3 RAG prompt budget.}
+  RAG prompt budget.}
   \label{fig:query-length}
 \end{figure}
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.78\linewidth]{passage_length_distribution.png}
-  \caption{Passage-length distribution on the same W1 sample,
+  \caption{Passage-length distribution on the same EDA sample,
   clipped at 200 tokens.  Median $\approx\!50$ tokens; the floor at
   one sentence is an artefact of \msmarco{}'s snippet extraction.}
   \label{fig:passage-length}
@@ -585,12 +585,12 @@ truncation in the common case.
 (\texttt{DESCRIPTION}, \texttt{NUMERIC}, \texttt{ENTITY},
 \texttt{LOCATION}, \texttt{PERSON}) and a separate (noisier)
 free-form answer field.  On the \fdev{} \devsmall{} queries that the
-load-bearing W3 comparison uses, the proportions are
+load-bearing generation comparison uses, the proportions are
 \texttt{DESCRIPTION}~53\,\%, \texttt{NUMERIC}~24\,\%,
 \texttt{ENTITY}~9\,\%, \texttt{LOCATION}~7\,\%, \texttt{PERSON}~7\,\%
 (see \Cref{tab:bucket-by-type} in \Cref{sec:gen-x-retrieval}).
 
-\Cref{fig:query-type,fig:answer-by-type} show the W1 distributional
+\Cref{fig:query-type,fig:answer-by-type} show the EDA distributional
 read on the validation sample.  Two observations end up shaping
 later stages:
 
@@ -599,7 +599,7 @@ later stages:
         Description answers are long, free-form, and reward
         paraphrase --- which makes surface-form metrics
         (\rougel{}, BLEU, EM) systematically pessimistic on this
-        class and motivates the W6 \bertscore{} proxy
+        class and motivates the \bertscore{} proxy
         (\Cref{sec:w6-bertscore}).  Numeric answers are short and
         rely on lexical surface match in the passage, so the
         bucket analysis of \Cref{tab:bucket-by-type} can use them
@@ -619,7 +619,7 @@ later stages:
   \centering
   \includegraphics[width=0.78\linewidth]{query_type_distribution.png}
   \caption{\msmarco{} \texttt{query\_type} label distribution on the
-  W1 validation sample.  \texttt{DESCRIPTION} dominates;
+  EDA validation sample.  \texttt{DESCRIPTION} dominates;
   \texttt{LOCATION} and \texttt{PERSON} are smaller buckets.}
   \label{fig:query-type}
 \end{figure}
@@ -638,7 +638,7 @@ later stages:
 A subtle but consequential property of the \devsmall{} qrels:
 $\geq\!95\,\%$ of dev queries have exactly one marked-relevant
 passage in the 8.8M-passage corpus, and \emph{none} are negatively
-labelled.  This shapes the W4 sampling design (\Cref{sec:w4}): a
+labelled.  This shapes the dense-retrieval sampling design (\Cref{sec:w4}): a
 uniform random 50k sample from 8.8M would leave almost no relevant
 doc in the pool, so the project uses a \emph{qrels-anchored} sample
 in which every dev relevant doc id is unconditionally included
@@ -652,18 +652,21 @@ the meaningful quantity.
 \clearpage\section{Methodology}
 \label{sec:method}
 
-This section describes the four modelling stages (W2--W5) and the
-post-hoc analysis layers (W6--W8) in implementation order.  All
-of W2--W5 ship as scripted command-line entrypoints under
+This section describes the four modelling stages (sparse retrieval,
+generation, dense retrieval, and reranking) and the
+post-hoc analysis layers (evaluation, grounding, triad diagnostics)
+in implementation order.  All
+four modelling stages ship as scripted command-line entrypoints under
 \texttt{experiments/run\_*.py}, driven by a single configuration
-file at \texttt{configs/baseline.yaml}; W6--W7 are analysis scripts
-under \texttt{scripts/*.py}, W8 is an installable
-\texttt{mgq-rag-triad} diagnostic, and W9 is an installable
+file at \texttt{configs/baseline.yaml}; the evaluation and grounding
+layers are analysis scripts
+under \texttt{scripts/*.py}, the triad diagnostic is an installable
+\texttt{mgq-rag-triad} diagnostic, and context packing is an installable
 \texttt{mgq-context-packing-report} comparison over packed versus
 plain generation predictions.  These layers write JSON / Markdown
-summaries beneath \texttt{outputs/W6\_*/}, \texttt{outputs/W7\_*/},
-\texttt{outputs/W8\_rag\_triad/}, and
-\texttt{outputs/W9\_context\_packing/}.
+summaries beneath the per-analysis directories under \texttt{outputs/}
+(the evaluation, grounding, \texttt{rag\_triad}, and
+\texttt{context\_packing} outputs).
 \Cref{sec:reproducibility} documents the reproducibility scaffold.
 
 \Cref{fig:pipeline} sketches the end-to-end flow and the place each
@@ -684,9 +687,9 @@ stage occupies in it.
     edgelbl/.style={font=\scriptsize\itshape, gray!50!black, inner sep=1pt},
   ]
     \node[stage]                              (q)   {Query\\\scriptsize $n\!=\!\fdev{}$};
-    \node[stage, right=8mm of q]              (fs)  {First stage\\\textbf{W2}~BM25\\\textbf{W4}~Dense};
-    \node[stage, right=8mm of fs]             (ce)  {\textbf{W5}\\CE rerank};
-    \node[stage, right=8mm of ce]             (gen) {\textbf{W3}\\T5-small RAG};
+    \node[stage, right=8mm of q]              (fs)  {First stage\\\textbf{BM25}\\\textbf{Dense}};
+    \node[stage, right=8mm of fs]             (ce)  {\textbf{CE rerank}};
+    \node[stage, right=8mm of ce]             (gen) {\textbf{T5-small RAG}};
     \node[stage, right=8mm of gen]            (ans) {Answer};
 
     \draw[flow] (q)   -- (fs);
@@ -695,21 +698,21 @@ stage occupies in it.
     \draw[flow] (gen) -- (ans);
 
     \node[aux, below=10mm of gen]             (eval)
-      {\textbf{W6}~semantic proxy\\\textbf{W7}~grounding audit\\\textbf{W8}~triad report};
+      {\textbf{Semantic proxy}\\\textbf{Grounding audit}\\\textbf{Triad report}};
     \draw[side] (gen.south) -- (eval.north);
   \end{tikzpicture}
   \caption{End-to-end pipeline.  Solid boxes are the four modelling
   stages of \Cref{sec:method}; the dashed box is the post-hoc
   evaluation layer (\Cref{sec:w6,sec:w7}), plus the current triad
   diagnostic interface, which consumes the
-  already-on-disk W3 paired predictions and does not re-run any
-  modelling stage.  W2 and W4 are interchangeable first stages
-  feeding into the same downstream pipeline; the W3 paired
+  already-on-disk paired generation predictions and does not re-run any
+  modelling stage.  BM25 and dense retrieval are interchangeable first stages
+  feeding into the same downstream pipeline; the paired generation
   comparison of \Cref{sec:gen-x-retrieval} switches between them.}
   \label{fig:pipeline}
 \end{figure}
 
-\subsection{W2 --- Sparse retrieval (\bmtwofive{})}
+\subsection{Sparse retrieval (\bmtwofive{})}
 \label{sec:w2}
 
 \paragraph{Setup.}  The first stage is \bmtwofive{} via
@@ -741,7 +744,7 @@ top-$10$, zero if none); \recallH{} and \recallK{} are computed at
 $K\!\in\!\{100,1000\}$; \ndcg{} uses binary gain following the
 standard discounted cumulative gain formulation~\cite{jarvelin2002ndcg}.
 
-\subsection{W3 --- RAG generation baseline}
+\subsection{RAG generation baseline}
 \label{sec:w3}
 
 \paragraph{Generator.}  A frozen T5-small~\cite{raffel2020t5}
@@ -755,15 +758,15 @@ where $p_1\ldots p_3$ are the top-3 passages from the upstream
 retriever, ordered by descending retriever score.  Decoding uses the
 T5 defaults with \texttt{max\_input\_length=512},
 \texttt{max\_new\_tokens=64}; the latter is the parameter that the
-W6 closure run of \Cref{sec:w6-closure} sweeps.
+evaluation-layer closure run of \Cref{sec:w6-closure} sweeps.
 
 \paragraph{Two retrieval sources, same generator.}  The
 \texttt{run\_generation\_baseline.py} runner is intentionally
 \emph{retrieval-source agnostic}: it consumes any TREC-format
 \texttt{run.tsv} and folds the top-$K$ passages into the prompt.
-The headline W3 comparison (\Cref{sec:gen-x-retrieval}) runs the
+The headline generation comparison (\Cref{sec:gen-x-retrieval}) runs the
 generator twice with exactly the same configuration, switching only
-the upstream run between (i) the W2 \bmtwofive{} run and (ii) the W5
+the upstream run between (i) the \bmtwofive{} run and (ii) the
 cross-encoder-reranked dense run, and uses the runner's
 \texttt{--restrict-to-run} flag to constrain both passes to the
 \emph{intersection} of query ids covered by both upstream runs ---
@@ -780,10 +783,10 @@ query has multiple reference answers, every metric is computed as
 \msmarco{} Q\&A reference scripts use and what makes per-query
 scores comparable across queries with one versus three references.
 
-\subsection{W4 --- Dense retrieval (sampled)}
+\subsection{Dense retrieval (sampled)}
 \label{sec:w4}
 
-\paragraph{Encoder \& index.}  The W4 dense retriever uses
+\paragraph{Encoder \& index.}  The dense retriever uses
 \texttt{\seqsplit{sentence-transformers/all-MiniLM-L6-v2}}~\cite{reimers2019sbert,wang2020minilm}
 --- a generic semantic-similarity encoder, deliberately
 \emph{not} \msmarco{}-tuned --- to embed both queries and passages
@@ -795,8 +798,8 @@ nearest-neighbour structure is used.
 \paragraph{Why a sampled corpus.}
 \label{sec:w4-sampling-caveat}
 Encoding the full 8.8M passage corpus on a six-core CPU laptop is
-prohibitive (estimated $\sim\!40$~hours at the W4 encode throughput
-of $16$ ms / passage).  The W4 baseline therefore runs on a
+prohibitive (estimated $\sim\!40$~hours at the dense encode throughput
+of $16$ ms / passage).  The dense baseline therefore runs on a
 \emph{50\,000-passage sample}.  A uniform random sample at this size
 would put $\sim\!4\!\times\!10^{-4}\!\cdot\!8.8\textrm{M}\!\approx\!50$
 relevant docs in the pool against $\sim\!17\,000$ dev relevance
@@ -812,24 +815,24 @@ absolute MRR / \ndcg{} / Recall of both retrievers, because the
 relevant document is always present in the pool by construction.
 The legitimate comparison is \emph{dense vs.\ \bmtwofive{} on the
 same sample} (a same-pool head-to-head) --- which is exactly what
-\Cref{tab:w4-results} reports.  Absolute W4 numbers are \emph{not}
-directly comparable to the W2 full-corpus \bmtwofive{} number.
+\Cref{tab:w4-results} reports.  Absolute dense numbers are \emph{not}
+directly comparable to the full-corpus \bmtwofive{} number.
 
 \paragraph{\bmtwofive{} on the same sample.}  To make the head-to-
 head fair, the runner also rebuilds a \bmtwofive{} index on the same
 50k-passage sample (\texttt{data/processed/bm25\_sample\_index\_50k/})
 with identical hyperparameters and re-evaluates it on the same query
 set.  This is the \bmtwofive{} number in \Cref{tab:w4-results}, not
-the W2 full-corpus baseline.
+the full-corpus sparse-retrieval baseline.
 
-\subsection{W5 --- Cross-encoder reranking}
+\subsection{Cross-encoder reranking}
 \label{sec:w5}
 
 \paragraph{Reranker.}  The reranker is
 \texttt{cross-encoder/ms-marco-MiniLM-L-6-v2}~\cite{nogueira2019passage,wang2020minilm},
 a small distilled \msmarco{}-trained cross-encoder.  It scores
 $(\text{query}, \text{passage})$ pairs jointly --- as opposed to the
-W4 bi-encoder which encodes them independently --- producing a
+dense bi-encoder which encodes them independently --- producing a
 relevance score for each of the top-$K$ candidates from the first
 stage.
 
@@ -838,28 +841,28 @@ stage.
 motivated and operationally pragmatic: $K\!=\!100$ is the standard
 \msmarco{} reranking depth in the literature and balances rerank
 quality against wall-clock cost, which is linear in $K$.  The
-K-sweep ($\{50, 100, 200\}$) is queued as W5-B and explicitly
+K-sweep ($\{50, 100, 200\}$) is queued as the top-k sweep and explicitly
 de-scoped per the project's reduced-scope deadline
 (\Cref{sec:plan-vs-actual}).
 
-\paragraph{Two arms.}  Two W5 runs are reported: one over the W4
+\paragraph{Two arms.}  Two rerank runs are reported: one over the
 dense top-100 (\Cref{sec:w5-dense-rerank}, the canonical setup) and
-one over the W2 \bmtwofive{} top-100 (\Cref{sec:w5a}, the W5-A
+one over the \bmtwofive{} top-100 (\Cref{sec:w5a}, the first-stage
 head-to-head against the dense arm).  Both use the same reranker
 checkpoint, the same depth, and the same evaluation pass.
 
-\paragraph{Cost.}  The W5 dense+rerank full-dev run takes
+\paragraph{Cost.}  The dense+rerank full-dev run takes
 $\approx\!4$~h~$37$~min on a 6-core MacBook CPU
 (538\,000 (query, passage) pairs at $\sim\!32$~pairs/s, peak RSS
-$\sim\!3.3$~GiB); the W5-A \bmtwofive{}+rerank arm takes
+$\sim\!3.3$~GiB); the \bmtwofive{}+rerank arm takes
 $\approx\!3$~h~$43$~min.  The cross-encoder is by far the slowest
 stage in the pipeline.
 
-\subsection{W6 --- Evaluation layer}
+\subsection{Evaluation layer}
 \label{sec:w6-method}
 
-W6 layers two post-hoc analyses on the already-on-disk W3 paired
-predictions, neither of which requires re-running W3 or W5:
+The evaluation layer adds two post-hoc analyses on the already-on-disk paired
+generation predictions, neither of which requires re-running the generator or reranker:
 
 \paragraph{Semantic-proxy \bertscore{}.}  A DistilBERT-based
 \bertscore{}~\cite{zhang2020bertscore,sanh2019distilbert} is
@@ -890,7 +893,7 @@ written to fresh \texttt{\_mnt128} directories; the canonical
 \texttt{\_full} predictions are untouched.  Same paired-bootstrap CI
 machinery is then applied to the new predictions.
 
-\paragraph{W6-A/B/C breakdowns.}  Three offline analyses on the
+\paragraph{Question-form breakdowns.}  Three offline analyses on the
 per-query metric tables: (A) a syntactic question-form tagger over
 all \fdev{} queries (who / what / when / where / why / how / which
 / yes\_no / other), (B) per-form \Tokenf{} / \rougel{} / EM /
@@ -898,10 +901,10 @@ all \fdev{} queries (who / what / when / where / why / how / which
 Mann--Whitney U comparison~\cite{mannwhitney1947} of five structural
 features between regression and non-regression queries.
 
-\subsection{W7 --- Grounding audit}
+\subsection{Grounding audit}
 \label{sec:w7-method}
 
-W7 is the project's faithfulness layer.  The leading question is:
+The grounding audit is the project's faithfulness layer.  The leading question is:
 \emph{is T5-small extracting content from the retrieved passages, or
 generating from its parametric memory and happening to overlap?}
 
@@ -920,10 +923,10 @@ contiguous span in at least one passage.  Catches ``the model strung
 together the right words in the wrong order'' cases the bag-of-
 content-tokens score misses.
 
-\paragraph{NLI-entailment grounding (W7-A).}  An NLI cross-encoder
+\paragraph{NLI-entailment grounding.}  An NLI cross-encoder
 (\texttt{\seqsplit{cross-encoder/nli-deberta-v3-small}}~\cite{he2023debertav3,williams2018mnli})
 scores \emph{entailment}$(\text{passages} \to \text{prediction})$ on
-the same 3\,000-paired-qid subsample used by the W6 \bertscore{}
+the same 3\,000-paired-qid subsample used by the \bertscore{}
 proxy.  Same paired-bootstrap-CI machinery.  This is the semantic-
 faithfulness companion to the two lexical grounding metrics.
 
@@ -939,25 +942,25 @@ $\Delta$ is unaffected.
 \label{sec:results}
 
 This section reports results in the order in which they were
-produced: the per-stage retrieval baselines (W2 / W4 / W5,
+produced: the per-stage retrieval baselines (sparse, dense, rerank,
 \Cref{sec:w2-results,sec:w4-results,sec:w5-dense-rerank}), the
 paired generation comparison that constitutes the principal
 empirical finding (\Cref{sec:gen-x-retrieval}), the first-stage
-$\times$ reranker head-to-head (W5-A, \Cref{sec:w5a}), and the
+$\times$ reranker head-to-head (\Cref{sec:w5a}), and the
 two post-hoc calibration layers --- semantic-proxy evaluation
 (\Cref{sec:w6}) and grounding audit (\Cref{sec:w7}).
 \Cref{sec:discussion} integrates the findings.
 
-\subsection{W2: \bmtwofive{} baseline (full corpus)}
+\subsection{\bmtwofive{} baseline (full corpus)}
 \label{sec:w2-results}
 
-\Cref{tab:w2-results} reports the W2 \bmtwofive{} numbers on the full
+\Cref{tab:w2-results} reports the \bmtwofive{} numbers on the full
 8.8M-passage corpus and \fdev{} \devsmall{} queries, against the
 published Anserini/Lucene reference.
 
 \begin{table}[H]
   \centering
-  \caption{W2 --- \bmtwofive{} on the full \msmarco{} Passage corpus,
+  \caption{\bmtwofive{} on the full \msmarco{} Passage corpus,
   \fdev{} \devsmall{} queries.  Reference: published Anserini/Lucene
   \mrr{}~$\approx 0.184$~\cite{lin2021pyserini}.  The $\sim\!0.014$
   gap is attributable to tokenizer differences between Lucene's
@@ -983,16 +986,16 @@ passage is not in the \bmtwofive{} top-100 \emph{at all}.  This
 recall ceiling is what makes the constrained-recovery comparison in
 \Cref{sec:w5a} non-trivial.
 
-\subsection{W4: Dense vs.\ \bmtwofive{} on the same sample}
+\subsection{Dense vs.\ \bmtwofive{} on the same sample}
 \label{sec:w4-results}
 
-\Cref{tab:w4-results} reports the W4 dense baseline against
+\Cref{tab:w4-results} reports the dense baseline against
 \bmtwofive{} rebuilt on the \emph{same} qrels-anchored 50k sample.
 Both columns evaluate on the same \fdev{} queries.
 
 \begin{table}[H]
   \centering
-  \caption{W4 --- dense vs.\ \bmtwofive{} on the same
+  \caption{Dense vs.\ \bmtwofive{} on the same
   qrels-anchored 50k passage sample, \fdev{} \devsmall{} queries.
   Encoder: \texttt{sentence-transformers/all-MiniLM-L6-v2} (generic,
   not \msmarco{}-tuned).  Index: FAISS \texttt{IndexFlatIP} over
@@ -1013,23 +1016,23 @@ Two observations:
         \bmtwofive{} leaves open, even without
         \msmarco{}-specific tuning.
   \item Dense \recallH{}~$=0.9946$ is effectively at the ceiling on
-        this sampled setting.  From W5 onward, recall is no longer
+        this sampled setting.  From reranking onward, recall is no longer
         the bottleneck; the reranker's job is to tighten
         \emph{local ordering} (rank-1 vs.\ rank-3 vs.\ rank-10) given
         that the relevant passage is already in the top-100.
 \end{enumerate}
 
-\subsection{W4-B: encoder horizontal on the W4 sample}
+\subsection{Encoder horizontal on the dense sample}
 \label{sec:w4b}
 
 \Cref{tab:w4b-encoders} compares three same-tier general-purpose
-encoders on the identical W4 50k qrels-anchored sample.  All three
+encoders on the identical dense 50k qrels-anchored sample.  All three
 runs share the same sample selection, same BM25-on-sample baseline,
 and the same evaluation pool, so the comparison is apples-to-apples.
 
 \begin{table}[H]
   \centering
-  \caption{W4-B --- same-tier dense encoders on the W4 50k
+  \caption{Same-tier dense encoders on the dense 50k
   qrels-anchored sample.  Encoding throughput (ms/passage) measured
   on a single CPU process. Best per column in \textbf{bold}.}
   \label{tab:w4b-encoders}
@@ -1038,7 +1041,7 @@ and the same evaluation pool, so the comparison is apples-to-apples.
     \toprule
     Encoder & \mrr{} & \ndcg{} & \recallH{} & \recallK{} & ms/passage \\
     \midrule
-    \texttt{all-MiniLM-L6-v2} (W4 baseline) & 0.8830 & 0.9041 & 0.9946 & 0.9991 & \textbf{16.2} \\
+    \texttt{all-MiniLM-L6-v2} (dense baseline) & 0.8830 & 0.9041 & 0.9946 & 0.9991 & \textbf{16.2} \\
     \texttt{all-MiniLM-L12-v2}              & 0.8933 & 0.9131 & 0.9955 & \textbf{0.9996} & 31.3 \\
     \texttt{BAAI/bge-small-en-v1.5}         & \textbf{0.9021} & \textbf{0.9196} & \textbf{0.9967} & 0.9994 & 34.4 \\
     \bottomrule
@@ -1047,27 +1050,27 @@ and the same evaluation pool, so the comparison is apples-to-apples.
 \end{table}
 
 \paragraph{Read.}  bge-small-en-v1.5 lifts \mrr{} by $+0.019$ over
-the W4 baseline at $\sim\!2\!\times$ encoding cost (CPU,
+the dense baseline at $\sim\!2\!\times$ encoding cost (CPU,
 ms/passage).  MiniLM-L12 sits in the middle on both axes
 ($+0.010$ \mrr{} for the same $\sim\!2\!\times$ cost as bge-small).
 The throughput / quality trade is close to linear in this tier;
-none of the three encoders dominates strictly.  The W4-A density
+none of the three encoders dominates strictly.  The density-sensitivity
 sweep (\Cref{sec:w4a}) uses bge-small as the encoder.
 
-\subsection{W4-A: density sensitivity of the dense vs.\ \bmtwofive{} gap}
+\subsection{Density sensitivity of the dense vs.\ \bmtwofive{} gap}
 \label{sec:w4a}
 
-The W4 50k baseline is one point on a wider trade-off:
+The dense 50k baseline is one point on a wider trade-off:
 \emph{how does the dense-vs-\bmtwofive{} gap shift as the sample
 dilutes?}  \Cref{tab:w4a-density} sweeps three sample sizes (15k,
-30k, 50k) with bge-small (W4-B winner) and the same BM25-on-sample
+30k, 50k) with bge-small (the encoder-comparison winner) and the same BM25-on-sample
 baseline at each size.
 
 \begin{table}[H]
   \centering
-  \caption{W4-A --- density sensitivity of the same-sample
+  \caption{Density sensitivity of the same-sample
   BM25-vs-dense gap. Encoder: \texttt{BAAI/bge-small-en-v1.5}
-  (W4-B winner). Density is the share of the sample that is
+  (encoder-comparison winner). Density is the share of the sample that is
   relevant to $\geq\!1$ \devsmall{} query --- qrels-anchored
   sampling unconditionally includes every dev relevant doc, then
   fills with distractors, so density falls monotonically as the
@@ -1089,7 +1092,7 @@ baseline at each size.
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.78\linewidth]{dense_vs_bm25_density_curve.png}
-  \caption{W4-A --- \mrr{} vs.\ qrel-density on the same three
+  \caption{\mrr{} vs.\ qrel-density on the same three
   qrels-anchored samples as \Cref{tab:w4a-density}.  Encoder:
   \texttt{BAAI/bge-small-en-v1.5}.  Density decreases left-to-right
   (50k sample on the left at $\sim\!15\,\%$, 15k sample on the
@@ -1113,15 +1116,15 @@ samples to reach (dev/small has $\sim\!7{,}437$ unique relevant
 doc ids, so a true 1\,\% density needs a $\sim\!700{,}000$-passage
 sample) and are deferred.
 
-\subsection{W5: Cross-encoder reranking on the dense top-100}
+\subsection{Cross-encoder reranking on the dense top-100}
 \label{sec:w5-dense-rerank}
 
-\Cref{tab:w5-results} reports the W5 cross-encoder reranking of the
-W4 dense top-100, on the full \fdev{} \devsmall{} queries.
+\Cref{tab:w5-results} reports the cross-encoder reranking of the
+dense top-100, on the full \fdev{} \devsmall{} queries.
 
 \begin{table}[H]
   \centering
-  \caption{W5 --- cross-encoder reranking of the W4 dense top-100,
+  \caption{Cross-encoder reranking of the dense top-100,
   \fdev{} \devsmall{} queries.  Reranker: \texttt{cross-encoder/
   ms-marco-MiniLM-L-6-v2} at depth $K\!=\!100$.  Recall@100 is
   unchanged by construction (the reranker is order-only).  The
@@ -1158,7 +1161,7 @@ arms.
 
 \begin{table}[H]
   \centering
-  \caption{Headline W3 paired generation comparison on the full
+  \caption{Headline paired generation comparison on the full
   \fdev{} shared qid set.  Same T5-small, same prompt, same top-3
   passage count; only the upstream retrieval source differs.}
   \label{tab:w3-headline}
@@ -1177,7 +1180,7 @@ zero, with negligible overlap (\Cref{tab:w3-ci}).
 
 \begin{table}[H]
   \centering
-  \caption{W3 paired-bootstrap 95\,\% CI on $\Delta$ (rerank $-$
+  \caption{Paired-bootstrap 95\,\% CI on $\Delta$ (rerank $-$
   \bmtwofive{}).  $n\!=\!\fdev$, 10\,000 resamples, seed 42, percentile
   interval.  Two-sided $p$ from the bootstrap is $<\!0.001$ in every
   case.}
@@ -1246,7 +1249,7 @@ plot.
     \node[anchor=west, font=\scriptsize, gray!60!black]
       at (0.1789*\sx + 0.15, 1) {$+0.171$};
   \end{tikzpicture}
-  \caption{Headline W3 paired-bootstrap forest plot
+  \caption{Headline paired-bootstrap forest plot
   (\Cref{tab:w3-ci}).  Dots: per-query mean $\Delta$ (reranked $-$
   \bmtwofive{}); bars: 95\,\% percentile interval, 10\,000 resamples,
   seed 42.  Dashed line at zero: all four intervals lie strictly
@@ -1292,7 +1295,7 @@ breaks the per-query \Tokenf{} $\Delta$ down by \msmarco{}
 
 \begin{table}[H]
   \centering
-  \caption{W3 paired \Tokenf{} broken down by \msmarco{}
+  \caption{Paired \Tokenf{} broken down by \msmarco{}
   \texttt{query\_type}.  Same \fdev{} queries throughout.}
   \label{tab:bucket-by-type}
   \begin{tabular}{lrrrr}
@@ -1323,20 +1326,20 @@ reranked top-3 leads it to emit \emph{``N\textsubscript{2}F\textsubscript{4}''}
 --- the correct reference.  The retriever, not the generator,
 changed.
 
-\subsection{W5-A: First-stage $\times$ reranker head-to-head}
+\subsection{First-stage $\times$ reranker head-to-head}
 \label{sec:w5a}
 
 A natural follow-up to \Cref{sec:w5-dense-rerank}: does the same
 cross-encoder recover \emph{more} from a weaker first stage?
-\Cref{tab:w5a-results} runs the identical reranker over the W2
-\bmtwofive{} top-100 (full 8.8M corpus) and over the W4 dense
+\Cref{tab:w5a-results} runs the identical reranker over the
+\bmtwofive{} top-100 (full 8.8M corpus) and over the dense
 top-100 (50k sample), reporting absolute $\Delta$ and the
 \emph{constrained recovery rate} $\Delta\,/\,(\recallH{} - \text{first-stage})$
 that controls for each arm's recall ceiling.
 
 \begin{table}[H]
   \centering
-  \caption{W5-A --- same cross-encoder applied to two first stages
+  \caption{Same cross-encoder applied to two first stages
   of very different starting strength.  ``Constrained recovery'' is
   $\Delta\,/\,(\recallH{} - \text{first-stage})$, which controls for
   the fact that a reranker can only re-order what the first stage
@@ -1369,7 +1372,7 @@ dense arm runs on the 50k qrels-anchored sample
 not comparable across arms, only the within-arm $\Delta$ and the
 recovery rate.
 
-\subsection{W6: Evaluation layer}
+\subsection{Evaluation layer}
 \label{sec:w6}
 
 \subsubsection{Semantic-proxy \bertscore{}}
@@ -1379,7 +1382,7 @@ The four surface-form metrics in \Cref{tab:w3-ci} are all overlap-
 or n-gram-based; T5-small's tendency to emit verbose extractive
 outputs is a known source of mis-credit for surface-form
 metrics~\cite{lin2004rouge,papineni2002bleu}.  The load-bearing
-question of W6 is therefore: does the rerank $\Delta$ also show up
+question of the evaluation layer is therefore: does the rerank $\Delta$ also show up
 in a \emph{semantic} similarity scorer?
 
 \Cref{tab:w6-bertscore} reports the DistilBERT-based \bertscore{}
@@ -1388,8 +1391,8 @@ same paired-bootstrap-CI machinery as \Cref{tab:w3-ci}.
 
 \begin{table}[H]
   \centering
-  \caption{W6 --- DistilBERT \bertscore{} proxy~\cite{zhang2020bertscore,sanh2019distilbert}
-  on a 3\,000-pair subsample of the W3 \fdev{} shared qid set.
+  \caption{DistilBERT \bertscore{} proxy~\cite{zhang2020bertscore,sanh2019distilbert}
+  on a 3\,000-pair subsample of the \fdev{} shared qid set.
   \texttt{rescale\_with\_baseline=True}, multi-reference max-$F_1$,
   paired bootstrap 10\,000 resamples seed 42, 95\,\% percentile
   interval.  Per-query: rerank strictly better 64.8\,\%, tie
@@ -1423,7 +1426,7 @@ the qualitative direction.
 
 \begin{table}[H]
   \centering
-  \caption{W6 --- regression failure taxonomy on a 40-query seeded
+  \caption{Regression failure taxonomy on a 40-query seeded
   sample (seed 42) of the 233-strong regression bucket.  Labels are
   a deterministic five-way rule cascade; first-match wins.
   \texttt{semantic\_mismatch} is the residual catch-all.}
@@ -1450,7 +1453,7 @@ reranker is doing its job (richer passages); the generator's
 extractive behaviour turns the richer context into less overlap-
 matching output on this slice of queries.
 
-At the time of the W6 report this observation pointed at the
+At the time of the evaluation-layer report this observation pointed at the
 \texttt{max\_new\_tokens=64} cap as the cheapest intervention.  The
 closure run of \Cref{sec:w6-closure} \emph{falsifies} that reading.
 
@@ -1463,7 +1466,7 @@ Same generator, same prompts, same retrieval inputs, same seed; the
 
 \begin{table}[H]
   \centering
-  \caption{W6 decoding-budget closure --- same paired W3 comparison
+  \caption{Decoding-budget closure --- same paired generation comparison
   re-run with \texttt{max\_new\_tokens}~=~128.  Compared to the
   canonical \texttt{mnt=64} run on the same data.  None of the four
   surface-form deltas move by more than $0.005$; the regression
@@ -1484,7 +1487,7 @@ Same generator, same prompts, same retrieval inputs, same seed; the
   \end{tabular}
 \end{table}
 
-\textbf{The W6 budget-cap hypothesis is falsified.}  T5-small is
+\textbf{The budget-cap hypothesis is falsified.}  T5-small is
 hitting end-of-sequence \emph{naturally} on this prompt format;
 the mid-word-ending output style observed in
 \Cref{sec:w6-taxonomy} is intrinsic to the model on this prompt
@@ -1494,13 +1497,13 @@ synthesis, citation-aware decoding) or the model itself
 (T5-base or larger, instruction-tuned variants), not the
 \texttt{max\_new\_tokens} knob.
 
-\subsubsection{W6-A/B/C breakdowns}
+\subsubsection{Question-form breakdowns}
 \label{sec:w6-followups}
 
 Three offline analyses on the per-query metrics; no new generation
 or reranking required.
 
-\paragraph{W6-A --- question-form tagging.}  A nine-way syntactic
+\paragraph{Question-form tagging.}  A nine-way syntactic
 tagger over all \fdev{} \devsmall{} queries (who / what / when /
 where / why / how / which / yes\_no / other).  Complementary to the
 \msmarco{} native \texttt{query\_type} label of
@@ -1509,13 +1512,13 @@ redundant (e.g.\ ``who'' selects exclusively for \texttt{PERSON};
 ``where'' selects almost exclusively for \texttt{LOCATION}; ``what''
 spans every \texttt{query\_type}).
 
-\paragraph{W6-B --- rerank $\Delta$ by question-form.}
+\paragraph{Rerank $\Delta$ by question-form.}
 \Cref{tab:w6b} reports per-form $\Delta$ \Tokenf{} with
 paired-bootstrap CIs.
 
 \begin{table}[H]
   \centering
-  \caption{W6-B --- rerank $\Delta$ \Tokenf{} by question-form on
+  \caption{Rerank $\Delta$ \Tokenf{} by question-form on
   the full \fdev{} shared qid set, with paired-bootstrap 95\,\% CI
   (10\,000 resamples, seed 42).}
   \label{tab:w6b}
@@ -1548,7 +1551,7 @@ selection.  The remaining factual wh-forms (what / where / why /
 how / who) all see CIs strictly above zero in the $+0.12$ to
 $+0.23$ range.
 
-\paragraph{W6-C --- structural profile of regression queries.}
+\paragraph{Structural profile of regression queries.}
 Mann--Whitney U~\cite{mannwhitney1947} on five structural features
 between the 233-query regression bucket and the 6\,747 non-regression
 queries.  Four of the five features (query length in tokens,
@@ -1565,7 +1568,7 @@ T5-small less material to extract.  See
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.62\linewidth]{grounding_delta_vs_query_length.png}
-  \caption{W6-C --- query-length distribution, regression bucket
+  \caption{Query-length distribution, regression bucket
   (n=233) vs.\ rest (n=6\,747).  Indistinguishable; Mann--Whitney
   $p\!=\!0.96$, effect size $r\!=\!-0.002$.}
   \label{fig:w6c-query-length}
@@ -1574,7 +1577,7 @@ T5-small less material to extract.  See
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.62\linewidth]{grounding_delta_vs_n_qrels.png}
-  \caption{W6-C --- number of relevance judgements per query.  A
+  \caption{Number of relevance judgements per query.  A
   very small downward shift in the regression bucket
   ($p\!=\!0.009$, effect size $r\!=\!-0.040$); not meaningfully
   different from zero.}
@@ -1584,7 +1587,7 @@ T5-small less material to extract.  See
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.62\linewidth]{grounding_delta_vs_top3_passage_length.png}
-  \caption{W6-C --- average rerank top-3 passage length.  The only
+  \caption{Average rerank top-3 passage length.  The only
   feature with a detectable effect: regression-arm top-3 passages
   are $\sim\!2.7$ tokens shorter at the median
   ($p\!=\!0.0073$, $r\!=\!-0.103$).  Consistent with
@@ -1593,11 +1596,11 @@ T5-small less material to extract.  See
   \label{fig:w6c-top3-passage}
 \end{figure}
 
-\subsection{W7: Grounding audit}
+\subsection{Grounding audit}
 \label{sec:w7}
 
-The W6 closure (\Cref{sec:w6-closure}) ruled out the decode budget
-as the bottleneck.  W7 answers the question the closure left open:
+The evaluation-layer closure (\Cref{sec:w6-closure}) ruled out the decode budget
+as the bottleneck.  The grounding audit answers the question the closure left open:
 \emph{what is T5-small actually doing on this prompt format ---
 extracting from the passages, or generating from parametric
 memory?}
@@ -1609,7 +1612,7 @@ on the full \fdev{} paired qid set.
 
 \begin{table}[H]
   \centering
-  \caption{W7 --- lexical and 3-gram grounding on the full \fdev{}
+  \caption{Lexical and 3-gram grounding on the full \fdev{}
   paired qid set.  Paired bootstrap 10\,000 resamples, seed 42,
   95\,\% percentile interval.  Both arms sit at the ceiling.}
   \label{tab:w7-lex-ngram}
@@ -1632,7 +1635,7 @@ arms remain $\sim\!99\,\%$.
 
 \paragraph{Implication.}  T5-small on the
 \texttt{question:\ \ldots\ context:\ \ldots} prompt is performing
-\emph{extractive} QA, not generative QA.  The W3 surface-form
+\emph{extractive} QA, not generative QA.  The generation surface-form
 $\Delta$ of \Cref{tab:w3-headline} is therefore almost entirely
 \emph{downstream of retrieval}: the reranker puts the right words
 into the prompt and the generator copies them.  This is a
@@ -1649,22 +1652,22 @@ vacuously.  Lexical-vacuous predictions are negligible
 ($<\!0.3\,\%$).  Counts are identical-shape on both arms, so the
 paired $\Delta$ is unaffected.
 
-\subsubsection{W7-A --- NLI-entailment grounding}
+\subsubsection{NLI-entailment grounding}
 \label{sec:w7-nli}
 
 \Cref{tab:w7-nli} reports an NLI-entailment proxy
 ($\text{entailment}(\text{passages} \to \text{prediction})$,
 \code{cross-\allowbreak encoder/\allowbreak nli-\allowbreak deberta-v3-small}~\cite{he2023debertav3,williams2018mnli})
-on the same 3\,000-paired-qid subsample as the W6 \bertscore{}
+on the same 3\,000-paired-qid subsample as the \bertscore{}
 proxy.
 
 \begin{table}[H]
   \centering
-  \caption{W7-A --- NLI-entailment grounding on the same 3\,000-
-  paired-qid subsample (seed 42) used by the W6 \bertscore{} proxy.
+  \caption{NLI-entailment grounding on the same 3\,000-
+  paired-qid subsample (seed 42) used by the \bertscore{} proxy.
   Same paired-bootstrap CI convention.  This is the only paired
   metric in the entire project whose $\Delta$ reverses sign relative
-  to the W3/W5/W6 surface-form story.}
+  to the generation, reranking, and evaluation-layer surface-form story.}
   \label{tab:w7-nli}
   \begin{tabular}{lrrrrr}
     \toprule
@@ -1679,7 +1682,7 @@ The NLI $\Delta$ is negative and strictly excludes zero.  Section
 \Cref{sec:discussion-nli-flip} discusses the most plausible
 mechanism and how to disambiguate.
 
-\subsubsection{W7-C --- grounding $\leftrightarrow$ downstream
+\subsubsection{Grounding $\leftrightarrow$ downstream
 correlation}
 
 Per-query Spearman / Pearson correlations between each grounding
@@ -1695,7 +1698,7 @@ every cell), entirely because both arms sit at the lex / 3-gram
 ceiling on $\geq\!99\,\%$ of queries.  The signal is in the
 \emph{level}, not the per-query rank.
 
-\subsubsection{W7-D --- low-grounding case study}
+\subsubsection{Low-grounding case study}
 
 Of the 197 rerank-arm queries with $\mathrm{lex}\!<\!0.9$ OR
 $\mathrm{ngram}\!<\!0.9$, 30 are sampled (seed 42) and labelled by
@@ -1704,7 +1707,7 @@ counts.
 
 \begin{table}[H]
   \centering
-  \caption{W7-D --- low-grounding case study on a 30-query seeded
+  \caption{Low-grounding case study on a 30-query seeded
   triage (seed 42) of the 197 rerank-arm queries with
   lex $<\!0.9$ or 3-gram $<\!0.9$.  Categories applied in
   declaration order; first match wins.
@@ -1730,15 +1733,15 @@ words in the prompt; only the order or phrasing changes.  The 7
 tokenisation / morphology artefacts: \emph{``350oF''} vs.\
 \emph{``350$^\circ$F''}, \emph{``competed''} vs.\ \emph{``compete''}.
 \textbf{Zero genuine hallucinations} (\texttt{parametric\_or\_external})
-in the sample.  This reinforces the W7 headline: T5-small on this
+in the sample.  This reinforces the grounding-audit headline: T5-small on this
 prompt format is doing extractive QA even on its worst-grounded
 outputs.
 
-\subsection{W8 --- RAG triad diagnostic interface}
+\subsection{RAG triad diagnostic interface}
 \label{sec:w8-triad}
 
 The current repository adds a deterministic triad report as an
-engineering-facing diagnostic layer over the same W3 prediction
+engineering-facing diagnostic layer over the same generation prediction
 schema.  The \texttt{mgq-rag-triad} CLI writes
 \texttt{metrics.json}, \texttt{per\_query\_triad.jsonl},
 \texttt{low\_score\_cases.jsonl}, and \texttt{report.md} for one or
@@ -1756,7 +1759,7 @@ failure modes.  The CLI rejects unsupported evaluator names, so
 future model-assisted RAGAS/TruLens-style scoring must be opted into
 explicitly rather than silently mixed with deterministic scores.
 
-\subsection{W9 --- context packing and prompt compression}
+\subsection{Context packing and prompt compression}
 \label{sec:w9-context-packing}
 
 The current repository also adds a deterministic context-packing
@@ -1776,7 +1779,7 @@ query ids, then writes \texttt{comparison.json},
 answer-quality deltas (\Tokenf{} and exact match) separate from
 context-character savings, so compression can be evaluated as a
 cost--quality trade-off rather than as a hidden prompt-format change.
-Grounding and W8 triad reports should be read alongside this output
+Grounding and triad reports should be read alongside this output
 before treating a packed prompt as a better RAG configuration.
 
 % =============================================================================
@@ -1787,7 +1790,7 @@ before treating a packed prompt as a better RAG configuration.
 \label{sec:discussion-where}
 
 Combining \Cref{sec:gen-x-retrieval} with \Cref{sec:w7}, the answer
-is unambiguous: the headline doubling of W3 surface-form metrics is
+is unambiguous: the headline doubling of generation surface-form metrics is
 \textbf{a retrieval effect, not a generation effect}.  T5-small on
 this prompt format does not invent content; it copies content from
 the prompt.  The reranker's job is to ensure that the content the
@@ -1804,7 +1807,7 @@ evidence converge:
         words T5-small emits, $\sim\!99.7\,\%$ of them are already
         in the prompt.  There is no slack for ``the generator
         thought of something better'' to account for any meaningful
-        portion of the W3 $\Delta$.
+        portion of the generation $\Delta$.
 \end{enumerate}
 
 This reading has direct consequences for where further work should
@@ -1812,19 +1815,20 @@ go.  Decoding-budget interventions are ruled out by
 \Cref{sec:w6-closure}; generator output-style interventions
 (\Cref{sec:w7-nli}) are constrained by the ceiling effect; prompt-
 format and generator-capacity interventions become the natural next
-axes.  \Cref{sec:plan-vs-actual} records the W7-B (T5-base swap)
+axes.  \Cref{sec:plan-vs-actual} records the generator-capacity (T5-base swap)
 follow-up that is queued in the project's reduced-scope plan.
 
-\subsection{The W7-A NLI sign flip}
+\subsection{The NLI sign flip}
 \label{sec:discussion-nli-flip}
 
 \Cref{tab:w7-nli} is the only paired metric in this project whose
-$\Delta$ reverses sign relative to the otherwise-consistent W3/W5/W6
+$\Delta$ reverses sign relative to the otherwise-consistent generation,
+reranking, and evaluation-layer
 story: a robust $-0.145$, with a 95\,\% CI that strictly excludes
 zero.  Three candidate explanations are worth taking seriously.
 
 \paragraph{(i) Output-shape artefact (currently the best-supported).}
-The 40-query taxonomy (\Cref{tab:w6-taxonomy}) and the W7-D case
+The 40-query taxonomy (\Cref{tab:w6-taxonomy}) and the low-grounding case
 study (\Cref{tab:w7d}) jointly show that the reranked-arm
 predictions contain more fragmentary / mid-word-cut / title-style
 outputs than the \bmtwofive{}-arm predictions.  A sentence-level
@@ -1844,26 +1848,26 @@ title-style or list-style fragments instead of the descriptive
 paragraphs that would actually be reference-equivalent.  Under this
 account the NLI flip is real: rerank-arm predictions are, on a
 semantic-faithfulness scale, worse despite being lexically tighter.
-This is harder to rule out from the existing data because the W7
+This is harder to rule out from the existing data because the grounding
 binned analysis shows a small positive correlation between
 grounding and downstream metrics (\Cref{sec:w7}), but the
 sentence-completeness confound is unresolved.
 
 \paragraph{(iii) NLI checkpoint artefact.}  The NLI cross-encoder
-in W7-A is \texttt{\seqsplit{cross-encoder/nli-deberta-v3-small}} ---
+in the NLI-grounding audit is \texttt{\seqsplit{cross-encoder/nli-deberta-v3-small}} ---
 distilled, MNLI-trained~\cite{he2023debertav3,williams2018mnli}.
 It is not domain-adapted to \msmarco{}-style passages and could
 behave differently from a larger NLI scorer on the project's
 characteristic short-passage / short-prediction inputs.
 
 \paragraph{How to disambiguate.}  The cleanest test is a generator
-swap: rerun the W3 paired comparison with T5-base (or an
+swap: rerun the paired generation comparison with T5-base (or an
 instruction-tuned small model) in place of T5-small, holding
 everything else fixed, and recompute the NLI proxy.  If the NLI
 $\Delta$ moves toward zero or flips back positive without changing
 the surface-form $\Delta$ much, account~(i) is supported.  If it
 stays negative at the same magnitude, account~(ii) becomes the
-working hypothesis.  This is the planned W7-B follow-up, deferred
+working hypothesis.  This is the planned generator-capacity follow-up, deferred
 to the post-deadline T5-base run (\Cref{sec:plan-vs-actual}).
 
 \subsection{Plan vs.\ actual}
@@ -1888,14 +1892,14 @@ de-scoped.
 \textbf{Stage} & \textbf{Plan} & \textbf{Actual} & \textbf{Status} \\
 \midrule
 \endhead
-W1 & EDA & EDA on the QA v2.1 validation 5k-row sample
+Stage 1 & EDA & EDA on the QA v2.1 validation 5k-row sample
      (\Cref{sec:dataset}) & shipped \\
-W2 & \bmtwofive{} baseline & Full 8.8M-corpus \bmtwofive{} retrieve
+Stage 2 & \bmtwofive{} baseline & Full 8.8M-corpus \bmtwofive{} retrieve
      +  MRR/Recall (\Cref{sec:w2-results}) & shipped \\
-W3 & RAG baseline (T5/BART/Phi + top-3) & T5-small RAG generator on
-     the W2 top-3, 200-query sample baseline + the load-bearing
+Stage 3 & RAG baseline (T5/BART/Phi + top-3) & T5-small RAG generator on
+     the BM25 top-3, 200-query sample baseline + the load-bearing
      paired full-dev comparison (\Cref{sec:gen-x-retrieval}) & shipped \\
-W4 & Dense retrieval, ideally ANCE & Generic \texttt{all-MiniLM-L6-v2}
+Stage 4 & Dense retrieval, ideally ANCE & Generic \texttt{all-MiniLM-L6-v2}
      on a 50k qrels-anchored sample with FAISS \texttt{IndexFlatIP}
      (\Cref{sec:w4-results}); same-tier encoder horizontal added
      (\Cref{sec:w4b}: MiniLM-L12, bge-small-en-v1.5; bge-small wins
@@ -1903,33 +1907,33 @@ W4 & Dense retrieval, ideally ANCE & Generic \texttt{all-MiniLM-L6-v2}
      (\Cref{sec:w4a}: 15k/30k/50k samples).  ANCE /
      \msmarco{}-tuned encoders and true low-density cells
      (1/5/10\,\%, needing 70k--700k samples) deferred & shipped \\
-W5 & Cross-encoder rerank & \texttt{ms-marco-MiniLM-L-6-v2} over
+Stage 5 & Cross-encoder rerank & \texttt{ms-marco-MiniLM-L-6-v2} over
      dense top-100, full-dev (\Cref{sec:w5-dense-rerank}) +
      \bmtwofive{}-top-100 arm (\Cref{sec:w5a}) & shipped \\
-W6 & Generator fine-tuning & \emph{Substituted}: evaluation layer
+Stage 6 & Generator fine-tuning & \emph{Substituted}: evaluation layer
      (\bertscore{} proxy + failure taxonomy + decode-budget closure;
-     \Cref{sec:w6}).  The W3 paired comparison made evaluation
-     calibration the higher-leverage axis than SFT, and the W6
-     closure + W7 grounding together explain why SFT is unlikely
+     \Cref{sec:w6}).  The paired generation comparison made evaluation
+     calibration the higher-leverage axis than SFT, and the evaluation-layer
+     closure + grounding together explain why SFT is unlikely
      to be the bottleneck. & substituted \\
-W7 & Hallucination \& citation & \emph{Substituted}: grounding audit
+Stage 7 & Hallucination \& citation & \emph{Substituted}: grounding audit
      (lexical / 3-gram / NLI; \Cref{sec:w7}).  Same goal
      (faithfulness), more direct measurement.  Span-level citation
      linking is in the explicit out-of-scope list. & substituted \\
-W8 & Long-document handling & \emph{De-scoped} due to the project's
-     2026-05-22 deadline and the choice to prioritise the W6/W7
+Stage 8 & Long-document handling & \emph{De-scoped} due to the project's
+     2026-05-22 deadline and the choice to prioritise the evaluation and grounding
      analyses on the already-shipped passage-level pipeline.
      The infrastructure (sliding-window prompt assembly) exists in
      the runner; the long-doc benchmark pass does not. & de-scoped \\
-W9 & Integration \& acceleration (ONNX, quantisation) & Engineering
+Stage 9 & Integration \& acceleration (ONNX, quantisation) & Engineering
      scaffolding shipped (manifests, lockfile, CI, lint;
      \Cref{sec:reproducibility}); ONNX / quantisation
      not pursued on the CPU-only laptop where wall-clock cost is
      already dominated by the cross-encoder. & partial \\
-W10 & Final evaluation & The headline paired comparison serves as
+Stage 10 & Final evaluation & The headline paired comparison serves as
      the final evaluation; no CodaLab submission. & redirected \\
-W11 & Research paper & This report. & shipped \\
-W12 & Presentation & Out of report scope. & --- \\
+Stage 11 & Research paper & This report. & shipped \\
+Stage 12 & Presentation & Out of report scope. & --- \\
 \bottomrule
 \caption{Plan vs.\ actual.  ``Substituted'' indicates that the
 planned milestone was replaced by an evidence-driven alternative
@@ -1939,14 +1943,14 @@ work that was cut, not redirected.}
 \end{longtable}
 \normalsize
 
-The two W6 / W7 substitutions are the project's main methodological
-deviation from the plan.  The reasoning was empirical: once the W3
-paired comparison shipped, evaluation calibration --- ``do these
+The two evaluation and grounding substitutions are the project's main methodological
+deviation from the plan.  The reasoning was empirical: once the paired generation
+comparison shipped, evaluation calibration --- ``do these
 deltas hold up under a semantic-similarity scorer?'', ``where do
 the remaining regressions come from?'' --- gave a clearer story
-than SFT would have, and the W6 closure run then made that story
+than SFT would have, and the evaluation-layer closure run then made that story
 \emph{actionable} by ruling out the most plausible cheap
-intervention (the decoding budget).  The W7 grounding audit then
+intervention (the decoding budget).  The grounding audit then
 calibrated the headline result honestly: most of the gain is
 retrieval, the generator is extractive, and the only sign-
 reversing metric (\Cref{sec:w7-nli}) is plausibly an output-shape
@@ -1967,15 +1971,15 @@ reranked) are therefore modest; the load-bearing claim is the
 paired $\Delta$ between rows, which is statistically robust on
 $n\!=\!\fdev{}$.
 
-\paragraph{W4 / W5 numbers are on a qrels-anchored sample.}  The W4
+\paragraph{Dense and rerank numbers are on a qrels-anchored sample.}  The dense
 50k sample includes every \devsmall{} relevant doc by construction
 (\Cref{sec:w4-sampling-caveat}), inflating absolute MRR / Recall
 on the sampled setting.  The legitimate comparison is within-
 sample (dense vs.\ \bmtwofive{} on the same pool), not against the
-W2 full-corpus number.  This caveat is propagated to the W5 dense+
+full-corpus number.  This caveat is propagated to the dense+
 rerank numbers, which inherit the same sampling.
 
-\paragraph{\bmtwofive{} tokenizer mismatch with Anserini.}  The W2
+\paragraph{\bmtwofive{} tokenizer mismatch with Anserini.}  The full-corpus
 \mrr{}~$=0.170$ versus reference $\approx 0.184$ is mostly
 attributable to tokenizer differences between \texttt{bm25s} default
 and Lucene \texttt{EnglishAnalyzer}.  Acceptable for a single-
@@ -1984,12 +1988,12 @@ machine pure-Python pipeline, but it does mean the project's
 Lucene-tokenizer baselines without bracketing for the tokenizer gap.
 
 \paragraph{Generation metrics are dominated by surface form.}  The
-W6 \bertscore{} proxy (\Cref{sec:w6-bertscore}) and the W7
+\bertscore{} proxy (\Cref{sec:w6-bertscore}) and the
 grounding metrics (\Cref{sec:w7}) partially close the surface-form
 gap, but the canonical \texttt{roberta-large} \bertscore{} on full
 dev/small is still open.
 
-\paragraph{The W7-A NLI sign flip is unresolved.}  Section
+\paragraph{The NLI sign flip is unresolved.}  Section
 \Cref{sec:discussion-nli-flip} identifies three candidate
 mechanisms; existing data cannot fully discriminate among them.
 A T5-base / instruction-tuned-small generator swap is the
@@ -2031,7 +2035,7 @@ discipline of treating every cross-stage comparison as a paired
 statistical test and of calibrating each surface-form metric
 against a semantic-similarity proxy and a grounding metric before
 accepting it as evidence.  Three readings that would have appeared
-plausible from the W3 surface-form numbers alone are rejected on
+plausible from the generation surface-form numbers alone are rejected on
 this basis: that the residual regression bucket is driven by the
 decoding budget (falsified in \Cref{sec:w6-closure}), that
 reranking materially improves grounding (\Cref{tab:w7-lex-ngram}
@@ -2130,9 +2134,9 @@ metric libraries~\cite{lin2004rouge,papineni2002bleu}.
 
 \subsection{One config, workflow facade, and stage runners}
 
-All four W2--W5 runners are driven by a single configuration file
-at \texttt{configs/baseline.yaml}; the W6/W7 analysis scripts and
-W8 triad CLI read the on-disk W3 paired predictions directly.  The current repository
+All four modelling-stage runners are driven by a single configuration file
+at \texttt{configs/baseline.yaml}; the evaluation and grounding analysis scripts and
+the triad CLI read the on-disk paired generation predictions directly.  The current repository
 also exposes a workflow facade through \texttt{rag-eval} and
 installable \texttt{mgq-*} console scripts.  \Cref{tab:repro-cmds}
 records the canonical command family for each layer.
@@ -2148,20 +2152,20 @@ records the canonical command family for each layer.
     Stage & \normalfont Command \\
     \midrule
     Workflow facade & rag-eval run \mbox{--config} configs/baseline.yaml \mbox{--dry-run} \\
-    W2  & python experiments/run\_retrieval.py \\
-    W3  & python experiments/run\_generation\_baseline.py \\
-    W4  & python experiments/run\_dense\_retrieval.py \\
-    W5  & python experiments/run\_reranker.py \\
-    W3 paired    & python scripts/run\_full\_generation\_and\_analysis.py \\
-    W5-A         & python scripts/compare\_rerank\_first\_stages.py \\
-    W6 BERTScore & python scripts/bertscore\_paired\_eval.py \\
-    W6 taxonomy  & python scripts/regression\_failure\_taxonomy.py \\
-    W6 closure   & python scripts/run\_full\_generation\_and\_analysis.py \mbox{--max-new-tokens}~128 \mbox{--out-suffix}~\_mnt128 \\
-    W6-A/B/C     & scripts/tag\_query\_forms.py \ /\ analyze\_rerank\_by\_query\_form.py \ /\ regression\_query\_profile.py \\
-    W7 grounding & python scripts/grounding\_audit.py \\
-    W7-A NLI     & same script with \mbox{--nli-n-pairs}~3000 \\
-    W8 triad     & mgq-rag-triad \mbox{--predictions} bm25=\ldots{} \mbox{--predictions} reranked=\ldots{} \mbox{--output-dir} outputs/W8\_rag\_triad \\
-    W9 context packing & mgq-context-packing-report \mbox{--baseline-predictions} \ldots{} \mbox{--compressed-predictions} \ldots{} \mbox{--output-dir} outputs/W9\_context\_packing \\
+    Sparse retrieval  & python experiments/run\_retrieval.py \\
+    Generation  & python experiments/run\_generation\_baseline.py \\
+    Dense retrieval  & python experiments/run\_dense\_retrieval.py \\
+    Reranking  & python experiments/run\_reranker.py \\
+    Generation paired    & python scripts/run\_full\_generation\_and\_analysis.py \\
+    First-stage head-to-head & python scripts/compare\_rerank\_first\_stages.py \\
+    Evaluation BERTScore & python scripts/bertscore\_paired\_eval.py \\
+    Evaluation taxonomy  & python scripts/regression\_failure\_taxonomy.py \\
+    Evaluation closure   & python scripts/run\_full\_generation\_and\_analysis.py \mbox{--max-new-tokens}~128 \mbox{--out-suffix}~\_mnt128 \\
+    Question-form breakdowns & scripts/tag\_query\_forms.py \ /\ analyze\_rerank\_by\_query\_form.py \ /\ regression\_query\_profile.py \\
+    Grounding & python scripts/grounding\_audit.py \\
+    NLI grounding     & same script with \mbox{--nli-n-pairs}~3000 \\
+    Triad     & mgq-rag-triad \mbox{--predictions} bm25=\ldots{} \mbox{--predictions} reranked=\ldots{} \mbox{--output-dir} outputs/rag\_triad \\
+    Context packing & mgq-context-packing-report \mbox{--baseline-predictions} \ldots{} \mbox{--compressed-predictions} \ldots{} \mbox{--output-dir} outputs/context\_packing \\
     Input validation & docs/input\_validation.md \\
     Model-stack smoke & python scripts/smoke\_model\_stack.py \mbox{--config} configs/baseline.yaml \mbox{--device} cpu \\
     Serving smoke & mgq-serve \quad{\normalfont(after installing the \texttt{serve} extra)} \\
@@ -2198,9 +2202,9 @@ FastAPI wrapper maps these typed validation failures to structured
 
 \subsection{Determinism}
 
-Seed 42 is used everywhere a random choice enters: the W4
-qrels-anchored distractor sample, the W6 BERTScore subsample
-selection, the W6 regression-bucket triage sample, the W7-D
+Seed 42 is used everywhere a random choice enters: the dense
+qrels-anchored distractor sample, the BERTScore subsample
+selection, the regression-bucket triage sample, the
 low-grounding case-study sample, and the 10\,000-resample paired
 bootstrap throughout.  This is documented in the per-script CLI
 help and in the per-stage reports' ``Reproduce'' sections.
@@ -2246,11 +2250,11 @@ outside git.
         JSONL events.
 \end{itemize}
 
-\section{Full bucket counts and W6 analysis tables}
+\section{Full bucket counts and evaluation-layer analysis tables}
 \label{sec:appendix-buckets}
 
 \Cref{tab:buckets-full} reports the five-way bucket counts on the
-full \fdev{} W3 paired comparison.  The classification is from
+full \fdev{} paired generation comparison.  The classification is from
 \texttt{scripts/analyze\_generation\_rerank.py}: each query is
 assigned exactly one bucket based on (i) whether the reranker
 brought a relevance-judged passage into the generator's top-3 and
@@ -2259,7 +2263,7 @@ or worsened.
 
 \begin{table}[H]
   \centering
-  \caption{Five-way bucket counts on the full \fdev{} W3 paired
+  \caption{Five-way bucket counts on the full \fdev{} paired generation
   comparison.  \texttt{rerank\_fixed\_generation\_improved} is the
   ``both retrieval and generator improved'' headline bucket;
   \texttt{regression} is the narrower 233-strong bucket
@@ -2288,42 +2292,42 @@ or worsened.
 \emergencystretch=3em
 \hbadness=99999
 \begin{itemize}
-  \item \textbf{W2:} \bmtwofive{} retrieval, full corpus.  Output:
-        \texttt{outputs/W2\_bm25/}.
-  \item \textbf{W3:} RAG generation baseline (T5-small over top-3).
+  \item \textbf{Sparse retrieval:} \bmtwofive{} retrieval, full corpus.  Output:
+        \texttt{outputs/bm25\_baseline/}.
+  \item \textbf{Generation:} RAG generation baseline (T5-small over top-3).
         Output:
-        \code{outputs/W3\_\allowbreak generation\_\allowbreak \{bm25,reranked\}\_\allowbreak full/}.
-  \item \textbf{W4:} dense retrieval, 50k qrels-anchored sample.
-        Output: \texttt{outputs/W4\_dense/}.
-  \item \textbf{W5:} cross-encoder rerank over dense top-100.
-        Output: \texttt{outputs/W5\_reranker\_full/}.
-  \item \textbf{W5-A:} same reranker over \bmtwofive{} top-100.
+        \code{outputs/generation\_\allowbreak \{bm25,reranked\}\_\allowbreak full/}.
+  \item \textbf{Dense retrieval:} dense retrieval, 50k qrels-anchored sample.
+        Output: \texttt{outputs/dense\_retrieval/}.
+  \item \textbf{Reranking:} cross-encoder rerank over dense top-100.
+        Output: \texttt{outputs/cross\_encoder\_rerank\_full/}.
+  \item \textbf{First-stage head-to-head:} same reranker over \bmtwofive{} top-100.
         Output:
-        \code{outputs/W5\_\allowbreak rerank\_\allowbreak first\_\allowbreak stage\_\allowbreak compare/}.
-  \item \textbf{W6:} \bertscore{} proxy + regression failure
+        \code{outputs/rerank\_\allowbreak first\_\allowbreak stage\_\allowbreak compare/}.
+  \item \textbf{Evaluation layer:} \bertscore{} proxy + regression failure
         taxonomy + decode-budget closure.  Outputs:
-        \code{outputs/W6\_\allowbreak bertscore\_\allowbreak proxy/},
-        \code{outputs/W6\_\allowbreak analysis/},
-        \code{outputs/W6\_\allowbreak taxonomy\_\allowbreak mnt128/}.
-  \item \textbf{W6-A/B/C:} question-form tagging,
+        \code{outputs/bertscore\_\allowbreak proxy/},
+        \code{outputs/generation\_\allowbreak analysis/},
+        \code{outputs/failure\_\allowbreak taxonomy\_\allowbreak mnt128/}.
+  \item \textbf{Question-form breakdowns:} question-form tagging,
         per-form $\Delta$, regression structural profile.
-        Outputs: \code{outputs/W6\_\allowbreak querytype/},
-        \code{outputs/W6\_\allowbreak rerank\_\allowbreak by\_\allowbreak form/},
-        \code{outputs/W6\_\allowbreak regression\_\allowbreak features/}.
-  \item \textbf{W7:} lexical + 3-gram grounding audit; W7-A adds
-        the NLI proxy; W7-C grounding $\leftrightarrow$ downstream
-        correlation; W7-D low-grounding case study.  Outputs:
-        \code{outputs/W7\_\allowbreak grounding/},
-        \code{outputs/W7\_\allowbreak grounding\_\allowbreak correlation/},
-        \code{outputs/W7\_\allowbreak low\_\allowbreak grounding\_\allowbreak cases/}.
-  \item \textbf{W8 triad:} deterministic context relevance,
+        Outputs: \code{outputs/query\_\allowbreak type\_\allowbreak analysis/},
+        \code{outputs/rerank\_\allowbreak by\_\allowbreak query\_\allowbreak form/},
+        \code{outputs/regression\_\allowbreak features/}.
+  \item \textbf{Grounding audit:} lexical + 3-gram grounding audit; the NLI
+        proxy is added on top; grounding $\leftrightarrow$ downstream
+        correlation; low-grounding case study.  Outputs:
+        \code{outputs/grounding/},
+        \code{outputs/grounding\_\allowbreak correlation/},
+        \code{outputs/low\_\allowbreak grounding\_\allowbreak cases/}.
+  \item \textbf{Triad:} deterministic context relevance,
         groundedness, and answer relevance diagnostics over one or
         more generation prediction files.  Output:
-        \code{outputs/W8\_\allowbreak rag\_\allowbreak triad/}.
-  \item \textbf{W9 context packing:} matched-qid comparison of
+        \code{outputs/rag\_\allowbreak triad/}.
+  \item \textbf{Context packing:} matched-qid comparison of
         plain versus packed generation prediction files, including
         answer-quality deltas and context-character savings.  Output:
-        \code{outputs/W9\_\allowbreak context\_\allowbreak packing/}.
+        \code{outputs/context\_\allowbreak packing/}.
 \end{itemize}
 \endgroup
 
