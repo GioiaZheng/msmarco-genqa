@@ -15,17 +15,17 @@
   },
   "outputs_on_disk_now": [
     {
-      "path": "outputs/week05_reranker/examples.jsonl",
+      "path": "outputs/cross_encoder_rerank/examples.jsonl",
       "sha256_16": "845ea0badea21d2c",
       "size_bytes": 36134
     },
     {
-      "path": "outputs/week05_reranker/metrics.json",
+      "path": "outputs/cross_encoder_rerank/metrics.json",
       "sha256_16": "c8bb7d1bfda076e7",
       "size_bytes": 3113
     },
     {
-      "path": "outputs/week05_reranker/run.tsv",
+      "path": "outputs/cross_encoder_rerank/run.tsv",
       "sha256_16": "5c0a6156bd9395af",
       "size_bytes": 5051117
     }

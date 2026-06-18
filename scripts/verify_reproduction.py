@@ -1,8 +1,8 @@
 """Verify that a recorded run's manifest re-identifies the run.
 
 Usage:
-    python scripts/verify_reproduction.py outputs/W2_bm25
-    python scripts/verify_reproduction.py outputs/W4_dense outputs/W5_reranker
+    python scripts/verify_reproduction.py outputs/bm25_baseline
+    python scripts/verify_reproduction.py outputs/dense_retrieval outputs/cross_encoder_rerank
 
 Checks (any failure → exit 1):
 

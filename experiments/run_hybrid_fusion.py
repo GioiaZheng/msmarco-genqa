@@ -8,9 +8,9 @@ preserves per-source provenance in ``provenance.jsonl``, writes a fused
 Example:
 
     python experiments/run_hybrid_fusion.py \
-        --input-run bm25_sample=outputs/W4_dense/run_bm25_sample.tsv \
-        --input-run dense=outputs/W4_dense/run.tsv \
-        --output-dir outputs/W4_hybrid_rrf \
+        --input-run bm25_sample=outputs/dense_retrieval/run_bm25_sample.tsv \
+        --input-run dense=outputs/dense_retrieval/run.tsv \
+        --output-dir outputs/hybrid_rrf \
         --top-k 1000 \
         --qrels data/qrels.dev.small.tsv
 """
@@ -51,13 +51,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         metavar="NAME=PATH",
         help=(
             "Named input run. Pass once per source, for example "
-            "bm25=outputs/W4_dense/run_bm25_sample.tsv."
+            "bm25=outputs/dense_retrieval/run_bm25_sample.tsv."
         ),
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W4_hybrid_rrf",
+        default=PROJECT_ROOT / "outputs/hybrid_rrf",
         help="Directory for run.tsv, provenance.jsonl, metrics.json, and manifest.json.",
     )
     parser.add_argument(

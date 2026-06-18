@@ -836,8 +836,8 @@ at <code>configs/baseline.yaml</code>; W6–W7 are analysis scripts under
 <code>mgq-context-packing-report</code> comparison over packed versus
 plain generation predictions. These layers write JSON / Markdown
 summaries beneath <code>outputs/W6_*/</code>,
-<code>outputs/W7_*/</code>, <code>outputs/W8_rag_triad/</code>, and
-<code>outputs/W9_context_packing/</code>. <a href="#sec:reproducibility"
+<code>outputs/W7_*/</code>, <code>outputs/rag_triad/</code>, and
+<code>outputs/context_packing/</code>. <a href="#sec:reproducibility"
 data-reference-type="ref+Label"
 data-reference="sec:reproducibility">9</a> documents the reproducibility
 scaffold.</p>
@@ -2849,13 +2849,13 @@ scripts/run_full_generation_and_analysis.py –max-new-tokens 128
 <tr>
 <td style="text-align: left;">W8 triad</td>
 <td style="text-align: left;">mgq-rag-triad –predictions bm25=…
-–predictions reranked=… –output-dir outputs/W8_rag_triad</td>
+–predictions reranked=… –output-dir outputs/rag_triad</td>
 </tr>
 <tr>
 <td style="text-align: left;">W9 context packing</td>
 <td style="text-align: left;">mgq-context-packing-report
 –baseline-predictions … –compressed-predictions … –output-dir
-outputs/W9_context_packing</td>
+outputs/context_packing</td>
 </tr>
 <tr>
 <td style="text-align: left;">Input validation</td>
@@ -2998,40 +2998,40 @@ style="text-align: left;"><code>retrieval_equivalent_generation_differs</code></
 <h1 id="sec:appendix-glossary">Glossary of cross-references</h1>
 <ul>
 <li><p><strong>W2:</strong> BM25 retrieval, full corpus. Output:
-<code>outputs/W2_bm25/</code>.</p></li>
+<code>outputs/bm25_baseline/</code>.</p></li>
 <li><p><strong>W3:</strong> RAG generation baseline (T5-small over
 top-3). Output:
-<code>outputs/W3_generation_{bm25,reranked}_full/</code>.</p></li>
+<code>outputs/generation_{bm25,reranked}_full/</code>.</p></li>
 <li><p><strong>W4:</strong> dense retrieval, 50k qrels-anchored sample.
-Output: <code>outputs/W4_dense/</code>.</p></li>
+Output: <code>outputs/dense_retrieval/</code>.</p></li>
 <li><p><strong>W5:</strong> cross-encoder rerank over dense top-100.
-Output: <code>outputs/W5_reranker_full/</code>.</p></li>
+Output: <code>outputs/cross_encoder_rerank_full/</code>.</p></li>
 <li><p><strong>W5-A:</strong> same reranker over BM25 top-100. Output:
-<code>outputs/W5_rerank_first_stage_compare/</code>.</p></li>
+<code>outputs/rerank_first_stage_compare/</code>.</p></li>
 <li><p><strong>W6:</strong> BERTScore proxy + regression failure
 taxonomy + decode-budget closure. Outputs:
-<code>outputs/W6_bertscore_proxy/</code>,
-<code>outputs/W6_analysis/</code>,
-<code>outputs/W6_taxonomy_mnt128/</code>.</p></li>
+<code>outputs/bertscore_proxy/</code>,
+<code>outputs/generation_analysis/</code>,
+<code>outputs/failure_taxonomy_mnt128/</code>.</p></li>
 <li><p><strong>W6-A/B/C:</strong> question-form tagging, per-form <span
 class="math inline"><em>Δ</em></span>, regression structural profile.
-Outputs: <code>outputs/W6_querytype/</code>,
-<code>outputs/W6_rerank_by_form/</code>,
-<code>outputs/W6_regression_features/</code>.</p></li>
+Outputs: <code>outputs/query_type_analysis/</code>,
+<code>outputs/rerank_by_query_form/</code>,
+<code>outputs/regression_features/</code>.</p></li>
 <li><p><strong>W7:</strong> lexical + 3-gram grounding audit; W7-A adds
 the NLI proxy; W7-C grounding <span class="math inline">↔︎</span>
 downstream correlation; W7-D low-grounding case study. Outputs:
-<code>outputs/W7_grounding/</code>,
-<code>outputs/W7_grounding_correlation/</code>,
-<code>outputs/W7_low_grounding_cases/</code>.</p></li>
+<code>outputs/grounding/</code>,
+<code>outputs/grounding_correlation/</code>,
+<code>outputs/low_grounding_cases/</code>.</p></li>
 <li><p><strong>W8 triad:</strong> deterministic context relevance,
 groundedness, and answer relevance diagnostics over one or more
 generation prediction files. Output:
-<code>outputs/W8_rag_triad/</code>.</p></li>
+<code>outputs/rag_triad/</code>.</p></li>
 <li><p><strong>W9 context packing:</strong> matched-qid comparison of
 plain versus packed generation prediction files, including
 answer-quality deltas and context-character savings. Output:
-<code>outputs/W9_context_packing/</code>.</p></li>
+<code>outputs/context_packing/</code>.</p></li>
 </ul>
 <div id="refs" class="references csl-bib-body hanging-indent"
 role="list">

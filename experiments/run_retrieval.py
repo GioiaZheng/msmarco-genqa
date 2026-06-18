@@ -9,9 +9,9 @@ End-to-end:
    query 0.
 4. Compute MRR@10, Recall@100, Recall@1000.
 5. Persist:
-   - ``outputs/W2_bm25/metrics.json``
-   - ``outputs/W2_bm25/run.tsv``  (TREC-format run, top-1000 by default)
-   - ``outputs/W2_bm25/examples.jsonl``  (qualitative samples)
+   - ``outputs/bm25_baseline/metrics.json``
+   - ``outputs/bm25_baseline/run.tsv``  (TREC-format run, top-1000 by default)
+   - ``outputs/bm25_baseline/examples.jsonl``  (qualitative samples)
 
 Run from the project root::
 

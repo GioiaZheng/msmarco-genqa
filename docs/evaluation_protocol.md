@@ -73,8 +73,8 @@ checked against this protocol.
 
 For generation comparison:
 
-- BM25 generation input: `outputs/W2_bm25/run.tsv`.
-- Reranked generation input: `outputs/W5_reranker_full/run.tsv`.
+- BM25 generation input: `outputs/bm25_baseline/run.tsv`.
+- Reranked generation input: `outputs/cross_encoder_rerank_full/run.tsv`.
 - Both generation arms must use `--restrict-to-run` against the other arm's
   upstream run.
 - The final `predictions.jsonl` files must contain the same query ids in the

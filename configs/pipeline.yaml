@@ -38,11 +38,11 @@ stages:
       - python
       - experiments/run_hybrid_fusion.py
       - --input-run
-      - bm25_sample=outputs/W4_dense/run_bm25_sample.tsv
+      - bm25_sample=outputs/dense_retrieval/run_bm25_sample.tsv
       - --input-run
-      - dense=outputs/W4_dense/run.tsv
+      - dense=outputs/dense_retrieval/run.tsv
       - --output-dir
-      - outputs/W4_hybrid_rrf
+      - outputs/hybrid_rrf
       - --top-k
       - "1000"
 
@@ -59,9 +59,9 @@ stages:
       - python
       - experiments/run_reranker.py
       - --input-run
-      - outputs/W4_hybrid_rrf/run.tsv
+      - outputs/hybrid_rrf/run.tsv
       - --output-dir
-      - outputs/W5_hybrid_rrf_reranker
+      - outputs/hybrid_rrf_rerank
       - --resume
 
   - name: retrieval_quality_report
@@ -70,9 +70,9 @@ stages:
       - mgq-retrieval-report
       - compare
       - --baseline-run
-      - outputs/W4_dense/run.tsv
+      - outputs/dense_retrieval/run.tsv
       - --candidate-run
-      - outputs/W5_reranker_full/run.tsv
+      - outputs/cross_encoder_rerank_full/run.tsv
       - --baseline-name
       - dense
       - --candidate-name
@@ -86,13 +86,13 @@ stages:
       - mgq-retrieval-report
       - matrix
       - --run
-      - bm25_sample=outputs/W4_dense/run_bm25_sample.tsv
+      - bm25_sample=outputs/dense_retrieval/run_bm25_sample.tsv
       - --run
-      - dense=outputs/W4_dense/run.tsv
+      - dense=outputs/dense_retrieval/run.tsv
       - --run
-      - rrf=outputs/W4_hybrid_rrf/run.tsv
+      - rrf=outputs/hybrid_rrf/run.tsv
       - --run
-      - rrf_reranked=outputs/W5_hybrid_rrf_reranker/run.tsv
+      - rrf_reranked=outputs/hybrid_rrf_rerank/run.tsv
       - --baseline-name
       - bm25_sample
       - --output-dir
@@ -104,11 +104,11 @@ stages:
       - python
       - scripts/analyze_retrieval_lift.py
       - --before-run
-      - outputs/W4_dense/run.tsv
+      - outputs/dense_retrieval/run.tsv
       - --after-run
-      - outputs/W5_reranker_full/run.tsv
+      - outputs/cross_encoder_rerank_full/run.tsv
       - --output-dir
-      - outputs/W5_retrieval_lift_analysis
+      - outputs/retrieval_lift_analysis
 
   - name: generation_bm25
     description: T5 generation over BM25 top-3.
@@ -117,13 +117,13 @@ stages:
       - --config
       - configs/baseline.yaml
       - --input-run
-      - outputs/W2_bm25/run.tsv
+      - outputs/bm25_baseline/run.tsv
       - --output-dir
-      - outputs/W3_generation_bm25_full
+      - outputs/generation_bm25_full
       - --retrieval-source
       - bm25
       - --restrict-to-run
-      - outputs/W5_reranker_full/run.tsv
+      - outputs/cross_encoder_rerank_full/run.tsv
       - --num-eval-queries
       - "9999"
 
@@ -134,13 +134,13 @@ stages:
       - --config
       - configs/baseline.yaml
       - --input-run
-      - outputs/W5_reranker_full/run.tsv
+      - outputs/cross_encoder_rerank_full/run.tsv
       - --output-dir
-      - outputs/W3_generation_reranked_full
+      - outputs/generation_reranked_full
       - --retrieval-source
       - reranked
       - --restrict-to-run
-      - outputs/W2_bm25/run.tsv
+      - outputs/bm25_baseline/run.tsv
       - --num-eval-queries
       - "9999"
 
@@ -151,13 +151,13 @@ stages:
       - --config
       - configs/baseline.yaml
       - --input-run
-      - outputs/W5_reranker_full/run.tsv
+      - outputs/cross_encoder_rerank_full/run.tsv
       - --output-dir
-      - outputs/W3_generation_reranked_packed
+      - outputs/generation_reranked_packed
       - --retrieval-source
       - reranked_packed
       - --restrict-to-run
-      - outputs/W2_bm25/run.tsv
+      - outputs/bm25_baseline/run.tsv
       - --num-eval-queries
       - "9999"
       - --context-packing
@@ -175,15 +175,15 @@ stages:
     command:
       - mgq-context-packing-report
       - --baseline-predictions
-      - outputs/W3_generation_reranked_full/predictions.jsonl
+      - outputs/generation_reranked_full/predictions.jsonl
       - --compressed-predictions
-      - outputs/W3_generation_reranked_packed/predictions.jsonl
+      - outputs/generation_reranked_packed/predictions.jsonl
       - --baseline-name
       - reranked
       - --compressed-name
       - reranked_packed
       - --output-dir
-      - outputs/W9_context_packing
+      - outputs/context_packing
 
   - name: paired_bootstrap_ci
     description: Paired-bootstrap confidence intervals for rerank lift.
@@ -191,11 +191,11 @@ stages:
       - python
       - scripts/bootstrap_generation_comparison.py
       - --bm25-dir
-      - outputs/W3_generation_bm25_full
+      - outputs/generation_bm25_full
       - --reranked-dir
-      - outputs/W3_generation_reranked_full
+      - outputs/generation_reranked_full
       - --output-dir
-      - outputs/W3_generation_bootstrap_full
+      - outputs/generation_bootstrap_full
 
   - name: grounding_audit
     description: Deterministic grounding metrics over paired generation outputs.
@@ -203,22 +203,22 @@ stages:
       - python
       - scripts/grounding_audit.py
       - --bm25-dir
-      - outputs/W3_generation_bm25_full
+      - outputs/generation_bm25_full
       - --reranked-dir
-      - outputs/W3_generation_reranked_full
+      - outputs/generation_reranked_full
       - --output-dir
-      - outputs/W7_grounding
+      - outputs/grounding
 
   - name: rag_triad
     description: Context relevance, groundedness, and answer relevance report.
     command:
       - mgq-rag-triad
       - --predictions
-      - bm25=outputs/W3_generation_bm25_full/predictions.jsonl
+      - bm25=outputs/generation_bm25_full/predictions.jsonl
       - --predictions
-      - reranked=outputs/W3_generation_reranked_full/predictions.jsonl
+      - reranked=outputs/generation_reranked_full/predictions.jsonl
       - --output-dir
-      - outputs/W8_rag_triad
+      - outputs/rag_triad
       - --baseline-config
       - bm25
 

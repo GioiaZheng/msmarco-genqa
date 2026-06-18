@@ -33,9 +33,9 @@ Outputs (all under ``<output-dir>``, gitignored):
 Usage::
 
     python scripts/grounding_audit.py \\
-        --bm25-dir outputs/W3_generation_bm25_full \\
-        --reranked-dir outputs/W3_generation_reranked_full \\
-        --output-dir outputs/W7_grounding
+        --bm25-dir outputs/generation_bm25_full \\
+        --reranked-dir outputs/generation_reranked_full \\
+        --output-dir outputs/grounding
 
 The defaults point at the canonical full-dev W3 outputs.
 """
@@ -72,17 +72,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--bm25-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W3_generation_bm25_full",
+        default=PROJECT_ROOT / "outputs/generation_bm25_full",
     )
     parser.add_argument(
         "--reranked-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W3_generation_reranked_full",
+        default=PROJECT_ROOT / "outputs/generation_reranked_full",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W7_grounding",
+        default=PROJECT_ROOT / "outputs/grounding",
     )
     parser.add_argument(
         "--ngram-n",

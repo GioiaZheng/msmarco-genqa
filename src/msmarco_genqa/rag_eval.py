@@ -113,23 +113,23 @@ def _build_all_stages(
         settings.get("reranked_generation_dir", _default_named_dir(generation_dir, "reranked_full"))
     )
     packed_generation_dir = _as_posix(
-        settings.get("packed_generation_dir", "outputs/W3_generation_reranked_packed")
+        settings.get("packed_generation_dir", "outputs/generation_reranked_packed")
     )
     context_packing_report_dir = _as_posix(
-        settings.get("context_packing_report_dir", "outputs/W9_context_packing")
+        settings.get("context_packing_report_dir", "outputs/context_packing")
     )
     bootstrap_dir = _as_posix(
         settings.get("bootstrap_output_dir", _default_named_dir(generation_dir, "bootstrap_full"))
     )
     retrieval_lift_dir = _as_posix(
-        settings.get("retrieval_lift_output_dir", "outputs/W5_retrieval_lift_analysis")
+        settings.get("retrieval_lift_output_dir", "outputs/retrieval_lift_analysis")
     )
     retrieval_report_dir = _as_posix(
         settings.get("retrieval_report_output_dir", "outputs/retrieval_reports/dense_vs_reranked")
     )
     retrieval_qrels_path = settings.get("retrieval_qrels_path")
-    grounding_dir = _as_posix(settings.get("grounding_output_dir", "outputs/W7_grounding"))
-    triad_dir = _as_posix(settings.get("triad_output_dir", "outputs/W8_rag_triad"))
+    grounding_dir = _as_posix(settings.get("grounding_output_dir", "outputs/grounding"))
+    triad_dir = _as_posix(settings.get("triad_output_dir", "outputs/rag_triad"))
     triad_evaluator = str(settings.get("triad_evaluator", "deterministic"))
     triad_low_score_threshold = str(settings.get("triad_low_score_threshold", 0.5))
     triad_context_top_k = settings.get("triad_context_top_k")

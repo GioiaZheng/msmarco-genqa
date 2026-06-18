@@ -3,14 +3,14 @@
 Pipeline:
 
 1. Load a TREC-format retrieval run (``--input-run``; defaults to the W2
-   BM25 run at ``outputs/W2_bm25/run.tsv``).
+   BM25 run at ``outputs/bm25_baseline/run.tsv``).
 2. Load dev/small queries and the MS MARCO Passage docs_store (random access).
 3. Cross-reference dev/small query ids with MS MARCO QA v2.1 (HuggingFace
    ``ms_marco`` dataset, validation split) to recover human-written answers
    for evaluation.
 4. For each evaluated query, take the top-K passages from the run, generate
    an answer with the Seq2Seq model, and score predictions.
-5. Persist (under ``--output-dir``, defaults to ``outputs/W3_generation``):
+5. Persist (under ``--output-dir``, defaults to ``outputs/generation``):
    - ``predictions.jsonl``
    - ``metrics.json``
    - ``examples.jsonl``
@@ -30,8 +30,8 @@ Run from the project root::
 
     # Reranked → T5-small, restricted to reranker-covered queries
     python experiments/run_generation_baseline.py \\
-        --input-run outputs/W5_reranker/run.tsv \\
-        --output-dir outputs/W3_generation_reranked \\
+        --input-run outputs/cross_encoder_rerank/run.tsv \\
+        --output-dir outputs/generation_reranked \\
         --retrieval-source reranked
 """
 

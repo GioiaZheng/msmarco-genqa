@@ -34,7 +34,7 @@ For each feature we report median / IQR / mean on the two groups, plus
 a two-sided Mann-Whitney U test and a rank-biserial effect size. Three
 boxplot PNGs go under ``figures/`` (tracked in git); the per-qid
 features, summary, and markdown table go under
-``outputs/W6_regression_features/`` (gitignored).
+``outputs/regression_features/`` (gitignored).
 """
 
 from __future__ import annotations
@@ -64,22 +64,22 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--per-query-metrics",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W6_analysis/per_query_metrics.jsonl",
+        default=PROJECT_ROOT / "outputs/generation_analysis/per_query_metrics.jsonl",
     )
     p.add_argument(
         "--bm25-predictions",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W3_generation_bm25_full/predictions.jsonl",
+        default=PROJECT_ROOT / "outputs/generation_bm25_full/predictions.jsonl",
     )
     p.add_argument(
         "--rerank-predictions",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W3_generation_reranked_full/predictions.jsonl",
+        default=PROJECT_ROOT / "outputs/generation_reranked_full/predictions.jsonl",
     )
     p.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W6_regression_features",
+        default=PROJECT_ROOT / "outputs/regression_features",
     )
     p.add_argument(
         "--figures-dir",

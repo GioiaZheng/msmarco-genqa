@@ -523,11 +523,11 @@ python experiments/run_retrieval.py --resume         # picks up at next chunk bo
 python experiments/run_retrieval.py --rebuild-index  # force fresh index
 ```
 
-Outputs: `outputs/W2_bm25/{metrics.json, run.tsv, examples.jsonl, manifest.json}`.
+Outputs: `outputs/bm25_baseline/{metrics.json, run.tsv, examples.jsonl, manifest.json}`.
 
 ### Stage 3 — RAG generation
 
-Requires Stage 2 output `outputs/W2_bm25/run.tsv`.
+Requires Stage 2 output `outputs/bm25_baseline/run.tsv`.
 
 ```bash
 python experiments/run_generation_baseline.py
@@ -544,8 +544,8 @@ The runner is retrieval-source agnostic — feed it any TREC-format
 
 ```bash
 python experiments/run_generation_baseline.py \
-    --input-run outputs/W5_reranker/run.tsv \
-    --output-dir outputs/W3_generation_reranked \
+    --input-run outputs/cross_encoder_rerank/run.tsv \
+    --output-dir outputs/generation_reranked \
     --retrieval-source reranked
 ```
 
@@ -559,10 +559,10 @@ baseline output untouched and write a packed run to a separate directory:
 ```bash
 mgq-generate \
     --config configs/baseline.yaml \
-    --input-run outputs/W5_reranker_full/run.tsv \
-    --output-dir outputs/W3_generation_reranked_packed \
+    --input-run outputs/cross_encoder_rerank_full/run.tsv \
+    --output-dir outputs/generation_reranked_packed \
     --retrieval-source reranked_packed \
-    --restrict-to-run outputs/W2_bm25/run.tsv \
+    --restrict-to-run outputs/bm25_baseline/run.tsv \
     --num-eval-queries 9999 \
     --context-packing \
     --context-max-chars 900 \
@@ -571,11 +571,11 @@ mgq-generate \
     --context-ordering rank
 
 mgq-context-packing-report \
-    --baseline-predictions outputs/W3_generation_reranked_full/predictions.jsonl \
-    --compressed-predictions outputs/W3_generation_reranked_packed/predictions.jsonl \
+    --baseline-predictions outputs/generation_reranked_full/predictions.jsonl \
+    --compressed-predictions outputs/generation_reranked_packed/predictions.jsonl \
     --baseline-name reranked \
     --compressed-name reranked_packed \
-    --output-dir outputs/W9_context_packing
+    --output-dir outputs/context_packing
 ```
 
 The packed `predictions.jsonl` keeps `context_packing` span metadata so each
@@ -606,9 +606,9 @@ candidate pool and qrels caveat.
 
 ```bash
 python experiments/run_hybrid_fusion.py \
-    --input-run bm25_sample=outputs/W4_dense/run_bm25_sample.tsv \
-    --input-run dense=outputs/W4_dense/run.tsv \
-    --output-dir outputs/W4_hybrid_rrf \
+    --input-run bm25_sample=outputs/dense_retrieval/run_bm25_sample.tsv \
+    --input-run dense=outputs/dense_retrieval/run.tsv \
+    --output-dir outputs/hybrid_rrf \
     --top-k 1000
 ```
 
@@ -621,15 +621,15 @@ matrix over BM25-on-sample, dense, RRF, and RRF-plus-rerank:
 
 ```bash
 python experiments/run_reranker.py \
-    --input-run outputs/W4_hybrid_rrf/run.tsv \
-    --output-dir outputs/W5_hybrid_rrf_reranker \
+    --input-run outputs/hybrid_rrf/run.tsv \
+    --output-dir outputs/hybrid_rrf_rerank \
     --resume
 
 mgq-retrieval-report matrix \
-    --run bm25_sample=outputs/W4_dense/run_bm25_sample.tsv \
-    --run dense=outputs/W4_dense/run.tsv \
-    --run rrf=outputs/W4_hybrid_rrf/run.tsv \
-    --run rrf_reranked=outputs/W5_hybrid_rrf_reranker/run.tsv \
+    --run bm25_sample=outputs/dense_retrieval/run_bm25_sample.tsv \
+    --run dense=outputs/dense_retrieval/run.tsv \
+    --run rrf=outputs/hybrid_rrf/run.tsv \
+    --run rrf_reranked=outputs/hybrid_rrf_rerank/run.tsv \
     --baseline-name bm25_sample \
     --output-dir outputs/retrieval_reports/hybrid_matrix
 ```
@@ -639,7 +639,7 @@ The matrix report writes `matrix.json`, `pairwise_deltas.jsonl`, and
 
 ### Stage 5 — Cross-encoder reranking
 
-Requires Stage 4 output `outputs/W4_dense/run.tsv`.
+Requires Stage 4 output `outputs/dense_retrieval/run.tsv`.
 
 ```bash
 python experiments/run_reranker.py
@@ -666,39 +666,39 @@ The block reproduced in *Generation × retrieval source*:
 ```bash
 # Generation on full dev/small (~1 h each on a 6-core CPU; mutually restricted):
 python experiments/run_generation_baseline.py \
-    --input-run outputs/W2_bm25/run.tsv \
-    --output-dir outputs/W3_generation_bm25_full \
+    --input-run outputs/bm25_baseline/run.tsv \
+    --output-dir outputs/generation_bm25_full \
     --retrieval-source bm25 \
-    --restrict-to-run outputs/W5_reranker_full/run.tsv \
+    --restrict-to-run outputs/cross_encoder_rerank_full/run.tsv \
     --num-eval-queries 9999
 
 python experiments/run_generation_baseline.py \
-    --input-run outputs/W5_reranker_full/run.tsv \
-    --output-dir outputs/W3_generation_reranked_full \
+    --input-run outputs/cross_encoder_rerank_full/run.tsv \
+    --output-dir outputs/generation_reranked_full \
     --retrieval-source reranked \
-    --restrict-to-run outputs/W2_bm25/run.tsv \
+    --restrict-to-run outputs/bm25_baseline/run.tsv \
     --num-eval-queries 9999
 
 # Paired bootstrap + bucket analysis + grounding + triad:
 python scripts/bootstrap_generation_comparison.py \
-    --bm25-dir outputs/W3_generation_bm25_full \
-    --reranked-dir outputs/W3_generation_reranked_full \
-    --output-dir outputs/W3_generation_bootstrap_full
+    --bm25-dir outputs/generation_bm25_full \
+    --reranked-dir outputs/generation_reranked_full \
+    --output-dir outputs/generation_bootstrap_full
 python scripts/analyze_generation_rerank.py \
-    --bm25-dir outputs/W3_generation_bm25_full \
-    --reranked-dir outputs/W3_generation_reranked_full \
-    --output-dir outputs/W6_analysis
+    --bm25-dir outputs/generation_bm25_full \
+    --reranked-dir outputs/generation_reranked_full \
+    --output-dir outputs/generation_analysis
 python scripts/bertscore_paired_eval.py --n-pairs 3000
 python scripts/regression_failure_taxonomy.py
 python scripts/grounding_audit.py \
-    --bm25-dir outputs/W3_generation_bm25_full \
-    --reranked-dir outputs/W3_generation_reranked_full \
-    --output-dir outputs/W7_grounding
+    --bm25-dir outputs/generation_bm25_full \
+    --reranked-dir outputs/generation_reranked_full \
+    --output-dir outputs/grounding
 mgq-rag-triad \
-    --predictions bm25=outputs/W3_generation_bm25_full/predictions.jsonl \
-    --predictions reranked=outputs/W3_generation_reranked_full/predictions.jsonl \
+    --predictions bm25=outputs/generation_bm25_full/predictions.jsonl \
+    --predictions reranked=outputs/generation_reranked_full/predictions.jsonl \
     --baseline-config bm25 \
-    --output-dir outputs/W8_rag_triad
+    --output-dir outputs/rag_triad
 ```
 
 ## 4.5. Single-query demo
@@ -776,8 +776,8 @@ All knobs live in [`configs/baseline.yaml`](configs/baseline.yaml). Key ones:
 | Historical experiment numbers in `reports/repo_report/report.pdf` | historical | Reflect the dev environment at tag `v1.0-first-report`. Current dependencies are security-refreshed; use the first-report tag for archival reproduction. |
 
 **Historical output-path naming.** Historical snapshot anchors now use
-stage-oriented names such as `outputs/W2_bm25/`, `outputs/W4_dense/`,
-and `outputs/W5_reranker/`. Their committed `provenance.backfill.json`
+stage-oriented names such as `outputs/bm25_baseline/`, `outputs/dense_retrieval/`,
+and `outputs/cross_encoder_rerank/`. Their committed `provenance.backfill.json`
 files remain the archival reproduction anchors for tag
 `v1.0-first-report`.
 

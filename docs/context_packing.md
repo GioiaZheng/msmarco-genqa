@@ -32,10 +32,10 @@ into a separate output directory:
 ```bash
 mgq-generate \
   --config configs/baseline.yaml \
-  --input-run outputs/W5_reranker_full/run.tsv \
-  --output-dir outputs/W3_generation_reranked_packed \
+  --input-run outputs/cross_encoder_rerank_full/run.tsv \
+  --output-dir outputs/generation_reranked_packed \
   --retrieval-source reranked_packed \
-  --restrict-to-run outputs/W2_bm25/run.tsv \
+  --restrict-to-run outputs/bm25_baseline/run.tsv \
   --num-eval-queries 9999 \
   --context-packing \
   --context-max-chars 900 \
@@ -48,11 +48,11 @@ Compare the compressed run against the uncompressed reranked predictions:
 
 ```bash
 mgq-context-packing-report \
-  --baseline-predictions outputs/W3_generation_reranked_full/predictions.jsonl \
-  --compressed-predictions outputs/W3_generation_reranked_packed/predictions.jsonl \
+  --baseline-predictions outputs/generation_reranked_full/predictions.jsonl \
+  --compressed-predictions outputs/generation_reranked_packed/predictions.jsonl \
   --baseline-name reranked \
   --compressed-name reranked_packed \
-  --output-dir outputs/W9_context_packing
+  --output-dir outputs/context_packing
 ```
 
 Artifacts:

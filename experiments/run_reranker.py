@@ -24,13 +24,13 @@ Pipeline:
 
 Usage::
 
-    # default 1,000-query CPU subsample, output at outputs/W5_reranker/
+    # default 1,000-query CPU subsample, output at outputs/cross_encoder_rerank/
     python experiments/run_reranker.py --num-eval-queries 1000
 
     # full dev/small, resume-safe, distinct output dir so the 1k-query
     # historical result stays untouched
     OMP_NUM_THREADS=12 python experiments/run_reranker.py \\
-        --output-dir outputs/W5_reranker_full \\
+        --output-dir outputs/cross_encoder_rerank_full \\
         --resume
 
 The W4 dense run is the source of truth; we never re-encode the corpus
@@ -101,13 +101,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input-run",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W4_dense/run.tsv",
+        default=PROJECT_ROOT / "outputs/dense_retrieval/run.tsv",
         help="First-stage run.tsv to rerank. Defaults to the W4 dense run.",
     )
     parser.add_argument(
         "--input-stage",
         type=str,
-        default="W4_dense",
+        default="dense_retrieval",
         help="Output dir name of the input retriever (used to find sample_doc_ids.json).",
     )
     parser.add_argument(
@@ -250,7 +250,7 @@ def main() -> None:
     rerank_top_k = int(args.rerank_top_k or rerank_cfg.get("rerank_top_k", 100))
     batch_size = int(args.batch_size or rerank_cfg.get("batch_size", 64))
     max_length = int(rerank_cfg.get("max_length", 512))
-    cfg_output_dir = rerank_cfg.get("output_dir", "outputs/W5_reranker")
+    cfg_output_dir = rerank_cfg.get("output_dir", "outputs/cross_encoder_rerank")
     if args.output_dir is not None:
         output_dir = (
             args.output_dir

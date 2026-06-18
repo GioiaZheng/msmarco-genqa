@@ -13,7 +13,7 @@ yes_no / other) — and dumps:
                             of the two axes is auditable.
 - ``summary.md``         — human-readable inspection table.
 
-Default input is ``outputs/W6_analysis/per_query_metrics.jsonl``,
+Default input is ``outputs/generation_analysis/per_query_metrics.jsonl``,
 which already carries the native ``query_type`` field. Pass
 ``--queries-only`` to skip the join and tag dev/small queries
 loaded directly via ``ir_datasets`` (useful before W6 analysis exists,
@@ -44,7 +44,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--per-query-metrics",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W6_analysis/per_query_metrics.jsonl",
+        default=PROJECT_ROOT / "outputs/generation_analysis/per_query_metrics.jsonl",
         help=(
             "Input jsonl with one row per paired qid (W6 analyse output). "
             "Each row must have 'query_id', 'query'; 'query_type' is "
@@ -62,7 +62,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W6_querytype",
+        default=PROJECT_ROOT / "outputs/query_type_analysis",
     )
     return parser.parse_args()
 
