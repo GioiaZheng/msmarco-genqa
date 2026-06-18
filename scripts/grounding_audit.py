@@ -1,4 +1,4 @@
-"""W7 grounding audit on existing W3 paired predictions.
+"""Grounding audit on existing generation paired predictions.
 
 For each shared query_id between the BM25-fed and reranked-fed
 generation runs, compute two grounding scores on the *exact* top-K
@@ -18,7 +18,7 @@ Inputs (same convention as ``scripts/bootstrap_generation_comparison.py``):
 - ``<reranked-dir>/predictions.jsonl``
 
 The two files MUST cover the same set of query_ids in the same order
-(the W3 generation runner guarantees this when both runs share the
+(the generation runner guarantees this when both runs share the
 same ``--restrict-to-run`` argument and seed). The script enforces
 this and exits with a clear error otherwise.
 
@@ -37,7 +37,7 @@ Usage::
         --reranked-dir outputs/generation_reranked_full \\
         --output-dir outputs/grounding
 
-The defaults point at the canonical full-dev W3 outputs.
+The defaults point at the canonical full-dev generation outputs.
 """
 
 from __future__ import annotations
@@ -100,7 +100,7 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Paired subsample size for the optional NLI-entailment "
             "grounding pass. ``0`` (default) skips NLI; pass e.g. "
-            "``3000`` to mirror the W6 BERTScore-proxy convention. "
+            "``3000`` to mirror the BERTScore-proxy convention. "
             "Pass a value ``>= n_shared_qids`` to score every paired "
             "qid (slow but exhaustive)."
         ),
@@ -365,7 +365,7 @@ def main() -> None:
     summary: dict[str, Any] = {
         "task": "w7_grounding_audit",
         "label": (
-            "Lexical content-token + n-gram grounding of W3 generator "
+            "Lexical content-token + n-gram grounding of generator "
             "predictions to their prompt passages; optional NLI-entailment "
             "grounding on a paired subsample (semantic check). See report "
             "§6 Limitations for the extractiveness-vs-faithfulness split."
@@ -448,7 +448,7 @@ def main() -> None:
 
     # ---- console table ----
     print()
-    print("=== W7 grounding audit — paired bootstrap ===")
+    print("=== Grounding audit — paired bootstrap ===")
     print(
         f"shared qids: {n_shared}   "
         f"n_resamples: {args.n_resamples}   seed: {args.bootstrap_seed}"

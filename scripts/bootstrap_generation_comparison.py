@@ -7,7 +7,7 @@ different ``--input-run`` upstreams):
 - ``<reranked-dir>/predictions.jsonl``
 
 The two prediction files MUST cover the same set of query_ids in the same
-order (the W3 generation runner guarantees this when both runs share the
+order (the generation runner guarantees this when both runs share the
 same ``--restrict-to-run`` argument and seed). The script enforces this
 and exits with a clear error otherwise.
 
@@ -30,7 +30,7 @@ Usage::
         --reranked-dir outputs/generation_reranked \\
         --output-dir outputs/generation_bootstrap
 
-The defaults point at the 200-query W3 comparison directories.
+The defaults point at the 200-query generation comparison directories.
 """
 
 from __future__ import annotations

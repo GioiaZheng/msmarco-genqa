@@ -1,11 +1,11 @@
-"""Correlate W7 per-query grounding scores with downstream Token-F1
+"""Correlate per-query grounding scores with downstream Token-F1
 and BERTScore — answer "does higher grounding go with a higher metric?"
 
-W7 established that both arms sit at the lexical / 3-gram grounding
-*ceiling* — 97 % of queries score lex = 1.0; 89-92 % score 3-gram = 1.0.
-The teacher's follow-up question for W7-C is whether, on the residual
-non-ceiling mass, *higher grounding* tracks *higher downstream metric*
-at the per-query level. Two cuts:
+The grounding audit established that both arms sit at the lexical /
+3-gram grounding *ceiling* — 97 % of queries score lex = 1.0; 89-92 %
+score 3-gram = 1.0. The teacher's follow-up question is whether, on the
+residual non-ceiling mass, *higher grounding* tracks *higher downstream
+metric* at the per-query level. Two cuts:
 
 1. Rank / linear correlations (Spearman ρ, Pearson r) between each
    per-query grounding score and each per-query downstream metric,
@@ -17,15 +17,16 @@ at the per-query level. Two cuts:
    dominated by ties at 1.0.
 
 Inputs are all already on disk except BERTScore-F1, which is computed
-here (DistilBERT-base, ``rescale_with_baseline=True``, matching the W6
+here (DistilBERT-base, ``rescale_with_baseline=True``, matching the
 BERTScore-proxy convention) and cached to disk so subsequent runs are
 instant.
 
 Outputs (gitignored under ``outputs/grounding_correlation/``):
 
 - ``cache_bertscore_full.jsonl`` — per-qid BERTScore-F1 for both arms;
-                                    cache key for repeat runs and W7-A
-                                    later. Auto-skipped if present.
+                                    cache key for repeat runs and the
+                                    NLI-grounding analysis later.
+                                    Auto-skipped if present.
 - ``per_query_joined.jsonl``    — per-qid grounding + Token-F1 +
                                     BERTScore-F1 (both arms).
 - ``summary.json``              — correlations + binned comparisons.
@@ -94,7 +95,7 @@ def parse_args() -> argparse.Namespace:
         "--bertscore-model",
         type=str,
         default="distilbert-base-uncased",
-        help="HF model id for BERTScore (matches W6 proxy default).",
+        help="HF model id for BERTScore (matches the proxy default).",
     )
     p.add_argument(
         "--bertscore-batch-size",
@@ -283,11 +284,11 @@ def render_markdown(
     bertscore_model: str,
 ) -> str:
     lines: list[str] = []
-    lines.append("# Grounding vs downstream metrics — W7-C")
+    lines.append("# Grounding vs downstream metrics")
     lines.append("")
     lines.append(
-        f"Per-query correlation of W7 grounding scores against W6 Token-F1 "
-        f"and per-query BERTScore-F1, computed on {n_total} paired qids. "
+        f"Per-query correlation of grounding scores against generation "
+        f"Token-F1 and per-query BERTScore-F1, computed on {n_total} paired qids. "
         "Two cuts: rank/linear correlation and binned mean (grounding "
         f"≥{HIGH_THRESHOLD:.1f} vs <{HIGH_THRESHOLD:.1f}). BERTScore: "
         f"`{bertscore_model}`, rescale_with_baseline=True (cache at "
@@ -394,14 +395,15 @@ def render_markdown(
         "conclusive."
     )
     lines.append(
-        "- NLI grounding (W7-A) lives on a 3,000-paired-qid subsample, "
-        "so the per-arm correlation is on n=3,000 (not 6,980). The "
+        "- NLI grounding (the NLI-grounding analysis) lives on a "
+        "3,000-paired-qid subsample, so the per-arm correlation is on "
+        "n=3,000 (not 6,980). The "
         "≥0.9 bin is *flipped* in cardinality vs lex / 3-gram — NLI "
         "scores concentrate well below 0.9 for T5-small on this prompt "
         "format, so n_high is small and n_low is large."
     )
     lines.append(
-        "- BERTScore here is the W6-proxy DistilBERT setup, not the "
+        "- BERTScore here is the proxy DistilBERT setup, not the "
         "citation-grade roberta-large. The correlation pattern should "
         "transfer, the absolute level will shift."
     )
@@ -424,7 +426,7 @@ def main() -> None:
     metrics_rows = load_jsonl(args.per_query_metrics)
     metrics_of = {str(r["query_id"]): r for r in metrics_rows}
 
-    logger.info("Loading W3 predictions (BM25 + reranked) ...")
+    logger.info("Loading generation predictions (BM25 + reranked) ...")
     bm25_idx = predictions_index(load_jsonl(args.bm25_predictions))
     rerank_idx = predictions_index(load_jsonl(args.rerank_predictions))
 
@@ -451,7 +453,7 @@ def main() -> None:
     )
 
     # Build the per-qid frame (long-ish; one row per qid). NLI columns are
-    # nullable: when the W7-A audit was run with --nli-n-pairs < n_shared,
+    # nullable: when the NLI-grounding audit was run with --nli-n-pairs < n_shared,
     # only the sampled qids carry NLI values; the rest are None and are
     # filtered out per-(grounding × downstream) cell below.
     def _opt_float(x: Any) -> float | None:
@@ -485,7 +487,7 @@ def main() -> None:
     logger.info("Wrote %s (%d rows)", out_jsonl, len(rows_out))
 
     # ---- correlations + binned ----
-    # NLI columns may be None on rows outside the W7-A subsample; for the
+    # NLI columns may be None on rows outside the NLI-grounding subsample; for the
     # NLI grounding metric we filter to qids with both NLI and the
     # downstream metric present. Lex / ngram are always present on every
     # qid so their slice is the full 6,980.

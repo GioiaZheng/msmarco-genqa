@@ -72,7 +72,7 @@ generation:
   max_input_length: 512
   max_new_tokens: 64
   top_k_passages: 3
-  num_eval_queries: 200         # subset for the W3 baseline (CPU-friendly)
+  num_eval_queries: 200         # subset for the generation baseline (CPU-friendly)
   output_dir: outputs/generation
   # Disabled for canonical historical baselines. Enable in a separate
   # output directory when comparing prompt cost versus answer quality.
@@ -87,12 +87,12 @@ generation:
 eval_generation:
   metrics: [rouge-l, bleu, exact-match, token-f1]
 
-# W4: dense retrieval baseline on a *sampled* sub-corpus.
+# Dense retrieval baseline on a *sampled* sub-corpus.
 # We do NOT embed the full 8.8M corpus on a CPU laptop. The sample is
 # qrels-anchored: every dev/small relevant doc is included, then random
 # distractors fill to ``sample_size``. This makes BM25-on-sample vs
 # dense-on-sample an apples-to-apples comparison; both numbers are
-# **not** comparable to the full-corpus W2 baseline.
+# **not** comparable to the full-corpus BM25 baseline.
 dense:
   model_name: sentence-transformers/all-MiniLM-L6-v2
   # HF revision pin (40-hex). See note under generation.revision.
@@ -107,7 +107,7 @@ dense:
   compare_bm25_on_sample: true
   n_examples: 20          # qualitative examples dumped to examples.jsonl
 
-# W5: cross-encoder reranking on top of the W4 dense run.
+# Cross-encoder reranking on top of the dense run.
 # We score (query, passage) pairs with a small MS MARCO cross-encoder.
 # Cost is O(rerank_top_k) forward passes per query -- do NOT default to
 # 1000. Top-100 is the standard reranking depth.

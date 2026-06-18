@@ -9,8 +9,8 @@
   "model_revision": {
     "generator": "t5-small",
     "retrieval_depth": 3,
-    "bm25_arm": "W2 top-3",
-    "reranked_arm": "W5 cross-encoder reranked top-3"
+    "bm25_arm": "BM25 top-3",
+    "reranked_arm": "cross-encoder reranked top-3"
   },
   "tables": [
     {

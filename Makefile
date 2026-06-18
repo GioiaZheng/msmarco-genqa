@@ -24,7 +24,7 @@ help:
 	@echo "  make rag-eval-dry-run     -- print the research evaluation workflow plan"
 	@echo "  make model-stack-smoke    -- load baseline HF models and run a short smoke"
 	@echo "  make serve-dev            -- start the optional FastAPI generation service"
-	@echo "  make reproduce-baseline   -- re-run + verify the W2 BM25 baseline (~30 min CPU laptop)"
+	@echo "  make reproduce-baseline   -- re-run + verify the BM25 baseline (~30 min CPU laptop)"
 
 # ----------------------------------------------------------------------------- #
 # Install
@@ -99,7 +99,7 @@ clean-pycache:
 # One-command reproducibility
 # ----------------------------------------------------------------------------- #
 
-# Reproduce the W2 BM25 headline baseline end-to-end:
+# Reproduce the BM25 headline baseline end-to-end:
 #   1. Install (editable; `pip install -e .`).
 #   2. Run BM25 retrieval on the full 8.8M-passage MS MARCO corpus
 #      (dev/small, 6,980 queries). Expected MRR@10 = 0.1703.

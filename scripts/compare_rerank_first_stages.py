@@ -1,18 +1,18 @@
-"""Compare cross-encoder rerank Δ across two first stages — W5-A.
+"""Compare cross-encoder rerank Δ across two first stages.
 
 Tests the teacher's hypothesis: *does the reranker recover more from
-a weaker first stage?* The W5 dense+rerank result already showed
+a weaker first stage?* The dense+rerank result already showed
 rerank lifting MRR@10 from 0.883 → 0.930 on the qrels-anchored 50k
-sample. W5-A reruns the same cross-encoder on BM25 top-100 (full
-8.8M corpus) — a much weaker first stage (baseline MRR@10 ≈ 0.170) —
-and compares Δ side-by-side.
+sample. The first-stage comparison reruns the same cross-encoder on
+BM25 top-100 (full 8.8M corpus) — a much weaker first stage (baseline
+MRR@10 ≈ 0.170) — and compares Δ side-by-side.
 
 Inputs (all produced by ``experiments/run_reranker.py``):
 
 - ``outputs/cross_encoder_rerank_full/metrics.json``       — dense+rerank
-                                                        (W4 sampled).
+                                                        (50k sample).
 - ``outputs/cross_encoder_rerank_bm25_full/metrics.json``  — BM25+rerank
-                                                        (W2 full-corpus).
+                                                        (full-corpus).
 - ``outputs/bm25_baseline/metrics.json``                — BM25 baseline
                                                         full-corpus
                                                         (for cross-check).
@@ -20,7 +20,7 @@ Inputs (all produced by ``experiments/run_reranker.py``):
 Two cuts:
 
 - **Absolute Δ** (rerank − first stage) on MRR@10 / nDCG@10 /
-  Recall@100. Same scale as the W5 headline table.
+  Recall@100. Same scale as the reranking headline table.
 - **Recovery rate** Δ / (1 − first_stage). The fraction of the gap
   to a perfect 1.0 that the reranker closes. Puts the "weaker first
   stage has more room" claim on a fair footing.
@@ -153,12 +153,12 @@ def render_markdown(
     dense_wall: float | None,
 ) -> str:
     lines: list[str] = []
-    lines.append("# W5-A — rerank Δ across BM25 vs dense first stages")
+    lines.append("# Rerank Δ across BM25 vs dense first stages")
     lines.append("")
     lines.append(
         "Cross-encoder MS-MARCO-MiniLM-L-6-v2 reranking applied to two "
-        "different first stages: BM25 on the full 8.8 M corpus (W2 "
-        "baseline) and dense on the 50 k qrels-anchored sample (W4). "
+        "different first stages: BM25 on the full 8.8 M corpus (baseline) "
+        "and dense on the 50 k qrels-anchored sample. "
         "Reports the rerank Δ side-by-side, plus the recovery rate "
         "Δ / (1 − first_stage) which puts the two arms on a fairer "
         "footing — a weaker first stage has more room to recover."
@@ -241,10 +241,10 @@ def render_markdown(
     lines.append("## 4. Caveats")
     lines.append("")
     lines.append(
-        "- **Sampling asymmetry.** Dense first stage is W4 on the 50 k "
-        "qrels-anchored sample; BM25 first stage is W2 on the full 8.8 M "
+        "- **Sampling asymmetry.** Dense first stage is on the 50 k "
+        "qrels-anchored sample; BM25 first stage is on the full 8.8 M "
         "corpus. Absolute metric levels are not directly comparable "
-        "across arms (the W4 sample inflates dense's absolute scores); "
+        "across arms (the dense sample inflates dense's absolute scores); "
         "the within-arm Δ and the recovery rate *are* meaningful."
     )
     lines.append(
@@ -255,9 +255,9 @@ def render_markdown(
     )
     lines.append(
         "- **One reranker checkpoint, one depth.** Same `ms-marco-MiniLM-"
-        "L-6-v2` model, same K=100 on both arms. The next axis (W5-B) "
-        "varies K ∈ {50, 100, 200} on both first stages to draw the full "
-        "performance–latency Pareto."
+        "L-6-v2` model, same K=100 on both arms. The next axis (the top-k "
+        "Pareto sweep) varies K ∈ {50, 100, 200} on both first stages to "
+        "draw the full performance–latency Pareto."
     )
     lines.append("")
     return "\n".join(lines)
@@ -293,8 +293,8 @@ def main() -> None:
         },
         "notes": (
             "Δ = rerank − first_stage. Recovery rate = Δ / (1 − "
-            "first_stage). The sampling asymmetry (dense on W4 sample, "
-            "BM25 on full corpus) makes absolute metric levels "
+            "first_stage). The sampling asymmetry (dense on the 50k "
+            "sample, BM25 on full corpus) makes absolute metric levels "
             "incomparable across arms; within-arm Δ and recovery rate "
             "remain meaningful."
         ),
@@ -316,7 +316,7 @@ def main() -> None:
 
     # ---- console summary ----
     print()
-    print("=== W5-A — rerank Δ across BM25 vs dense first stages ===")
+    print("=== Rerank Δ across BM25 vs dense first stages ===")
     print(f"  {'metric':14s}  {'Δ_BM25':>10s}  {'Δ_Dense':>10s}  "
           f"{'naive B':>8s}  {'naive D':>8s}  {'cnstr B':>8s}  {'cnstr D':>8s}")
     for key, label in METRICS:

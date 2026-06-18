@@ -1,6 +1,6 @@
 """I/O helpers for reranking: read/truncate/write TREC-format ``run.tsv``.
 
-Both W2 (BM25) and W4 (dense) write 6-column TREC-format run files:
+Both BM25 and dense retrieval write 6-column TREC-format run files:
 
     qid \t Q0 \t doc_id \t rank \t score \t system
 

@@ -1,9 +1,9 @@
-"""Generator capacity sweep — T5-base vs T5-small on the same W3 prompts.
+"""Generator capacity sweep — T5-base vs T5-small on the same RAG-stage prompts.
 
-The headline question (per the W7-A finding that T5-small's NLI
-grounding Δ is the *only* metric whose Δ reverses sign vs the W3
-surface-form story): **does T5-base — same prompt format, more
-capacity — flip the NLI Δ back to positive?**
+The headline question (per the NLI-grounding analysis finding that
+T5-small's NLI grounding Δ is the *only* metric whose Δ reverses sign vs
+the RAG-stage surface-form story): **does T5-base — same prompt format,
+more capacity — flip the NLI Δ back to positive?**
 
 To answer it we need T5-base scored on *both* arms (BM25 and
 reranked) so that ΔNLI = NLI(T5-base, reranked) − NLI(T5-base, BM25)
@@ -12,7 +12,8 @@ can be compared head-to-head with the existing T5-small Δ.
 This driver chains:
 
 1. ``experiments/run_generation_baseline.py --model-name t5-base`` on
-   BM25 (W2 run.tsv) and on reranked (W5 run.tsv); identical mutual
+   BM25 (first-stage run.tsv) and on reranked (cross-encoder run.tsv);
+   identical mutual
    ``--restrict-to-run`` so the eval qid sets match.
 2. ``scripts/bootstrap_generation_comparison.py`` over the T5-base
    predictions for Token-F1 / ROUGE-L / BLEU / EM Δ + paired bootstrap.
@@ -21,7 +22,7 @@ This driver chains:
 4. ``scripts/grounding_audit.py --nli-n-pairs 3000`` for lex / 3-gram /
    NLI grounding Δ.
 
-Output: ``outputs/W7b_generator_comparison/`` with a side-by-side
+Output: ``outputs/generator_capacity_generator_comparison/`` with a side-by-side
 table of every (generator, arm) cell and the cross-generator
 Δ-of-Δ on the NLI metric (the load-bearing comparison).
 
@@ -80,7 +81,7 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--nli-n-pairs", type=int, default=3000,
-        help="Paired-qid subsample for NLI grounding (matches the T5-small W7-A run).",
+        help="Paired-qid subsample for NLI grounding (matches the T5-small NLI-grounding run).",
     )
     p.add_argument(
         "--bertscore-n-pairs", type=int, default=0,
@@ -93,7 +94,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W7b_generator_comparison",
+        default=PROJECT_ROOT / "outputs/generator_capacity_generator_comparison",
     )
     return p.parse_args()
 
@@ -116,8 +117,8 @@ def step_generate_t5_base(args: argparse.Namespace) -> dict[str, str]:
     Mutual ``--restrict-to-run`` so the two arms cover the same qids.
     """
     safe = model_safe_name(args.model_name)
-    out_bm25 = f"outputs/W7b_generation_{safe}_bm25"
-    out_rerank = f"outputs/W7b_generation_{safe}_reranked"
+    out_bm25 = f"outputs/generator_capacity_generation_{safe}_bm25"
+    out_rerank = f"outputs/generator_capacity_generation_{safe}_reranked"
     if args.skip_generation:
         return {"bm25": out_bm25, "rerank": out_rerank}
 
@@ -150,7 +151,7 @@ def step_generate_t5_base(args: argparse.Namespace) -> dict[str, str]:
 
 
 def step_bootstrap(args: argparse.Namespace, gen_dirs: dict[str, str]) -> str:
-    out_dir = f"outputs/W7b_bootstrap_{model_safe_name(args.model_name)}"
+    out_dir = f"outputs/generator_capacity_bootstrap_{model_safe_name(args.model_name)}"
     if args.skip_bootstrap:
         return out_dir
     run_subproc(
@@ -167,7 +168,7 @@ def step_bootstrap(args: argparse.Namespace, gen_dirs: dict[str, str]) -> str:
 
 
 def step_bertscore(args: argparse.Namespace, gen_dirs: dict[str, str]) -> str:
-    out_dir = f"outputs/W7b_bertscore_{model_safe_name(args.model_name)}"
+    out_dir = f"outputs/generator_capacity_bertscore_{model_safe_name(args.model_name)}"
     if args.skip_bertscore:
         return out_dir
     run_subproc(
@@ -185,7 +186,7 @@ def step_bertscore(args: argparse.Namespace, gen_dirs: dict[str, str]) -> str:
 
 
 def step_grounding(args: argparse.Namespace, gen_dirs: dict[str, str]) -> str:
-    out_dir = f"outputs/W7b_grounding_{model_safe_name(args.model_name)}"
+    out_dir = f"outputs/generator_capacity_grounding_{model_safe_name(args.model_name)}"
     if args.skip_grounding:
         return out_dir
     run_subproc(
@@ -317,7 +318,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
         ("nli", "NLI-entailment grounding"),
     ]
     lines: list[str] = []
-    lines.append("# W7-B — T5-base vs T5-small generator comparison")
+    lines.append("# Generator-capacity sweep — T5-base vs T5-small generator comparison")
     lines.append("")
     lines.append(
         "Same prompt format, same retrieval inputs, only the generator "
@@ -376,7 +377,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
             verdict = (
                 f"T5-base **flips the NLI grounding Δ** from "
                 f"{s_delta:+.4f} (T5-small) to {b_delta:+.4f} (T5-base). "
-                "Capacity reverses the W7-A reverse-sign finding: the "
+                "Capacity reverses the NLI-grounding reverse-sign finding: the "
                 "earlier negative Δ is a T5-small-specific artefact of "
                 "fragmentary / mid-word-cut outputs the sentence-level "
                 "NLI cross-encoder cannot entail."
@@ -385,7 +386,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
             verdict = (
                 f"T5-base does **not** flip the NLI grounding Δ "
                 f"(T5-small {s_delta:+.4f}, T5-base {b_delta:+.4f}, "
-                "same sign). The reverse-sign behaviour from W7-A is "
+                "same sign). The reverse-sign behaviour from the NLI-grounding analysis is "
                 "not generator-capacity-driven; the prompt format itself "
                 "(`question: ... context: ...`) is the likely culprit."
             )
@@ -395,14 +396,14 @@ def render_markdown(payload: dict[str, Any]) -> str:
     lines.append("## 3. Caveats")
     lines.append("")
     lines.append(
-        "- BERTScore here is the W6-proxy DistilBERT setup "
+        "- BERTScore here is the generation-analysis proxy DistilBERT setup "
         "(`distilbert-base-uncased`, `rescale_with_baseline=True`), not "
         "the canonical `roberta-large` BERTScore."
     )
     lines.append(
         "- NLI grounding uses `cross-encoder/nli-deberta-v3-small` on a "
         "3 000-paired-qid subsample (seed = 42), the same convention as "
-        "the T5-small W7-A audit."
+        "the T5-small NLI-grounding audit."
     )
     lines.append(
         "- T5-base is **not fine-tuned** for MS MARCO QA either; the "
@@ -437,7 +438,7 @@ def main() -> None:
 
     # ---- console summary ----
     print()
-    print("=== W7-B — T5-small vs T5-base ===")
+    print("=== Generator-capacity sweep — T5-small vs T5-base ===")
     print(f"  {'metric':28s}  {'T5-small Δ':>11s}  {'T5-base Δ':>11s}  {'flip?':>6s}")
     METRIC_ORDER = [
         ("token_f1", "Token-F1"),

@@ -749,7 +749,7 @@ def test_compute_resolved_config_hash_sensitive_to_value_change():
     h_base = compute_resolved_config_hash(base)
 
     perturbed = _sample_resolved_cfg()
-    perturbed["dense"]["sample_size"] = 30000  # the W4-A density sweep case
+    perturbed["dense"]["sample_size"] = 30000  # the density-sweep case
     assert compute_resolved_config_hash(perturbed) != h_base
 
 

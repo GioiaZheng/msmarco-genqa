@@ -1,6 +1,6 @@
 """Query-level retrieval lift analysis for two TREC-format run files.
 
-The aggregate W5 result says whether reranking improves MRR. This script
+The aggregate reranking result says whether reranking improves MRR. This script
 answers the follow-up question: *where did the lift come from?* It compares
 two ranked runs against qrels and writes bucketed diagnostics for promoted,
 demoted, newly recovered, and lost queries.

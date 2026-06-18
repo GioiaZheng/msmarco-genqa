@@ -1,10 +1,11 @@
-"""Profile W3 regression queries vs the rest on simple structural features.
+"""Profile generation regression queries vs the rest on simple structural features.
 
 A *regression* (per ``scripts/analyze_generation_rerank.py``) is a query
 where the cross-encoder brought a qrel-relevant passage into top-3 yet
 the generator produced a *worse* token-F1 answer than under BM25 — 233
-queries out of 6,980 paired qids. The W6 regression taxonomy already
-attributed most of these to generator-side truncation; this script
+queries out of 6,980 paired qids. The generation-analysis regression
+taxonomy already attributed most of these to generator-side truncation;
+this script
 asks a complementary question:
 
 > Do regression queries *look different* from non-regression queries
@@ -15,12 +16,14 @@ Features computed per qid (all deterministic, CPU-cheap):
 - ``query_length_tokens``                       — len(query.split())
 - ``query_length_chars``                        — len(query)
 - ``n_qrels``                                   — count of dev/small qrels
-                                                  for this qid (from W6
+                                                  for this qid (from the
+                                                  generation-analysis
                                                   per_query metrics).
 - ``rerank_top3_avg_passage_length_tokens``     — mean over the rerank
                                                   top-3 passages T5
                                                   actually saw at prompt
-                                                  time (from W3 reranked
+                                                  time (from the RAG-stage
+                                                  reranked
                                                   predictions.jsonl).
 - ``bm25_top3_avg_passage_length_tokens``       — same, for the BM25 arm
                                                   (for completeness — the
@@ -160,7 +163,7 @@ def render_markdown(
     figures_rel: dict[str, str],
 ) -> str:
     lines: list[str] = []
-    lines.append("# Regression vs non-regression query features — W6-C")
+    lines.append("# Regression vs non-regression query features")
     lines.append("")
     lines.append(
         f"Compared the **{n_regression}** regression-bucket queries against "
@@ -213,7 +216,8 @@ def render_markdown(
             "- No feature crosses the (p < 0.05, |r| ≥ 0.10) threshold. "
             "Regression queries do not differ from the rest on any of these "
             "five structural features at meaningful effect size — consistent "
-            "with the W6 taxonomy finding that the failure is generator-side, "
+            "with the generation-analysis taxonomy finding that the failure "
+            "is generator-side, "
             "not driven by query / retrieval shape."
         )
     lines.append("")
@@ -281,11 +285,11 @@ def main() -> None:
     )
     args = parse_args()
 
-    logger.info("Loading W6 per-query metrics from %s ...", args.per_query_metrics)
+    logger.info("Loading generation-analysis per-query metrics from %s ...", args.per_query_metrics)
     per_query = load_jsonl(args.per_query_metrics)
     logger.info("Loaded %d rows.", len(per_query))
 
-    logger.info("Loading W3 BM25 + reranked predictions ...")
+    logger.info("Loading RAG-stage BM25 + reranked predictions ...")
     bm25_psgs = passages_index(load_jsonl(args.bm25_predictions))
     rerank_psgs = passages_index(load_jsonl(args.rerank_predictions))
 

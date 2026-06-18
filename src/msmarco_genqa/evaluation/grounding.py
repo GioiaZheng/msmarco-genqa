@@ -7,7 +7,7 @@ a verbatim copy that is also wrong (e.g. extracted from a distractor
 passage) will score high. The metrics answer "is the model's output
 literally derived from the prompt context" — which is the dominant
 question for small extractive Seq2Seq generators like T5-small on the
-``question: ... context: ...`` prompt shape used by the W3 baseline.
+``question: ... context: ...`` prompt shape used by the generation baseline.
 
 Two metrics:
 
