@@ -1,0 +1,4 @@
+# Synthetic miniature of the TREC-DL 2020 passage queries (qid<TAB>text).
+# Not the real NIST topics; sized for offline, deterministic tests only.
+1030303	hydrogen is a liquid below what temperature
+1064670	why do hunters pattern their shotguns

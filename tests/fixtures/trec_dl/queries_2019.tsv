@@ -1,0 +1,5 @@
+# Synthetic miniature of the TREC-DL 2019 passage queries (qid<TAB>text).
+# Not the real NIST topics; sized for offline, deterministic tests only.
+19335	what is durable medical equipment consist of
+1037798	who is robert gray
+104861	cost of interior concrete flooring

@@ -1,0 +1,7 @@
+# Synthetic miniature of the TREC-DL 2020 deep qrels (qid iter docid rel).
+1030303 0 d_h2_a 3
+1030303 0 d_h2_b 2
+1030303 0 d_h2_c 0
+1064670 0 d_shot_a 2
+1064670 0 d_shot_b 1
+1064670 0 d_shot_c 0

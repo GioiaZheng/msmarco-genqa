@@ -1,0 +1,12 @@
+# Synthetic miniature of the TREC-DL 2019 deep qrels (qid iter docid rel).
+# Graded 0-3 scale, with judged-non-relevant (0/1) rows preserved so the
+# binarization threshold (rel>=2) is exercised by the tests.
+19335 0 d_dme_a 3
+19335 0 d_dme_b 2
+19335 0 d_dme_c 1
+19335 0 d_dme_d 0
+1037798 0 d_gray_a 3
+1037798 0 d_gray_b 0
+1037798 0 d_gray_c 1
+104861 0 d_floor_a 1
+104861 0 d_floor_b 0
