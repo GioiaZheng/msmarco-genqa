@@ -49,9 +49,9 @@ SCHEMA = "msmarco-genqa.backfilled-provenance.v1"
 PRODUCED_BY = "scripts/backfill_provenance.py"
 
 DEFAULT_TARGETS = [
-    "outputs/W2_bm25",
-    "outputs/W4_dense",
-    "outputs/W5_reranker",
+    "outputs/bm25_baseline",
+    "outputs/dense_retrieval",
+    "outputs/cross_encoder_rerank",
 ]
 CONFIG_PATH = "configs/baseline.yaml"
 

@@ -58,7 +58,7 @@ eval_retrieval:
   ks_mrr: [10]
   ks_ndcg: [10]
   ks_recall: [100, 1000]
-  output_dir: outputs/W2_bm25
+  output_dir: outputs/bm25_baseline
   n_examples: 20                # qualitative examples dumped to examples.jsonl
 
 generation:
@@ -73,7 +73,7 @@ generation:
   max_new_tokens: 64
   top_k_passages: 3
   num_eval_queries: 200         # subset for the W3 baseline (CPU-friendly)
-  output_dir: outputs/W3_generation
+  output_dir: outputs/generation
   # Disabled for canonical historical baselines. Enable in a separate
   # output directory when comparing prompt cost versus answer quality.
   context_packing:
@@ -102,7 +102,7 @@ dense:
   device: null            # null -> auto (cuda if available, else cpu)
   index_dir: data/processed/dense_index_minilm_50k
   bm25_sample_index_dir: data/processed/bm25_sample_index_50k
-  output_dir: outputs/W4_dense
+  output_dir: outputs/dense_retrieval
   top_k: 1000
   compare_bm25_on_sample: true
   n_examples: 20          # qualitative examples dumped to examples.jsonl
@@ -119,7 +119,7 @@ reranker:
   batch_size: 64
   max_length: 512
   device: null            # null -> auto (cuda if available, else cpu)
-  output_dir: outputs/W5_reranker
+  output_dir: outputs/cross_encoder_rerank
   n_examples: 20
 
   # Resume / chunking. ``chunk_size`` queries are scored and appended to
@@ -149,22 +149,22 @@ rag_eval:
     - grounding_audit
     - rag_triad
   num_eval_queries: 9999
-  bm25_generation_dir: outputs/W3_generation_bm25_full
-  reranker_output_dir: outputs/W5_reranker_full
+  bm25_generation_dir: outputs/generation_bm25_full
+  reranker_output_dir: outputs/cross_encoder_rerank_full
   reranker_resume: true
-  reranked_generation_dir: outputs/W3_generation_reranked_full
-  packed_generation_dir: outputs/W3_generation_reranked_packed
-  context_packing_report_dir: outputs/W9_context_packing
+  reranked_generation_dir: outputs/generation_reranked_full
+  packed_generation_dir: outputs/generation_reranked_packed
+  context_packing_report_dir: outputs/context_packing
   context_max_chars: 900
   context_max_passage_chars: 320
   context_sentence_selection: query_overlap
   context_ordering: rank
   context_deduplicate: true
-  bootstrap_output_dir: outputs/W3_generation_bootstrap_full
+  bootstrap_output_dir: outputs/generation_bootstrap_full
   retrieval_report_output_dir: outputs/retrieval_reports/dense_vs_reranked
-  retrieval_lift_output_dir: outputs/W5_retrieval_lift_analysis
-  grounding_output_dir: outputs/W7_grounding
-  triad_output_dir: outputs/W8_rag_triad
+  retrieval_lift_output_dir: outputs/retrieval_lift_analysis
+  grounding_output_dir: outputs/grounding
+  triad_output_dir: outputs/rag_triad
   bootstrap_resamples: 10000
   grounding_nli_pairs: 0
   tracking:

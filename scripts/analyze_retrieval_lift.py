@@ -27,13 +27,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--before-run",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W4_dense/run.tsv",
+        default=PROJECT_ROOT / "outputs/dense_retrieval/run.tsv",
         help="Baseline TREC run.tsv, e.g. dense or BM25 first-stage output.",
     )
     p.add_argument(
         "--after-run",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W5_reranker_full/run.tsv",
+        default=PROJECT_ROOT / "outputs/cross_encoder_rerank_full/run.tsv",
         help="Comparison TREC run.tsv, e.g. cross-encoder reranked output.",
     )
     p.add_argument(
@@ -49,7 +49,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W5_retrieval_lift_analysis",
+        default=PROJECT_ROOT / "outputs/retrieval_lift_analysis",
     )
     p.add_argument("--k-rank", type=int, default=10)
     p.add_argument("--k-recall", type=int, default=100)

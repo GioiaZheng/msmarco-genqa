@@ -12,12 +12,12 @@ seed = 42`) so the comparison is apples-to-apples. The
 FAISS index dir on the model id so the new runs don't overwrite the
 W4 baseline index.
 
-Output: ``outputs/W4_encoder_horizontal/`` with::
+Output: ``outputs/dense_encoder_horizontal/`` with::
 
     summary.json
     summary.md
 
-Encoder runs themselves land under ``outputs/W4_dense_<model_safe>/``.
+Encoder runs themselves land under ``outputs/dense_retrieval_<model_safe>/``.
 """
 
 from __future__ import annotations
@@ -41,19 +41,19 @@ ENCODERS: list[dict[str, Any]] = [
     {
         "label": "all-MiniLM-L6-v2 (W4 baseline)",
         "model_name": "sentence-transformers/all-MiniLM-L6-v2",
-        "output_dir": "outputs/W4_dense",
-        "reuse_existing": "outputs/W4_dense/metrics.json",
+        "output_dir": "outputs/dense_retrieval",
+        "reuse_existing": "outputs/dense_retrieval/metrics.json",
     },
     {
         "label": "all-MiniLM-L12-v2",
         "model_name": "sentence-transformers/all-MiniLM-L12-v2",
-        "output_dir": "outputs/W4_dense_minilm_l12",
+        "output_dir": "outputs/dense_retrieval_minilm_l12",
         "reuse_existing": None,
     },
     {
         "label": "bge-small-en-v1.5",
         "model_name": "BAAI/bge-small-en-v1.5",
-        "output_dir": "outputs/W4_dense_bge_small_en_v1_5",
+        "output_dir": "outputs/dense_retrieval_bge_small_en_v1_5",
         "reuse_existing": None,
     },
 ]
@@ -69,7 +69,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W4_encoder_horizontal",
+        default=PROJECT_ROOT / "outputs/dense_encoder_horizontal",
     )
     return p.parse_args()
 

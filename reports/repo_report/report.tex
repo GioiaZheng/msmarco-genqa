@@ -1000,7 +1000,7 @@ Both columns evaluate on the same \fdev{} queries.
   the qrels-anchored sampling design (\Cref{sec:w4-sampling-caveat});
   the meaningful comparison is the same-sample $\Delta$.}
   \label{tab:w4-results}
-  \input{../generated/tables/w4_dense_sample.tex}
+  \input{../generated/tables/dense_retrieval_sample.tex}
 \end{table}
 
 Two observations:
@@ -1088,7 +1088,7 @@ baseline at each size.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.78\linewidth]{w4a_density_curve.png}
+  \includegraphics[width=0.78\linewidth]{dense_vs_bm25_density_curve.png}
   \caption{W4-A --- \mrr{} vs.\ qrel-density on the same three
   qrels-anchored samples as \Cref{tab:w4a-density}.  Encoder:
   \texttt{BAAI/bge-small-en-v1.5}.  Density decreases left-to-right
@@ -1129,7 +1129,7 @@ W4 dense top-100, on the full \fdev{} \devsmall{} queries.
   (MRR $\Delta\!=\!+0.0435$, nDCG $\Delta\!=\!+0.0398$), so the
   full-dev gain is not a subsample artefact.}
   \label{tab:w5-results}
-  \input{../generated/tables/w5_dense_rerank.tex}
+  \input{../generated/tables/rerank_vs_dense.tex}
 \end{table}
 
 The reranker buys $\sim\!+0.05$ MRR even with recall saturated: it
@@ -1162,7 +1162,7 @@ arms.
   \fdev{} shared qid set.  Same T5-small, same prompt, same top-3
   passage count; only the upstream retrieval source differs.}
   \label{tab:w3-headline}
-  \input{../generated/tables/w3_headline_generation.tex}
+  \input{../generated/tables/generation_headline.tex}
 \end{table}
 
 \textbf{Reranking the first stage roughly doubles every
@@ -1182,7 +1182,7 @@ zero, with negligible overlap (\Cref{tab:w3-ci}).
   interval.  Two-sided $p$ from the bootstrap is $<\!0.001$ in every
   case.}
   \label{tab:w3-ci}
-  \input{../generated/tables/w3_bootstrap_ci.tex}
+  \input{../generated/tables/generation_bootstrap_ci.tex}
 \end{table}
 
 \Cref{fig:headline-forest} renders the same four CIs as a forest
@@ -1564,7 +1564,7 @@ T5-small less material to extract.  See
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.62\linewidth]{w6c_regression_vs_other_query_length.png}
+  \includegraphics[width=0.62\linewidth]{grounding_delta_vs_query_length.png}
   \caption{W6-C --- query-length distribution, regression bucket
   (n=233) vs.\ rest (n=6\,747).  Indistinguishable; Mann--Whitney
   $p\!=\!0.96$, effect size $r\!=\!-0.002$.}
@@ -1573,7 +1573,7 @@ T5-small less material to extract.  See
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.62\linewidth]{w6c_regression_vs_other_n_qrels.png}
+  \includegraphics[width=0.62\linewidth]{grounding_delta_vs_n_qrels.png}
   \caption{W6-C --- number of relevance judgements per query.  A
   very small downward shift in the regression bucket
   ($p\!=\!0.009$, effect size $r\!=\!-0.040$); not meaningfully
@@ -1583,7 +1583,7 @@ T5-small less material to extract.  See
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.62\linewidth]{w6c_regression_vs_other_top3_passage_length.png}
+  \includegraphics[width=0.62\linewidth]{grounding_delta_vs_top3_passage_length.png}
   \caption{W6-C --- average rerank top-3 passage length.  The only
   feature with a detectable effect: regression-arm top-3 passages
   are $\sim\!2.7$ tokens shorter at the median

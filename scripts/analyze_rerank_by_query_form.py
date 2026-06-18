@@ -2,7 +2,7 @@
 
 For every paired qid in the W6 analysis pool, join the per-query
 metrics with the question-form label from
-``outputs/W6_querytype/query_forms.jsonl`` (W6-A) and aggregate per
+``outputs/query_type_analysis/query_forms.jsonl`` (W6-A) and aggregate per
 form. Reports BM25 vs reranked deltas on:
 
 - Token-F1, Exact-Match     (already per-query in W6 metrics)
@@ -47,37 +47,37 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--query-forms",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W6_querytype/query_forms.jsonl",
+        default=PROJECT_ROOT / "outputs/query_type_analysis/query_forms.jsonl",
     )
     p.add_argument(
         "--per-query-metrics",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W6_analysis/per_query_metrics.jsonl",
+        default=PROJECT_ROOT / "outputs/generation_analysis/per_query_metrics.jsonl",
     )
     p.add_argument(
         "--bm25-predictions",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W3_generation_bm25_full/predictions.jsonl",
+        default=PROJECT_ROOT / "outputs/generation_bm25_full/predictions.jsonl",
     )
     p.add_argument(
         "--rerank-predictions",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W3_generation_reranked_full/predictions.jsonl",
+        default=PROJECT_ROOT / "outputs/generation_reranked_full/predictions.jsonl",
     )
     p.add_argument(
         "--bm25-run",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W2_bm25/run.tsv",
+        default=PROJECT_ROOT / "outputs/bm25_baseline/run.tsv",
     )
     p.add_argument(
         "--rerank-run",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W5_reranker_full/run.tsv",
+        default=PROJECT_ROOT / "outputs/cross_encoder_rerank_full/run.tsv",
     )
     p.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W6_rerank_by_form",
+        default=PROJECT_ROOT / "outputs/rerank_by_query_form",
     )
     p.add_argument(
         "--n-bootstrap",

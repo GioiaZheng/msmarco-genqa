@@ -11,10 +11,10 @@ Pipeline:
    BM25-vs-dense is a head-to-head comparison on the same restricted pool.
 6. Retrieve top-K from both and evaluate MRR@10 / nDCG@10 / Recall@100,1000.
 7. Persist:
-   - ``outputs/W4_dense/metrics.json``  (unified schema, both retrievers)
-   - ``outputs/W4_dense/run.tsv``       (dense run, TREC format)
-   - ``outputs/W4_dense/run_bm25_sample.tsv`` (BM25 on sample)
-   - ``outputs/W4_dense/examples.jsonl``
+   - ``outputs/dense_retrieval/metrics.json``  (unified schema, both retrievers)
+   - ``outputs/dense_retrieval/run.tsv``       (dense run, TREC format)
+   - ``outputs/dense_retrieval/run_bm25_sample.tsv`` (BM25 on sample)
+   - ``outputs/dense_retrieval/examples.jsonl``
 
 Usage::
 
@@ -114,7 +114,7 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help=(
-            "Override the output directory. Defaults to ``outputs/W4_dense``. "
+            "Override the output directory. Defaults to ``outputs/dense_retrieval``. "
             "Pass a fresh path per-encoder so W4-B runs don't collide."
         ),
     )

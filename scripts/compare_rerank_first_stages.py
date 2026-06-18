@@ -9,11 +9,11 @@ and compares Δ side-by-side.
 
 Inputs (all produced by ``experiments/run_reranker.py``):
 
-- ``outputs/W5_reranker_full/metrics.json``       — dense+rerank
+- ``outputs/cross_encoder_rerank_full/metrics.json``       — dense+rerank
                                                         (W4 sampled).
-- ``outputs/W5_reranker_bm25_full/metrics.json``  — BM25+rerank
+- ``outputs/cross_encoder_rerank_bm25_full/metrics.json``  — BM25+rerank
                                                         (W2 full-corpus).
-- ``outputs/W2_bm25/metrics.json``                — BM25 baseline
+- ``outputs/bm25_baseline/metrics.json``                — BM25 baseline
                                                         full-corpus
                                                         (for cross-check).
 
@@ -57,17 +57,17 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--bm25-rerank-metrics",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W5_reranker_bm25_full/metrics.json",
+        default=PROJECT_ROOT / "outputs/cross_encoder_rerank_bm25_full/metrics.json",
     )
     p.add_argument(
         "--dense-rerank-metrics",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W5_reranker_full/metrics.json",
+        default=PROJECT_ROOT / "outputs/cross_encoder_rerank_full/metrics.json",
     )
     p.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W5_rerank_first_stage_compare",
+        default=PROJECT_ROOT / "outputs/rerank_first_stage_compare",
     )
     return p.parse_args()
 

@@ -1,4 +1,4 @@
-"""Pre-flight validation for ``outputs/W5_reranker_full/run.tsv``.
+"""Pre-flight validation for ``outputs/cross_encoder_rerank_full/run.tsv``.
 
 Run this AFTER the full dev/small rerank finishes and BEFORE kicking off
 the BM25-vs-reranked generation comparison on the full eligible pool.
@@ -18,8 +18,8 @@ Exits 0 on success, 1 on any failure (prints which check failed).
 Usage::
 
     python scripts/validate_full_rerank.py \\
-        --run-tsv outputs/W5_reranker_full/run.tsv \\
-        --manifest outputs/W5_reranker_full/manifest.json \\
+        --run-tsv outputs/cross_encoder_rerank_full/run.tsv \\
+        --manifest outputs/cross_encoder_rerank_full/manifest.json \\
         --expected-qids 6980 \\
         --rerank-top-k 100
 """
@@ -40,12 +40,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--run-tsv",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W5_reranker_full/run.tsv",
+        default=PROJECT_ROOT / "outputs/cross_encoder_rerank_full/run.tsv",
     )
     parser.add_argument(
         "--manifest",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W5_reranker_full/manifest.json",
+        default=PROJECT_ROOT / "outputs/cross_encoder_rerank_full/manifest.json",
     )
     parser.add_argument(
         "--expected-qids",

@@ -50,17 +50,17 @@ logger = logging.getLogger("run_generator_capacity_sweep")
 # headline metrics we pull from to populate the comparison table.
 T5_SMALL_CELLS = {
     "bm25": {
-        "predictions": "outputs/W3_generation_bm25_full",
+        "predictions": "outputs/generation_bm25_full",
         "label": "T5-small × BM25",
     },
     "rerank": {
-        "predictions": "outputs/W3_generation_reranked_full",
+        "predictions": "outputs/generation_reranked_full",
         "label": "T5-small × Reranked",
     },
 }
-T5_SMALL_BOOTSTRAP = "outputs/W3_generation_bootstrap_full/bootstrap_ci.json"
-T5_SMALL_BERTSCORE = "outputs/W6_bertscore_proxy/bertscore_proxy_ci.json"
-T5_SMALL_GROUNDING = "outputs/W7_grounding/summary.json"
+T5_SMALL_BOOTSTRAP = "outputs/generation_bootstrap_full/bootstrap_ci.json"
+T5_SMALL_BERTSCORE = "outputs/bertscore_proxy/bertscore_proxy_ci.json"
+T5_SMALL_GROUNDING = "outputs/grounding/summary.json"
 
 
 def parse_args() -> argparse.Namespace:
@@ -130,19 +130,19 @@ def step_generate_t5_base(args: argparse.Namespace) -> dict[str, str]:
     ]
     run_subproc(
         common + [
-            "--input-run", "outputs/W2_bm25/run.tsv",
+            "--input-run", "outputs/bm25_baseline/run.tsv",
             "--output-dir", out_bm25,
             "--retrieval-source", "bm25",
-            "--restrict-to-run", "outputs/W5_reranker_full/run.tsv",
+            "--restrict-to-run", "outputs/cross_encoder_rerank_full/run.tsv",
         ],
         f"generate {args.model_name} × BM25",
     )
     run_subproc(
         common + [
-            "--input-run", "outputs/W5_reranker_full/run.tsv",
+            "--input-run", "outputs/cross_encoder_rerank_full/run.tsv",
             "--output-dir", out_rerank,
             "--retrieval-source", "reranked",
-            "--restrict-to-run", "outputs/W2_bm25/run.tsv",
+            "--restrict-to-run", "outputs/bm25_baseline/run.tsv",
         ],
         f"generate {args.model_name} × Reranked",
     )

@@ -716,7 +716,7 @@ def _sample_resolved_cfg() -> dict:
         "seed": 42,
         "retrieval": {"backend": "bm25s", "k1": 1.5, "b": 0.75, "top_k": 1000},
         "dense": {"model_name": "all-MiniLM-L6-v2", "sample_size": 50000},
-        "eval_retrieval": {"output_dir": "outputs/W2_bm25"},
+        "eval_retrieval": {"output_dir": "outputs/bm25_baseline"},
     }
 
 

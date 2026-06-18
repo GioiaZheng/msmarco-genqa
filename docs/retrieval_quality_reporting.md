@@ -15,7 +15,7 @@ Use `evaluate` when a run should be scored independently:
 
 ```bash
 mgq-retrieval-report evaluate \
-  --run outputs/W4_dense/run.tsv \
+  --run outputs/dense_retrieval/run.tsv \
   --run-name dense \
   --output-dir outputs/retrieval_reports/dense
 ```
@@ -38,8 +38,8 @@ misleading comparisons when two retrieval stages cover different queries.
 
 ```bash
 mgq-retrieval-report compare \
-  --baseline-run outputs/W4_dense/run.tsv \
-  --candidate-run outputs/W4_hybrid_rrf/run.tsv \
+  --baseline-run outputs/dense_retrieval/run.tsv \
+  --candidate-run outputs/hybrid_rrf/run.tsv \
   --baseline-name dense \
   --candidate-name rrf \
   --output-dir outputs/retrieval_reports/dense_vs_rrf
@@ -67,10 +67,10 @@ qrels before computing metrics:
 
 ```bash
 mgq-retrieval-report matrix \
-  --run bm25_sample=outputs/W4_dense/run_bm25_sample.tsv \
-  --run dense=outputs/W4_dense/run.tsv \
-  --run rrf=outputs/W4_hybrid_rrf/run.tsv \
-  --run rrf_reranked=outputs/W5_hybrid_rrf_reranker/run.tsv \
+  --run bm25_sample=outputs/dense_retrieval/run_bm25_sample.tsv \
+  --run dense=outputs/dense_retrieval/run.tsv \
+  --run rrf=outputs/hybrid_rrf/run.tsv \
+  --run rrf_reranked=outputs/hybrid_rrf_rerank/run.tsv \
   --baseline-name bm25_sample \
   --output-dir outputs/retrieval_reports/hybrid_matrix
 ```

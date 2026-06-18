@@ -20,10 +20,10 @@ unsupported generations, and answer-mismatch failures.
 
 ```bash
 mgq-rag-triad \
-  --predictions bm25=outputs/W3_generation_bm25_full/predictions.jsonl \
-  --predictions reranked=outputs/W3_generation_reranked_full/predictions.jsonl \
+  --predictions bm25=outputs/generation_bm25_full/predictions.jsonl \
+  --predictions reranked=outputs/generation_reranked_full/predictions.jsonl \
   --baseline-config bm25 \
-  --output-dir outputs/W8_rag_triad
+  --output-dir outputs/rag_triad
 ```
 
 If a local qrels TSV is available, pass it to make context relevance
@@ -31,12 +31,12 @@ answer-evidence based:
 
 ```bash
 mgq-rag-triad \
-  --predictions bm25=outputs/W3_generation_bm25_full/predictions.jsonl \
-  --predictions reranked=outputs/W3_generation_reranked_full/predictions.jsonl \
+  --predictions bm25=outputs/generation_bm25_full/predictions.jsonl \
+  --predictions reranked=outputs/generation_reranked_full/predictions.jsonl \
   --qrels data/qrels.dev.small.tsv \
   --baseline-config bm25 \
   --context-top-k 3 \
-  --output-dir outputs/W8_rag_triad
+  --output-dir outputs/rag_triad
 ```
 
 Outputs:
