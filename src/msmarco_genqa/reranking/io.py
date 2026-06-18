@@ -10,25 +10,110 @@ ordering, so we ignore the other columns on read.
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Iterable
+
+
+class RunTsvFormatError(ValueError):
+    """Raised when a TREC-format run file is malformed."""
+
+    def __init__(self, path: Path | str, line_number: int | None, message: str) -> None:
+        self.path = Path(path)
+        self.line_number = line_number
+        self.reason = message
+        location = str(self.path) if line_number is None else f"{self.path}:{line_number}"
+        super().__init__(f"{location}: {message}")
 
 
 def read_run_tsv(path: Path | str) -> dict[str, list[tuple[str, float]]]:
     """Parse a TREC run file into ``{qid: [(doc_id, score), ...]}``.
 
-    Lines are returned in the order they appear in the file (which is
-    already the rank order produced by the upstream retriever).
+    Entries are returned in ascending rank order within each query. Malformed
+    records fail fast with a line-numbered ``RunTsvFormatError`` instead of
+    being skipped silently.
     """
-    runs: dict[str, list[tuple[str, float]]] = {}
-    with open(path) as f:
-        for line in f:
-            parts = line.rstrip("\n").split("\t")
-            if len(parts) < 6:
-                continue
-            qid, _q0, doc_id, _rank, score, _sys = parts[:6]
-            runs.setdefault(qid, []).append((doc_id, float(score)))
-    return runs
+    p = Path(path)
+    rows_by_qid: dict[str, list[tuple[int, str, float]]] = {}
+    seen_qid_rank: set[tuple[str, int]] = set()
+    seen_qid_doc: set[tuple[str, str]] = set()
+    try:
+        with p.open(encoding="utf-8") as f:
+            for line_number, raw_line in enumerate(f, start=1):
+                line = raw_line.rstrip("\n").rstrip("\r")
+                if not line:
+                    raise RunTsvFormatError(p, line_number, "empty line")
+                parts = line.split("\t")
+                if len(parts) != 6:
+                    raise RunTsvFormatError(
+                        p,
+                        line_number,
+                        f"expected 6 tab-separated fields, got {len(parts)}",
+                    )
+                qid, _q0, doc_id, rank_text, score_text, system = parts
+                if not qid:
+                    raise RunTsvFormatError(p, line_number, "empty query id")
+                if not doc_id:
+                    raise RunTsvFormatError(p, line_number, "empty document id")
+                if not system:
+                    raise RunTsvFormatError(p, line_number, "empty system name")
+                if "\ufffd" in qid or "\ufffd" in doc_id or "\ufffd" in system:
+                    raise RunTsvFormatError(
+                        p,
+                        line_number,
+                        "replacement character found in identifier field",
+                    )
+                try:
+                    rank = int(rank_text)
+                except ValueError as exc:
+                    raise RunTsvFormatError(
+                        p,
+                        line_number,
+                        f"rank is not an integer: {rank_text!r}",
+                    ) from exc
+                if rank < 1:
+                    raise RunTsvFormatError(
+                        p,
+                        line_number,
+                        f"rank must be positive, got {rank}",
+                    )
+                qid_rank = (qid, rank)
+                if qid_rank in seen_qid_rank:
+                    raise RunTsvFormatError(
+                        p,
+                        line_number,
+                        f"duplicate rank {rank} for query id {qid!r}",
+                    )
+                seen_qid_rank.add(qid_rank)
+                qid_doc = (qid, doc_id)
+                if qid_doc in seen_qid_doc:
+                    raise RunTsvFormatError(
+                        p,
+                        line_number,
+                        f"duplicate document id {doc_id!r} for query id {qid!r}",
+                    )
+                seen_qid_doc.add(qid_doc)
+                try:
+                    score = float(score_text)
+                except ValueError as exc:
+                    raise RunTsvFormatError(
+                        p,
+                        line_number,
+                        f"score is not numeric: {score_text!r}",
+                    ) from exc
+                if not math.isfinite(score):
+                    raise RunTsvFormatError(
+                        p,
+                        line_number,
+                        f"score must be finite, got {score_text!r}",
+                    )
+                rows_by_qid.setdefault(qid, []).append((rank, doc_id, score))
+    except UnicodeDecodeError as exc:
+        raise RunTsvFormatError(p, None, f"file is not valid UTF-8: {exc}") from exc
+    return {
+        qid: [(doc_id, score) for _rank, doc_id, score in sorted(rows)]
+        for qid, rows in rows_by_qid.items()
+    }
 
 
 def truncate_top_k(

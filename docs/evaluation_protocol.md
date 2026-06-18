@@ -53,14 +53,17 @@ recorded in `configs/baseline.yaml` under `rag_eval`.
 
 ## Stage Order
 
-1. `bm25_retrieval`
-2. `dense_retrieval`
-3. `cross_encoder_rerank`
-4. `retrieval_lift_analysis`
-5. `generation_bm25`
-6. `generation_reranked`
-7. `paired_bootstrap_ci`
-8. `grounding_audit`
+1. `query_transformation`
+2. `bm25_retrieval`
+3. `dense_retrieval`
+4. `cross_encoder_rerank`
+5. `retrieval_quality_report`
+6. `retrieval_lift_analysis`
+7. `generation_bm25`
+8. `generation_reranked`
+9. `paired_bootstrap_ci`
+10. `grounding_audit`
+11. `rag_triad`
 
 Each stage writes under `outputs/`. Output directories are gitignored; metrics,
 manifests, and summaries should be copied into reports only after they are
@@ -70,8 +73,8 @@ checked against this protocol.
 
 For generation comparison:
 
-- BM25 generation input: `outputs/week02_bm25/run.tsv`.
-- Reranked generation input: `outputs/week05_reranker_full/run.tsv`.
+- BM25 generation input: `outputs/W2_bm25/run.tsv`.
+- Reranked generation input: `outputs/W5_reranker_full/run.tsv`.
 - Both generation arms must use `--restrict-to-run` against the other arm's
   upstream run.
 - The final `predictions.jsonl` files must contain the same query ids in the
@@ -96,11 +99,47 @@ Retrieval metrics:
 - nDCG@10
 - Recall@100 / Recall@1000, depending on stage
 
+Use `retrieval_quality_report` for matched-qid retrieval comparisons before
+interpreting deltas. Coverage counts are part of the report and should be
+checked before comparing dense, RRF, or reranked runs. For BM25 vs dense vs
+RRF vs RRF-plus-rerank claims, use the `mgq-retrieval-report matrix`
+subcommand so every row is evaluated on the same shared positive-qrels qid set.
+
+Query transformation:
+
+- Keep `query_transform.method: none` for no-transform baselines.
+- Record the `config_hash` and changed-query count for normalization or
+  expansion ablations.
+- Compare transformed and untransformed retrieval runs on matched query ids.
+- Use `mgq-query-transform-ablation` to combine method summaries and optional
+  retrieval metrics into `ablation.json` and `report.md`.
+
+Context packing:
+
+- Keep uncompressed generation outputs as the baseline.
+- Write packed-prompt generation outputs to a separate directory.
+- Compare with `mgq-context-packing-report` on matched query ids.
+- Interpret context-character savings together with Token-F1, exact match,
+  grounding, and RAG triad outputs.
+
 Grounding metrics:
 
 - lexical content-token grounding
 - n-gram grounding
 - optional NLI entailment
+
+RAG triad:
+
+- context relevance
+- groundedness
+- answer relevance
+
+Use `mgq-rag-triad` after paired generation outputs exist. With a qrels file,
+context relevance is judged by whether the shown context contains a
+qrels-relevant passage; without qrels, the CLI falls back to lexical
+query-context overlap for smoke runs and CI-friendly checks. The triad report
+is a diagnostic layer: it should be read per dimension, not as a single
+leaderboard score.
 
 Semantic proxy:
 
@@ -147,6 +186,11 @@ When updating `RESULTS.md` or a report:
 - State the exact paired query count.
 - State the generator checkpoint and decoding budget.
 - State bootstrap seed, resample count, and confidence level.
+- Refresh checked LaTeX fragments with `python scripts/export_report_tables.py`
+  when a report table is backed by `reports/generated/artifacts/*.json`.
+- Commit the matching `.sources.json` sidecar for each refreshed table fragment.
+- Keep notebooks as output-free demos over package APIs or dry-run CLIs; runnable
+  experiment logic belongs in `src/`, `scripts/`, and config files.
 - Separate confirmed results from hypotheses and queued follow-ups.
 
 Avoid language that implies general QA capability. The current system is an

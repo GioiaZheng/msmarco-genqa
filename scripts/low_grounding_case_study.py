@@ -34,7 +34,7 @@ low-grounding bucket, not a final classifier. The value is in the
 distribution + the per-case inspection rows, not in any single
 attribution.
 
-Outputs (gitignored under ``outputs/week07_low_grounding_cases/``):
+Outputs (gitignored under ``outputs/W7_low_grounding_cases/``):
 
 - ``cases.jsonl``   — per-case row with all the inspection fields.
 - ``cases.md``      — human-readable inspection report (one block per
@@ -78,28 +78,28 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--per-query-grounding",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week07_grounding/per_query_grounding.jsonl",
+        default=PROJECT_ROOT / "outputs/W7_grounding/per_query_grounding.jsonl",
     )
     p.add_argument(
         "--rerank-predictions",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week03_generation_reranked_full/predictions.jsonl",
+        default=PROJECT_ROOT / "outputs/W3_generation_reranked_full/predictions.jsonl",
     )
     p.add_argument(
         "--bm25-predictions",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week03_generation_bm25_full/predictions.jsonl",
+        default=PROJECT_ROOT / "outputs/W3_generation_bm25_full/predictions.jsonl",
         help="Only used to surface the BM25 prediction side-by-side per case.",
     )
     p.add_argument(
         "--per-query-metrics",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week06_analysis/per_query_metrics.jsonl",
+        default=PROJECT_ROOT / "outputs/W6_analysis/per_query_metrics.jsonl",
     )
     p.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week07_low_grounding_cases",
+        default=PROJECT_ROOT / "outputs/W7_low_grounding_cases",
     )
     p.add_argument("--n-cases", type=int, default=30)
     p.add_argument("--seed", type=int, default=42)

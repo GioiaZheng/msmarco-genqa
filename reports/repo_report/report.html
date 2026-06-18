@@ -1,0 +1,3181 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>MS MARCO Generative QA Repository Report</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for citations */
+    div.csl-bib-body { }
+    div.csl-entry {
+      clear: both;
+    }
+    .hanging-indent div.csl-entry {
+      margin-left:2em;
+      text-indent:-2em;
+    }
+    div.csl-left-margin {
+      min-width:2em;
+      float:left;
+    }
+    div.csl-right-inline {
+      margin-left:2em;
+      padding-left:1em;
+    }
+    div.csl-indent {
+      margin-left: 2em;
+    }  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">MS MARCO Generative QA Repository Report</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#abstract" id="toc-abstract">Abstract</a></li>
+<li><a href="#sec:intro" id="toc-sec:intro">Introduction</a>
+<ul>
+<li><a href="#background-and-objectives"
+id="toc-background-and-objectives">Background and objectives</a></li>
+<li><a href="#methodological-commitments"
+id="toc-methodological-commitments">Methodological commitments</a></li>
+<li><a href="#contributions"
+id="toc-contributions">Contributions</a></li>
+<li><a href="#roadmap" id="toc-roadmap">Roadmap</a></li>
+<li><a href="#repository-status-as-of-2026-06-12"
+id="toc-repository-status-as-of-2026-06-12">Repository status as of
+2026-06-12</a></li>
+</ul></li>
+<li><a href="#sec:relwork" id="toc-sec:relwork">Related Work</a></li>
+<li><a href="#sec:dataset" id="toc-sec:dataset">Dataset and Exploratory
+Data Analysis</a>
+<ul>
+<li><a href="#datasets-used" id="toc-datasets-used">Datasets
+used</a></li>
+<li><a href="#query-and-passage-shape"
+id="toc-query-and-passage-shape">Query and passage shape</a></li>
+<li><a href="#query-type-composition"
+id="toc-query-type-composition">Query-type composition</a></li>
+<li><a href="#relevance-judgement-sparsity"
+id="toc-relevance-judgement-sparsity">Relevance-judgement
+sparsity</a></li>
+</ul></li>
+<li><a href="#sec:method" id="toc-sec:method">Methodology</a>
+<ul>
+<li><a href="#sec:w2" id="toc-sec:w2">W2 — Sparse retrieval
+(BM25)</a></li>
+<li><a href="#sec:w3" id="toc-sec:w3">W3 — RAG generation
+baseline</a></li>
+<li><a href="#sec:w4" id="toc-sec:w4">W4 — Dense retrieval
+(sampled)</a></li>
+<li><a href="#sec:w5" id="toc-sec:w5">W5 — Cross-encoder
+reranking</a></li>
+<li><a href="#sec:w6-method" id="toc-sec:w6-method">W6 — Evaluation
+layer</a></li>
+<li><a href="#sec:w7-method" id="toc-sec:w7-method">W7 — Grounding
+audit</a></li>
+</ul></li>
+<li><a href="#sec:results" id="toc-sec:results">Results</a>
+<ul>
+<li><a href="#sec:w2-results" id="toc-sec:w2-results">W2: BM25 baseline
+(full corpus)</a></li>
+<li><a href="#sec:w4-results" id="toc-sec:w4-results">W4: Dense vs. BM25
+on the same sample</a></li>
+<li><a href="#sec:w4b" id="toc-sec:w4b">W4-B: encoder horizontal on the
+W4 sample</a></li>
+<li><a href="#sec:w4a" id="toc-sec:w4a">W4-A: density sensitivity of the
+dense vs. BM25 gap</a></li>
+<li><a href="#sec:w5-dense-rerank" id="toc-sec:w5-dense-rerank">W5:
+Cross-encoder reranking on the dense top-100</a></li>
+<li><a href="#sec:gen-x-retrieval"
+id="toc-sec:gen-x-retrieval">Headline: Generation <span
+class="math inline">×</span> retrieval source</a></li>
+<li><a href="#sec:w5a" id="toc-sec:w5a">W5-A: First-stage <span
+class="math inline">×</span> reranker head-to-head</a></li>
+<li><a href="#sec:w6" id="toc-sec:w6">W6: Evaluation layer</a>
+<ul>
+<li><a href="#sec:w6-bertscore" id="toc-sec:w6-bertscore">Semantic-proxy
+BERTScore</a></li>
+<li><a href="#sec:w6-taxonomy" id="toc-sec:w6-taxonomy">Regression
+failure taxonomy</a></li>
+<li><a href="#sec:w6-closure" id="toc-sec:w6-closure">Decoding-budget
+closure: <code>mnt=64 </code><span
+class="math inline">→</span><code> 128</code></a></li>
+<li><a href="#sec:w6-followups" id="toc-sec:w6-followups">W6-A/B/C
+breakdowns</a></li>
+</ul></li>
+<li><a href="#sec:w7" id="toc-sec:w7">W7: Grounding audit</a>
+<ul>
+<li><a href="#lexical-and-3-gram-grounding"
+id="toc-lexical-and-3-gram-grounding">Lexical and 3-gram
+grounding</a></li>
+<li><a href="#sec:w7-nli" id="toc-sec:w7-nli">W7-A — NLI-entailment
+grounding</a></li>
+<li><a href="#w7-c-grounding-leftrightarrow-downstream-correlation"
+id="toc-w7-c-grounding-leftrightarrow-downstream-correlation">W7-C —
+grounding <span class="math inline">↔︎</span> downstream
+correlation</a></li>
+<li><a href="#w7-d-low-grounding-case-study"
+id="toc-w7-d-low-grounding-case-study">W7-D — low-grounding case
+study</a></li>
+</ul></li>
+<li><a href="#sec:w8-triad" id="toc-sec:w8-triad">W8 — RAG triad
+diagnostic interface</a></li>
+<li><a href="#sec:w9-context-packing" id="toc-sec:w9-context-packing">W9
+— context packing and prompt compression</a></li>
+</ul></li>
+<li><a href="#sec:discussion" id="toc-sec:discussion">Discussion</a>
+<ul>
+<li><a href="#sec:discussion-where" id="toc-sec:discussion-where">Where
+does the rerank gain come from?</a></li>
+<li><a href="#sec:discussion-nli-flip"
+id="toc-sec:discussion-nli-flip">The W7-A NLI sign flip</a></li>
+<li><a href="#sec:plan-vs-actual" id="toc-sec:plan-vs-actual">Plan
+vs. actual</a></li>
+</ul></li>
+<li><a href="#sec:limitations"
+id="toc-sec:limitations">Limitations</a></li>
+<li><a href="#sec:conclusion" id="toc-sec:conclusion">Conclusion</a>
+<ul>
+<li><a href="#sec:future-work" id="toc-sec:future-work">Future
+work</a></li>
+</ul></li>
+<li><a href="#acknowledgements"
+id="toc-acknowledgements">Acknowledgements</a></li>
+<li><a href="#sec:reproducibility"
+id="toc-sec:reproducibility">Configuration and reproducibility</a>
+<ul>
+<li><a href="#one-config-workflow-facade-and-stage-runners"
+id="toc-one-config-workflow-facade-and-stage-runners">One config,
+workflow facade, and stage runners</a></li>
+<li><a href="#manifests" id="toc-manifests">Manifests</a></li>
+<li><a href="#input-validation-boundary"
+id="toc-input-validation-boundary">Input validation boundary</a></li>
+<li><a href="#determinism" id="toc-determinism">Determinism</a></li>
+<li><a href="#what-is-and-isnt-committed"
+id="toc-what-is-and-isnt-committed">What is and isn’t committed</a></li>
+<li><a href="#engineering-scaffolding"
+id="toc-engineering-scaffolding">Engineering scaffolding</a></li>
+</ul></li>
+<li><a href="#sec:appendix-buckets" id="toc-sec:appendix-buckets">Full
+bucket counts and W6 analysis tables</a></li>
+<li><a href="#sec:appendix-glossary"
+id="toc-sec:appendix-glossary">Glossary of cross-references</a></li>
+</ul>
+</nav>
+<div class="titlepage">
+<hr />
+<p><strong>MS MARCO Generative QA</strong></p>
+<p><em>A Reproducible Retrieve–Rerank–Generate Pipeline<br />
+with Grounding and Triad Audits</em></p>
+<p>Repository report — updated 2026-06-12</p>
+<hr />
+<p><strong>Gioia Zheng</strong></p>
+<p><a
+href="mailto:gioia.zheng.stud@gmail.com"><code>gioia.zheng.stud@gmail.com</code></a></p>
+<table>
+<tbody>
+<tr>
+<td style="text-align: right;"><strong>Experiment period</strong></td>
+<td style="text-align: left;">2026-03-06 – 2026-05-21</td>
+</tr>
+<tr>
+<td style="text-align: right;"><strong>Current update</strong></td>
+<td style="text-align: left;">2026-06-12</td>
+</tr>
+<tr>
+<td style="text-align: right;"><strong>Scope</strong></td>
+<td style="text-align: left;">Batch evaluation, CPU-only; English
+passage retrieval + QA</td>
+</tr>
+</tbody>
+</table>
+<p><span class="smallcaps">Project repository</span><br />
+<a
+href="https://github.com/GioiaZheng/msmarco-genqa"><code>github.com/GioiaZheng/msmarco-genqa</code></a></p>
+</div>
+<h1 class="unnumbered" id="abstract">Abstract</h1>
+<p>This report documents a research-engineering project that reproduces
+and analyses a complete <em>retrieve–rerank–generate</em>
+question-answering pipeline on the MS MARCO Passage Ranking
+benchmark <span class="citation"
+data-cites="bajaj2016msmarco nguyen2016msmarcoqa">(Bajaj et al. 2016;
+Nguyen et al. 2016)</span>. Each stage is implemented from open-source
+components on a single laptop, with no GPU, no fine-tuning, and no
+proprietary services: BM25 first-stage retrieval <span class="citation"
+data-cites="robertson2009bm25 lu2024bm25s">(Robertson and Zaragoza 2009;
+Lù 2024)</span> over the 8.8 million-passage corpus; a dense
+<code>Sentence-Transformers</code> baseline with FAISS exact
+search <span class="citation"
+data-cites="reimers2019sbert johnson2019faiss">(Reimers and Gurevych
+2019; Johnson et al. 2019)</span> on a qrels-anchored 50k sample; a
+cross-encoder reranker <span class="citation"
+data-cites="nogueira2019passage wang2020minilm">(Nogueira and Cho 2019;
+Wang et al. 2020)</span> over the top-100 candidates; and a frozen
+T5-small <span class="citation" data-cites="raffel2020t5">(Raffel et al.
+2020)</span> acting as a retrieval-augmented generator <span
+class="citation" data-cites="lewis2020rag">(Lewis et al. 2020)</span> on
+the top-3 retrieved passages.</p>
+<p>The single load-bearing empirical result is a paired comparison on
+all 6 980 <em>dev/small</em> queries: replacing BM25 with the
+cross-encoder-reranked dense top-3 as the upstream passage source —
+without touching the generator — approximately doubles every
+surface-form generation metric (Token-F<sub>1</sub> <span
+class="math inline">0.197 → 0.368</span>, ROUGE-L <span
+class="math inline">0.193 → 0.368</span>), with 95 % paired-bootstrap
+confidence intervals <span class="citation"
+data-cites="koehn2004bootstrap">(Koehn 2004)</span> strictly above zero
+on all four metrics. A DistilBERT-based BERTScore proxy <span
+class="citation"
+data-cites="zhang2020bertscore sanh2019distilbert">(Zhang et al. 2020;
+Sanh et al. 2019)</span> on a 3 000-pair subsample recovers the same
+paired <span class="math inline"><em>Δ</em></span> (<span
+class="math inline">+0.173</span>), ruling out a surface-form artefact.
+A targeted decoding-budget sweep (<span
+class="math inline"><code>max_new_tokens</code> = 64 → 128</span>) and a
+40-query regression failure taxonomy together <em>falsify</em> the
+hypothesis that generator truncation drives the residual regression
+bucket: the generator is hitting end-of-sequence naturally on this
+prompt format.</p>
+<p>A subsequent grounding audit calibrates the headline result. Lexical
+content-token grounding (<span class="math inline">0.997</span>) and
+3-gram grounding (<span class="math inline">0.99</span>) sit at the
+ceiling on both arms, showing that T5-small under the
+<code>question: … context: …</code> prompt is performing
+<em>extractive</em> rather than truly generative QA: the rerank gain is
+almost entirely downstream of retrieval. An NLI-entailment grounding
+proxy <span class="citation"
+data-cites="he2023debertav3 williams2018mnli">(He et al. 2023; Williams
+et al. 2018)</span> produces the only paired metric in the project whose
+sign reverses (<span class="math inline"><em>Δ</em> =  − 0.145</span>,
+95 % CI <span class="math inline">[−0.160, −0.130]</span>), most likely
+as an artefact of fragmentary midword-cut outputs that defeat
+sentence-level NLI rather than as a true semantic regression.</p>
+<p>The report covers, in order: the dataset characterisation, the four
+modelling stages, post-hoc evaluation layers (semantic proxy, grounding,
+and the current triad diagnostic interface), an honest comparison
+between the initial 12-stage project plan and what actually shipped, and
+the engineering scaffolding (reproducibility manifests, paired-bootstrap
+confidence intervals, deterministic seeds) that lets every number in
+this document be regenerated from one command per stage.</p>
+<p>This 2026-06-12 update keeps the empirical claims anchored to the
+original experiment outputs while bringing the repository description up
+to date. Since the experiment window closed, the project has gained an
+installable CLI surface, the <code>rag-eval</code> workflow facade,
+optional model-stack smoke validation, local experiment tracking, a
+lightweight serving wrapper, refreshed CI, secret scanning, a
+deterministic RAG triad CLI, stricter input-validation boundaries for
+run files / JSONL / serving calls, and a clearer advanced-RAG
+roadmap.</p>
+<p><em>Keywords.</em>  MS MARCO; passage retrieval; BM25; dense
+retrieval; cross-encoder reranking; retrieval-augmented generation;
+BERTScore; NLI grounding; RAG triad; paired bootstrap; extractive
+QA.</p>
+<h1 id="sec:intro">Introduction</h1>
+<h2 id="background-and-objectives">Background and objectives</h2>
+<p>The project brief was to build a complete <em>retrieve–generate</em>
+question-answering pipeline on the MS MARCO corpus, exploring how each
+stage of the pipeline contributes to end-to-end answer quality <span
+class="citation" data-cites="bajaj2016msmarco lewis2020rag">(Bajaj et
+al. 2016; Lewis et al. 2020)</span>. MS MARCO is a natural target
+dataset for this exercise: its queries originate from real Bing user
+traffic, its relevance judgements are human-annotated, and its v2.1
+Q&amp;A flavour ships human-written answers that allow surface-form
+generation evaluation <span class="citation"
+data-cites="nguyen2016msmarcoqa">(Nguyen et al. 2016)</span>.</p>
+<p>The brief named twelve planned milestones spanning EDA, sparse
+retrieval, generation baselines, dense retrieval, reranking, generator
+fine-tuning, hallucination mitigation, long-document processing, system
+integration and acceleration, and a final write-up. In practice the
+project ran through eleven milestones on a single-user, CPU-only Apple
+Silicon laptop, with no fine-tuning at any stage. <a
+href="#sec:plan-vs-actual" data-reference-type="ref+Label"
+data-reference="sec:plan-vs-actual">6.3</a> compares the plan to the
+actual deliverables and explains the deviations.</p>
+<h2 id="methodological-commitments">Methodological commitments</h2>
+<p>Three principles shaped every decision the project made:</p>
+<ol>
+<li><p><strong>Honest baselines before optimisation.</strong> Every
+stage produces a numerically reproducible <em>baseline</em> — BM25 MRR,
+generation Token-F<sub>1</sub> on a fixed query set, reranking <span
+class="math inline"><em>Δ</em></span>MRR@10 versus a precisely
+identified first stage — before any tuning is considered. The 200-query
+subsample baselines are clearly labelled as such; the load-bearing
+claims are restricted to the full 6 980 <em>dev/small</em>
+numbers.</p></li>
+<li><p><strong>Paired statistical tests on every comparison.</strong>
+When the question is “did X help on top of Y?” the report always answers
+it on <em>the same query ids</em>, with a paired bootstrap <span
+class="citation" data-cites="koehn2004bootstrap">(Koehn 2004)</span>
+reporting a 95 % confidence interval on the per-query <span
+class="math inline"><em>Δ</em></span>, not just a point estimate. When
+the sample is too small for that — e.g. the 200-query smoke-test scale —
+the report says so and labels the number as illustrative.</p></li>
+<li><p><strong>Calibrate metrics before celebrating them.</strong>
+Surface- form metrics (ROUGE-L, BLEU, EM, Token-F<sub>1</sub>)
+under-credit valid paraphrases <span class="citation"
+data-cites="lin2004rouge papineni2002bleu">(Lin 2004; Papineni et al.
+2002)</span>; a BERTScore semantic proxy <span class="citation"
+data-cites="zhang2020bertscore">(Zhang et al. 2020)</span> and a
+grounding audit (<a href="#sec:w7" data-reference-type="ref+Label"
+data-reference="sec:w7">5.9</a>) check whether the headline gain is
+real, an artefact of overlap, or a side-effect of the generator’s output
+shape. Two of the three checks confirm the gain; one (the NLI proxy of
+<a href="#sec:w7-nli" data-reference-type="ref+Label"
+data-reference="sec:w7-nli">5.9.2</a>) flips sign, and the report
+devotes <a href="#sec:discussion-nli-flip"
+data-reference-type="ref+Label"
+data-reference="sec:discussion-nli-flip">6.2</a> to that disagreement
+rather than burying it.</p></li>
+</ol>
+<h2 id="contributions">Contributions</h2>
+<p>This report contributes the following:</p>
+<ul>
+<li><p>A single-machine, CPU-only reproduction of the standard MS MARCO
+Passage retrieval <span class="math inline">→</span> reranking <span
+class="math inline">→</span> RAG-generation pipeline, with the BM25
+first-stage MRR@10 within <span class="math inline">∼ 0.014</span> of
+the published Anserini/Lucene reference baseline <span class="citation"
+data-cites="lin2021pyserini">(Lin et al. 2021)</span> on the same data
+(<a href="#sec:w2" data-reference-type="ref+Label"
+data-reference="sec:w2">4.1</a>).</p></li>
+<li><p>A <em>paired</em> full-dev comparison of generation quality under
+BM25 versus cross-encoder-reranked retrieval (<a
+href="#sec:gen-x-retrieval" data-reference-type="ref+Label"
+data-reference="sec:gen-x-retrieval">5.6</a>), with 95 %
+paired-bootstrap confidence intervals strictly above zero on all four
+surface-form metrics and a BERTScore proxy that recovers the same <span
+class="math inline"><em>Δ</em></span>.</p></li>
+<li><p>A two-step <em>falsification</em> of the most plausible
+explanation for the residual regression bucket (<a
+href="#sec:w6-closure" data-reference-type="ref+Label"
+data-reference="sec:w6-closure">5.8.3</a>): the decoding-budget closure
+run and the grounding-ceiling reading together rule out
+<code>max_new_tokens</code> as the bottleneck.</p></li>
+<li><p>A grounding audit (<a href="#sec:w7"
+data-reference-type="ref+Label" data-reference="sec:w7">5.9</a>) that
+calibrates the rerank gain as a <em>retrieval</em> gain almost entirely
+downstream of passage selection, and isolates a sign-reversing NLI
+anomaly (<a href="#sec:w7-nli" data-reference-type="ref+Label"
+data-reference="sec:w7-nli">5.9.2</a>) most plausibly attributable to
+fragmentary outputs rather than true semantic drift.</p></li>
+<li><p>A reproducibility scaffold (per-run manifests with git commit,
+dependency hashes, command line, and per-output SHA-256s; deterministic
+seeds throughout; a single config file driving all four runners)
+sufficient to re-derive every number in this report from one command per
+stage on a comparable single-machine setup.</p></li>
+<li><p>A maintained repository surface around the experiments:
+installable console entry points, the <code>rag-eval</code> workflow
+facade, optional model-stack smoke validation, local experiment
+tracking, a lightweight <code>mgq-serve</code> FastAPI wrapper, CI,
+secret scanning, and separate reproducibility/security notes.</p></li>
+</ul>
+<h2 id="roadmap">Roadmap</h2>
+<p><a href="#sec:relwork" data-reference-type="ref+Label"
+data-reference="sec:relwork">2</a> surveys the related work that anchors
+the design choices. <a href="#sec:dataset"
+data-reference-type="ref+Label" data-reference="sec:dataset">3</a>
+characterises the MS MARCO subset actually used. <a href="#sec:method"
+data-reference-type="ref+Label" data-reference="sec:method">4</a> steps
+through the four modelling stages (W1–W5) in implementation order. <a
+href="#sec:results" data-reference-type="ref+Label"
+data-reference="sec:results">5</a> is the central empirical chapter,
+presenting the W2–W5 retrieval numbers, the load-bearing W3 paired
+generation comparison, the W5-A first-stage head-to-head, the W6
+evaluation layer, the W7 grounding audit, and the W8 triad diagnostic
+interface. <a href="#sec:discussion" data-reference-type="ref+Label"
+data-reference="sec:discussion">6</a> discusses what the combination of
+W6 closure, W7 grounding, and W8 triad diagnostics actually means about
+where the gain comes from, treats the NLI sign flip on its own terms,
+and compares ship versus plan. <a href="#sec:limitations"
+data-reference-type="ref+Label" data-reference="sec:limitations">7</a>
+states the limitations. <a href="#sec:conclusion"
+data-reference-type="ref+Label" data-reference="sec:conclusion">8</a>
+concludes. The question-form breakdown is reported inline with the rest
+of W6 (<a href="#tab:w6b" data-reference-type="ref+Label"
+data-reference="tab:w6b">11</a>). Appendices cover the configuration and
+reproducibility scaffolding (<a href="#sec:reproducibility"
+data-reference-type="ref+Label"
+data-reference="sec:reproducibility">9</a>), the full five-way bucket
+counts (<a href="#sec:appendix-buckets" data-reference-type="ref+Label"
+data-reference="sec:appendix-buckets">10</a>), and a short glossary of
+cross-references (<a href="#sec:appendix-glossary"
+data-reference-type="ref+Label"
+data-reference="sec:appendix-glossary">11</a>).</p>
+<h2 id="repository-status-as-of-2026-06-12">Repository status as of
+2026-06-12</h2>
+<p>The project has moved from a report-centred experiment bundle to a
+small research-engineering repository. The headline metrics in this
+document remain historical experiment results, but the codebase now has
+a clearer operating surface:</p>
+<ul>
+<li><p><strong>Workflow facade.</strong>
+<code>rag-eval run --config configs/baseline.yaml</code> builds or
+dry-runs the configured retrieval, reranking, generation,
+context-packing, bootstrap, grounding, and triad-evaluation workflow
+from one entry point.</p></li>
+<li><p><strong>Package and CLI surface.</strong> The project installs
+via <code>pip install -e .</code> and exposes stage-level
+<code>mgq-*</code> commands plus <code>mgq-serve</code> for local
+serving experiments. The current evaluation surface includes
+<code>mgq-retrieval-report matrix</code> for same-qid BM25 / dense / RRF
+/ reranked comparison tables and <code>mgq-context-packing-report</code>
+for packed-vs-plain generation prompt comparisons, plus
+<code>mgq-rag-triad</code> for context-relevance, groundedness, and
+answer-relevance diagnostics over existing generation outputs.</p></li>
+<li><p><strong>Validation.</strong> Default CI runs fast pytest
+coverage, <code>ruff</code>, headline-metric metadata checks, and a
+high-confidence secret scan. Heavy model and data checks stay opt-in
+through the model-stack smoke and slow/integration test
+markers.</p></li>
+<li><p><strong>Reproducibility.</strong> The manifest contract now
+records command lines, dependency-file hashes, config hashes, git state,
+output hashes, and cache/profile metadata. The documentation separates
+quick local checks from heavyweight data/model reproduction.</p></li>
+<li><p><strong>Research backlog.</strong> Follow-up issues now separate
+learned sparse retrieval, stronger rerankers, chunking protocols, query
+transformation, offline/online indexing, citation-aware generation, and
+adaptive retrieval sufficiency checks.</p></li>
+</ul>
+<h1 id="sec:relwork">Related Work</h1>
+<h4 id="the-ms-marco-ecosystem.">The MS MARCO ecosystem.</h4>
+<p>MS MARCO is among the largest publicly available collections of
+<em>real-user</em> search queries with human-judged relevance and
+human-written answers <span class="citation"
+data-cites="bajaj2016msmarco nguyen2016msmarcoqa">(Bajaj et al. 2016;
+Nguyen et al. 2016)</span>. Its Passage Ranking corpus contains 8.8M
+passages with one or two relevance judgements per dev query; the Q&amp;A
+v2.1 split layered on top supplies free-form answers that make
+end-to-end generation tractable to evaluate. The benchmark has been the
+de-facto target for mid-2010s-to-2020s information retrieval research;
+published BM25 baselines in the Anserini/Lucene/Pyserini <span
+class="citation" data-cites="lin2021pyserini">(Lin et al. 2021)</span>
+stack report MRR@10 <span class="math inline"> ≈ 0.184</span> on
+<em>dev/small</em>. This project’s BM25 number (MRR@10 <span
+class="math inline"> = 0.170</span>, <a href="#sec:w2"
+data-reference-type="ref+Label" data-reference="sec:w2">4.1</a>) is
+within tokenizer-induced distance of that reference.</p>
+<h4 id="sparse-retrieval.">Sparse retrieval.</h4>
+<p>BM25 remains the canonical sparse first-stage retriever <span
+class="citation" data-cites="robertson2009bm25">(Robertson and Zaragoza
+2009)</span>. This project uses <code>bm25s</code> <span
+class="citation" data-cites="lu2024bm25s">(Lù 2024)</span>, a
+pure-Python re-implementation of the BM25 scoring formula with eager
+sparse scoring that achieves Lucene-comparable throughput on commodity
+CPUs without requiring a JVM; the trade-off is a different default
+tokenizer, which is the main attributable source of the <span
+class="math inline">∼ 0.014</span> MRR gap relative to the
+Lucene-tokenizer reference baseline.</p>
+<h4 id="dense-retrieval.">Dense retrieval.</h4>
+<p>Sentence-level dense retrievers <span class="citation"
+data-cites="reimers2019sbert">(Reimers and Gurevych 2019)</span> encode
+queries and passages into a shared embedding space. ANCE <span
+class="citation" data-cites="xiong2021ance">(Xiong et al. 2021)</span>
+and subsequent MS MARCO-tuned encoders established that dense retrieval
+can substantially outperform BM25 on this benchmark. This project uses a
+<em>generic</em> (non-domain-tuned) <code>all-MiniLM-L6-v2</code> <span
+class="citation" data-cites="wang2020minilm">(Wang et al. 2020)</span>
+encoder as the W4 baseline, deliberately leaving the MS MARCO-tuned
+variant (<code>msmarco-MiniLM-L6-cos-v5</code>) and a stronger generic
+encoder (BGE small <span class="citation" data-cites="xiao2024bge">(Xiao
+et al. 2024)</span>) for the W4-B follow-up. Exact similarity search is
+via FAISS <code>IndexFlatIP</code> <span class="citation"
+data-cites="johnson2019faiss">(Johnson et al. 2019)</span> on
+L2-normalised embeddings (cosine similarity); no approximate
+nearest-neighbour index is used, since the 50k-passage sampled setting
+fits in memory.</p>
+<h4 id="reranking.">Reranking.</h4>
+<p>Cross-encoders applied to (query, passage) pairs and trained on
+relevance labels — the architecture introduced by Nogueira and Cho <span
+class="citation" data-cites="nogueira2019passage">(Nogueira and Cho
+2019)</span> — give the highest known single-stage reranking quality on
+MS MARCO. The reranker used throughout this project is
+<code>cross-encoder/ms-marco-MiniLM-L-6-v2</code>, a small distilled
+cross-encoder <span class="citation" data-cites="wang2020minilm">(Wang
+et al. 2020)</span> trained on MS MARCO qrels. Reranking depth is fixed
+to <span class="math inline"><em>K</em> = 100</span> throughout the
+report; the K-sweep ({50, 100, 200}) is queued as W5-B (<a
+href="#sec:plan-vs-actual" data-reference-type="ref+Label"
+data-reference="sec:plan-vs-actual">6.3</a>).</p>
+<h4 id="retrieval-augmented-generation.">Retrieval-augmented
+generation.</h4>
+<p>RAG <span class="citation" data-cites="lewis2020rag">(Lewis et al.
+2020)</span> folds retrieved passages into the prompt of an
+encoder–decoder language model. This project’s RAG generator is the
+smallest T5 <span class="citation" data-cites="raffel2020t5">(Raffel et
+al. 2020)</span> checkpoint (<code>t5-small</code>), used as a frozen
+pretrained model with the canonical T5 extractive-QA prompt shape
+(<code>question: &lt;q&gt; context: &lt;p1&gt; &lt;p2&gt; &lt;p3&gt;</code>;
+see <a href="#sec:w3" data-reference-type="ref+Label"
+data-reference="sec:w3">4.2</a> for the verbatim form). The choice of
+T5-small is deliberate: it caps the absolute generation quality but lets
+the entire pipeline run end-to-end on CPU within a few hours per
+full-dev sweep, which is what makes the paired statistical comparisons
+of <a href="#sec:gen-x-retrieval" data-reference-type="ref+Label"
+data-reference="sec:gen-x-retrieval">5.6</a> possible at all.</p>
+<h4 id="generation-evaluation.">Generation evaluation.</h4>
+<p>Surface-form metrics — ROUGE-L <span class="citation"
+data-cites="lin2004rouge">(Lin 2004)</span> and BLEU <span
+class="citation" data-cites="papineni2002bleu">(Papineni et al.
+2002)</span> — under-credit valid paraphrases. BERTScore <span
+class="citation" data-cites="zhang2020bertscore">(Zhang et al.
+2020)</span> replaces n-gram overlap with contextualised-embedding
+cosine similarity at the token level. This project uses BERTScore with a
+DistilBERT <span class="citation" data-cites="sanh2019distilbert">(Sanh
+et al. 2019)</span> backbone as a <em>semantic proxy</em> (deliberately
+not the canonical <code>roberta-large</code> citation-grade scorer),
+reserving the heavier encoder for a follow-up. The grounding audit of <a
+href="#sec:w7" data-reference-type="ref+Label"
+data-reference="sec:w7">5.9</a> borrows from the faithfulness-evaluation
+literature on natural language generation <span class="citation"
+data-cites="ji2023hallucination honovich2022true">(Ji et al. 2023;
+Honovich et al. 2022)</span>, specifically the practice of using a small
+NLI cross-encoder  <span class="citation"
+data-cites="he2023debertav3 williams2018mnli">(He et al. 2023; Williams
+et al. 2018)</span> to score <em>entailment(passages <span
+class="math inline">→</span> prediction)</em>.</p>
+<h4 id="statistical-testing.">Statistical testing.</h4>
+<p>Every paired comparison in this report uses Koehn’s paired
+bootstrap <span class="citation" data-cites="koehn2004bootstrap">(Koehn
+2004)</span> (10 000 resamples, seed 42, percentile interval);
+structural feature comparisons between regression and non-regression
+queries use Mann–Whitney U with rank-biserial effect size <span
+class="citation" data-cites="mannwhitney1947">(Mann and Whitney
+1947)</span>. This is deliberate: with sample sizes in the thousands but
+per-query metrics that are highly non-normal (bimodal at 0/1 for
+exact-match, heavy-tailed for BLEU on short outputs), only
+resampling-based intervals are credible.</p>
+<h1 id="sec:dataset">Dataset and Exploratory Data Analysis</h1>
+<h2 id="datasets-used">Datasets used</h2>
+<p>The project consumes two distinct slices of MS MARCO:</p>
+<ul>
+<li><p><strong>MS MARCO Passage Ranking</strong> (the retrieval corpus):
+8.8M English passages, <span class="math inline">∼ 400</span> bytes
+median length. All retrieval baselines (W2 BM25, W4 dense, W5 rerank,
+and the W3 generator’s upstream context) index this corpus. Used the
+official <code>ir_datasets</code> loader <span class="citation"
+data-cites="macavaney2021irdatasets">(MacAvaney et al. 2021)</span> for
+both the corpus and the <em>dev/small</em> relevance
+judgements.</p></li>
+<li><p><strong>MS MARCO Q&amp;A v2.1 validation split</strong>: <span
+class="math inline">∼ 101</span>k queries, each with up to ten candidate
+passages and one or more human-written reference answers. W1 (EDA) uses
+the first 5 000 rows of this split; W3 generation evaluation uses the
+references attached to the 6 980 <em>dev/small</em> queries on which
+BM25 and the reranker both produce a top-3 (<a
+href="#sec:gen-x-retrieval" data-reference-type="ref+Label"
+data-reference="sec:gen-x-retrieval">5.6</a>).</p></li>
+</ul>
+<h2 id="query-and-passage-shape">Query and passage shape</h2>
+<p><a href="#fig:query-length,fig:passage-length"
+data-reference-type="ref+Label"
+data-reference="fig:query-length,fig:passage-length">[fig:query-length,fig:passage-length]</a>
+report the empirical length distributions on the W1 5 000-row validation
+sample. Queries are short (median <span class="math inline">≈ 6</span>
+tokens; the long tail beyond <span class="math inline">∼ 15</span>
+tokens is small), consistent with web-search behaviour; passages are
+roughly <span class="math inline">10×</span> longer (median <span
+class="math inline">≈ 50</span> tokens), short enough that the W3
+generator can fit three of them into a T5-small 512-token input window
+without per-passage truncation in the common case.</p>
+<figure id="fig:query-length" data-latex-placement="H">
+<img src="query_length_distribution.png" style="width:78.0%" />
+<figcaption>Query-length distribution on the W1 5 000-row MS MARCO
+Q&amp;A v2.1 validation sample. Median <span
+class="math inline">≈ 6</span> tokens; the <span
+class="math inline">≥ 15</span>-token tail is small. Sets the sizing
+target for the W3 RAG prompt budget.</figcaption>
+</figure>
+<figure id="fig:passage-length" data-latex-placement="H">
+<img src="passage_length_distribution.png" style="width:78.0%" />
+<figcaption>Passage-length distribution on the same W1 sample, clipped
+at 200 tokens. Median <span class="math inline">≈ 50</span> tokens; the
+floor at one sentence is an artefact of MS MARCO’s snippet
+extraction.</figcaption>
+</figure>
+<h2 id="query-type-composition">Query-type composition</h2>
+<p>MS MARCO ships a five-way <code>query_type</code> label
+(<code>DESCRIPTION</code>, <code>NUMERIC</code>, <code>ENTITY</code>,
+<code>LOCATION</code>, <code>PERSON</code>) and a separate (noisier)
+free-form answer field. On the 6 980 <em>dev/small</em> queries that the
+load-bearing W3 comparison uses, the proportions are
+<code>DESCRIPTION</code> 53 %, <code>NUMERIC</code> 24 %,
+<code>ENTITY</code> 9 %, <code>LOCATION</code> 7 %,
+<code>PERSON</code> 7 % (see <a href="#tab:bucket-by-type"
+data-reference-type="ref+Label"
+data-reference="tab:bucket-by-type">6</a> in <a
+href="#sec:gen-x-retrieval" data-reference-type="ref+Label"
+data-reference="sec:gen-x-retrieval">5.6</a>).</p>
+<p><a href="#fig:query-type,fig:answer-by-type"
+data-reference-type="ref+Label"
+data-reference="fig:query-type,fig:answer-by-type">[fig:query-type,fig:answer-by-type]</a>
+show the W1 distributional read on the validation sample. Two
+observations end up shaping later stages:</p>
+<ol>
+<li><p><code>DESCRIPTION</code> and <code>NUMERIC</code> dominate.
+Description answers are long, free-form, and reward paraphrase — which
+makes surface-form metrics (ROUGE-L, BLEU, EM) systematically
+pessimistic on this class and motivates the W6 BERTScore proxy (<a
+href="#sec:w6-bertscore" data-reference-type="ref+Label"
+data-reference="sec:w6-bertscore">5.8.1</a>). Numeric answers are short
+and rely on lexical surface match in the passage, so the bucket analysis
+of <a href="#tab:bucket-by-type" data-reference-type="ref+Label"
+data-reference="tab:bucket-by-type">6</a> can use them as a sanity-check
+direction (numeric should gain <em>less</em> from semantic-aware
+reranking than description does).</p></li>
+<li><p>A non-trivial fraction of queries has no answer (or an empty /
+“no_answer” string). These must be filtered for any supervised
+fine-tuning of the generator; the project does not run SFT, so the
+no-answer rows are simply scored through (the generator emits something,
+the reference is empty, and the metric for that row is 0). This is
+honest but conservative.</p></li>
+</ol>
+<figure id="fig:query-type" data-latex-placement="H">
+<img src="query_type_distribution.png" style="width:78.0%" />
+<figcaption>MS MARCO <code>query_type</code> label distribution on the
+W1 validation sample. <code>DESCRIPTION</code> dominates;
+<code>LOCATION</code> and <code>PERSON</code> are smaller
+buckets.</figcaption>
+</figure>
+<figure id="fig:answer-by-type" data-latex-placement="H">
+<img src="answer_type_by_query_type.png" style="width:78.0%" />
+<figcaption>Answer-type composition stratified by
+<code>query_type</code>. <code>DESCRIPTION</code> queries skew toward
+long free-form answers; <code>NUMERIC</code> queries skew toward short /
+single-word.</figcaption>
+</figure>
+<h2 id="relevance-judgement-sparsity">Relevance-judgement sparsity</h2>
+<p>A subtle but consequential property of the <em>dev/small</em> qrels:
+<span class="math inline">≥ 95 %</span> of dev queries have exactly one
+marked-relevant passage in the 8.8M-passage corpus, and <em>none</em>
+are negatively labelled. This shapes the W4 sampling design (<a
+href="#sec:w4" data-reference-type="ref+Label"
+data-reference="sec:w4">4.3</a>): a uniform random 50k sample from 8.8M
+would leave almost no relevant doc in the pool, so the project uses a
+<em>qrels-anchored</em> sample in which every dev relevant doc id is
+unconditionally included alongside random distractors. The trade-off,
+spelled out in <a href="#sec:w4-sampling-caveat"
+data-reference-type="ref+Label"
+data-reference="sec:w4-sampling-caveat">4.3.0.2</a>, is that absolute
+dense/rerank metrics on this sampled setting are upper-bounded by
+construction; the <em>within-sample</em> <span
+class="math inline"><em>Δ</em></span> between dense and BM25 remains the
+meaningful quantity.</p>
+<h1 id="sec:method">Methodology</h1>
+<p>This section describes the four modelling stages (W2–W5) and the
+post-hoc analysis layers (W6–W8) in implementation order. All of W2–W5
+ship as scripted command-line entrypoints under
+<code>experiments/run_*.py</code>, driven by a single configuration file
+at <code>configs/baseline.yaml</code>; W6–W7 are analysis scripts under
+<code>scripts/*.py</code>, W8 is an installable
+<code>mgq-rag-triad</code> diagnostic, and W9 is an installable
+<code>mgq-context-packing-report</code> comparison over packed versus
+plain generation predictions. These layers write JSON / Markdown
+summaries beneath <code>outputs/W6_*/</code>,
+<code>outputs/W7_*/</code>, <code>outputs/W8_rag_triad/</code>, and
+<code>outputs/W9_context_packing/</code>. <a href="#sec:reproducibility"
+data-reference-type="ref+Label"
+data-reference="sec:reproducibility">9</a> documents the reproducibility
+scaffold.</p>
+<p><a href="#fig:pipeline" data-reference-type="ref+Label"
+data-reference="fig:pipeline">5</a> sketches the end-to-end flow and the
+place each stage occupies in it.</p>
+<figure id="fig:pipeline" data-latex-placement="H">
+
+<figcaption>End-to-end pipeline. Solid boxes are the four modelling
+stages of <a href="#sec:method" data-reference-type="ref+Label"
+data-reference="sec:method">4</a>; the dashed box is the post-hoc
+evaluation layer (<a href="#sec:w6,sec:w7"
+data-reference-type="ref+Label"
+data-reference="sec:w6,sec:w7">[sec:w6,sec:w7]</a>), plus the current
+triad diagnostic interface, which consumes the already-on-disk W3 paired
+predictions and does not re-run any modelling stage. W2 and W4 are
+interchangeable first stages feeding into the same downstream pipeline;
+the W3 paired comparison of <a href="#sec:gen-x-retrieval"
+data-reference-type="ref+Label"
+data-reference="sec:gen-x-retrieval">5.6</a> switches between
+them.</figcaption>
+</figure>
+<h2 id="sec:w2">W2 — Sparse retrieval (BM25)</h2>
+<h4 id="setup.">Setup.</h4>
+<p>The first stage is BM25 via <code>bm25s</code> <span class="citation"
+data-cites="lu2024bm25s">(Lù 2024)</span> on the full 8.8M MS MARCO
+Passage corpus, with the canonical Robertson hyperparameters (<span
+class="math inline"><em>k</em><sub>1</sub> = 1.5</span>, <span
+class="math inline"><em>b</em> = 0.75</span>) and the package-default
+English tokenizer and stopword list. Index construction and query
+execution run sequentially on a six-core Apple Silicon CPU; the index is
+persisted to <code>data/processed/bm25_index_msmarco/</code> (<span
+class="math inline">≈ 2.1</span> GiB) and reused across runs. Top-1000
+candidates per query are written to disk in TREC <code>run.tsv</code>
+format.</p>
+<h4 id="retrieve-pass.">Retrieve pass.</h4>
+<p>The retrieve pass over 6 980 <em>dev/small</em> queries is
+checkpointed every 200 queries (<code>retrieval.chunk_size</code>) into
+the same <code>run.tsv</code> target, so an interrupted run can resume
+at the next chunk boundary via <code>--resume</code> without rebuilding
+the index or repeating already-completed queries. This is the only
+operational nicety the project needs at retrieval scale: a single BM25
+sweep takes <span class="math inline">∼ 70</span> minutes on the laptop,
+well below the cost of the downstream reranker, but a kill-9 mid-sweep
+without checkpointing costs the full hour.</p>
+<h4 id="evaluation.">Evaluation.</h4>
+<p>Retrieval metrics are computed in
+<code>src/evaluation/retrieval.py</code> from the run file and the
+<em>dev/small</em> qrels. MRR@10 follows the standard MS MARCO
+definition (reciprocal rank of the first relevant document in the
+top-<span class="math inline">10</span>, zero if none); Recall@100 and
+Recall@1000 are computed at <span
+class="math inline"><em>K</em> ∈ {100, 1000}</span>; nDCG@10 uses binary
+gain following the standard discounted cumulative gain formulation <span
+class="citation" data-cites="jarvelin2002ndcg">(Järvelin and Kekäläinen
+2002)</span>.</p>
+<h2 id="sec:w3">W3 — RAG generation baseline</h2>
+<h4 id="generator.">Generator.</h4>
+<p>A frozen T5-small <span class="citation"
+data-cites="raffel2020t5">(Raffel et al. 2020)</span> checkpoint, used
+out-of-the-box via Hugging Face Transformers <span class="citation"
+data-cites="wolf2020transformers">(Wolf et al. 2020)</span>. No
+fine-tuning at any point. The prompt is the canonical T5-style
+extractive-QA shape:</p>
+<div class="center">
+<p><code>question: &lt;q&gt; context: &lt;p1&gt; &lt;p2&gt; &lt;p3&gt;</code></p>
+</div>
+<p>where <span
+class="math inline"><em>p</em><sub>1</sub>…<em>p</em><sub>3</sub></span>
+are the top-3 passages from the upstream retriever, ordered by
+descending retriever score. Decoding uses the T5 defaults with
+<code>max_input_length=512</code>, <code>max_new_tokens=64</code>; the
+latter is the parameter that the W6 closure run of <a
+href="#sec:w6-closure" data-reference-type="ref+Label"
+data-reference="sec:w6-closure">5.8.3</a> sweeps.</p>
+<h4 id="two-retrieval-sources-same-generator.">Two retrieval sources,
+same generator.</h4>
+<p>The <code>run_generation_baseline.py</code> runner is intentionally
+<em>retrieval-source agnostic</em>: it consumes any TREC-format
+<code>run.tsv</code> and folds the top-<span
+class="math inline"><em>K</em></span> passages into the prompt. The
+headline W3 comparison (<a href="#sec:gen-x-retrieval"
+data-reference-type="ref+Label"
+data-reference="sec:gen-x-retrieval">5.6</a>) runs the generator twice
+with exactly the same configuration, switching only the upstream run
+between (i) the W2 BM25 run and (ii) the W5 cross-encoder-reranked dense
+run, and uses the runner’s <code>--restrict-to-run</code> flag to
+constrain both passes to the <em>intersection</em> of query ids covered
+by both upstream runs — 6 980 queries in total, verified by query-id
+set-difference equal to <span class="math inline">∅</span>.</p>
+<h4 id="generation-metrics.">Generation metrics.</h4>
+<p>Four surface-form metrics: ROUGE-L via the official
+<code>rouge_score</code> implementation  <span class="citation"
+data-cites="lin2004rouge">(Lin 2004)</span>, BLEU via the HF
+<code>evaluate</code> wrapper around <code>sacrebleu</code> <span
+class="citation" data-cites="papineni2002bleu">(Papineni et al.
+2002)</span>, exact-match, and Token-F<sub>1</sub> (lowercased,
+whitespace-tokenised set <span
+class="math inline"><em>F</em><sub>1</sub></span>). When a query has
+multiple reference answers, every metric is computed as <em>best-of-N
+over references</em>, which is the convention the MS MARCO Q&amp;A
+reference scripts use and what makes per-query scores comparable across
+queries with one versus three references.</p>
+<h2 id="sec:w4">W4 — Dense retrieval (sampled)</h2>
+<h4 id="encoder-index.">Encoder &amp; index.</h4>
+<p>The W4 dense retriever uses
+<code>sentence-transformers/all-MiniLM-L6-v2</code> <span
+class="citation" data-cites="reimers2019sbert wang2020minilm">(Reimers
+and Gurevych 2019; Wang et al. 2020)</span> — a generic
+semantic-similarity encoder, deliberately <em>not</em> MS MARCO-tuned —
+to embed both queries and passages into a 384-dimensional space.
+Embeddings are L2-normalised and indexed with FAISS
+<code>IndexFlatIP</code> <span class="citation"
+data-cites="johnson2019faiss">(Johnson et al. 2019)</span>, so
+inner-product search is exact cosine similarity. No approximate
+nearest-neighbour structure is used.</p>
+<h4 id="sec:w4-sampling-caveat">Why a sampled corpus.</h4>
+<p>Encoding the full 8.8M passage corpus on a six-core CPU laptop is
+prohibitive (estimated <span class="math inline">∼ 40</span> hours at
+the W4 encode throughput of <span class="math inline">16</span> ms /
+passage). The W4 baseline therefore runs on a <em>50 000-passage
+sample</em>. A uniform random sample at this size would put <span
+class="math inline">∼ 4 × 10<sup>−4</sup> ⋅ 8.8M ≈ 50</span> relevant
+docs in the pool against <span class="math inline">∼ 17 000</span> dev
+relevance judgements, so both retrievers would score near zero and the
+comparison would be meaningless. The project therefore uses a
+<em>qrels-anchored sample</em>: every <em>dev/small</em> relevant doc id
+(7 437 unique docs) is included unconditionally, and the remaining <span
+class="math inline">∼ 42 500</span> slots are filled with uniform random
+distractors from the full corpus’s doc_id pool (seed 42).</p>
+<h4 id="caveat.">Caveat.</h4>
+<p>This sampling design <em>inflates</em> the absolute MRR / nDCG@10 /
+Recall of both retrievers, because the relevant document is always
+present in the pool by construction. The legitimate comparison is
+<em>dense vs. BM25 on the same sample</em> (a same-pool head-to-head) —
+which is exactly what <a href="#tab:w4-results"
+data-reference-type="ref+Label" data-reference="tab:w4-results">2</a>
+reports. Absolute W4 numbers are <em>not</em> directly comparable to the
+W2 full-corpus BM25 number.</p>
+<h4 id="bm25-on-the-same-sample.">BM25 on the same sample.</h4>
+<p>To make the head-to- head fair, the runner also rebuilds a BM25 index
+on the same 50k-passage sample
+(<code>data/processed/bm25_sample_index_50k/</code>) with identical
+hyperparameters and re-evaluates it on the same query set. This is the
+BM25 number in <a href="#tab:w4-results" data-reference-type="ref+Label"
+data-reference="tab:w4-results">2</a>, not the W2 full-corpus
+baseline.</p>
+<h2 id="sec:w5">W5 — Cross-encoder reranking</h2>
+<h4 id="reranker.">Reranker.</h4>
+<p>The reranker is
+<code>cross-encoder/ms-marco-MiniLM-L-6-v2</code> <span class="citation"
+data-cites="nogueira2019passage wang2020minilm">(Nogueira and Cho 2019;
+Wang et al. 2020)</span>, a small distilled MS MARCO-trained
+cross-encoder. It scores <span
+class="math inline">(query, passage)</span> pairs jointly — as opposed
+to the W4 bi-encoder which encodes them independently — producing a
+relevance score for each of the top-<span
+class="math inline"><em>K</em></span> candidates from the first
+stage.</p>
+<h4 id="depth.">Depth.</h4>
+<p>Throughout the report, <span
+class="math inline"><em>K</em> = 100</span>
+(<code>reranker.rerank_top_k</code>). The choice is empirically
+motivated and operationally pragmatic: <span
+class="math inline"><em>K</em> = 100</span> is the standard MS MARCO
+reranking depth in the literature and balances rerank quality against
+wall-clock cost, which is linear in <span
+class="math inline"><em>K</em></span>. The K-sweep (<span
+class="math inline">{50, 100, 200}</span>) is queued as W5-B and
+explicitly de-scoped per the project’s reduced-scope deadline (<a
+href="#sec:plan-vs-actual" data-reference-type="ref+Label"
+data-reference="sec:plan-vs-actual">6.3</a>).</p>
+<h4 id="two-arms.">Two arms.</h4>
+<p>Two W5 runs are reported: one over the W4 dense top-100 (<a
+href="#sec:w5-dense-rerank" data-reference-type="ref+Label"
+data-reference="sec:w5-dense-rerank">5.5</a>, the canonical setup) and
+one over the W2 BM25 top-100 (<a href="#sec:w5a"
+data-reference-type="ref+Label" data-reference="sec:w5a">5.7</a>, the
+W5-A head-to-head against the dense arm). Both use the same reranker
+checkpoint, the same depth, and the same evaluation pass.</p>
+<h4 id="cost.">Cost.</h4>
+<p>The W5 dense+rerank full-dev run takes <span
+class="math inline">≈ 4</span> h <span class="math inline">37</span> min
+on a 6-core MacBook CPU (538 000 (query, passage) pairs at <span
+class="math inline">∼ 32</span> pairs/s, peak RSS <span
+class="math inline">∼ 3.3</span> GiB); the W5-A BM25+rerank arm takes
+<span class="math inline">≈ 3</span> h <span
+class="math inline">43</span> min. The cross-encoder is by far the
+slowest stage in the pipeline.</p>
+<h2 id="sec:w6-method">W6 — Evaluation layer</h2>
+<p>W6 layers two post-hoc analyses on the already-on-disk W3 paired
+predictions, neither of which requires re-running W3 or W5:</p>
+<h4 id="semantic-proxy-bertscore.">Semantic-proxy BERTScore.</h4>
+<p>A DistilBERT-based BERTScore <span class="citation"
+data-cites="zhang2020bertscore sanh2019distilbert">(Zhang et al. 2020;
+Sanh et al. 2019)</span> is computed on a 3 000-pair subsample of the
+shared qid set (seed 42 deterministic), with
+<code>rescale_with_baseline=True</code> and multi-reference max-<span
+class="math inline"><em>F</em><sub>1</sub></span> per query. This is a
+deliberate <em>proxy</em>: the canonical <code>roberta-large</code>
+BERTScore is reserved for a follow-up (citation-grade, <span
+class="math inline">∼ </span>hours of CPU on full dev). The proxy’s sole
+purpose is to answer “does the rerank <span
+class="math inline"><em>Δ</em></span> also show up in a
+semantic-similarity scorer?”</p>
+<h4 id="regression-failure-taxonomy.">Regression failure taxonomy.</h4>
+<p>A 40-query seeded triage (seed 42) over the <em>regression
+bucket</em> of <a href="#sec:gen-x-retrieval"
+data-reference-type="ref+Label"
+data-reference="sec:gen-x-retrieval">5.6</a> — 233 queries on which the
+reranker brought the relevant passage into the generator’s top-3
+<em>yet</em> Token-F<sub>1</sub> dropped versus BM25. Labels are
+produced by a deterministic five-way rule cascade
+(<code>scripts/regression_failure_taxonomy.py</code>); first match wins.
+Categories: <code>truncation_short</code>,
+<code>truncation_midword</code>, <code>topic_drift</code>,
+<code>extractive_passage_bias</code>, <code>semantic_mismatch</code> —
+the last is the residual catch-all.</p>
+<h4 id="decoding-budget-closure.">Decoding-budget closure.</h4>
+<p>A targeted full-dev sweep at <code>max_new_tokens=128</code> (vs. the
+canonical 64), holding the generator, prompts, retrieval inputs, and
+seed fixed. Outputs are written to fresh <code>_mnt128</code>
+directories; the canonical <code>_full</code> predictions are untouched.
+Same paired-bootstrap CI machinery is then applied to the new
+predictions.</p>
+<h4 id="w6-abc-breakdowns.">W6-A/B/C breakdowns.</h4>
+<p>Three offline analyses on the per-query metric tables: (A) a
+syntactic question-form tagger over all 6 980 queries (who / what / when
+/ where / why / how / which / yes_no / other), (B) per-form
+Token-F<sub>1</sub> / ROUGE-L / EM / MRR@10 / nDCG@10 <span
+class="math inline"><em>Δ</em></span> with paired-bootstrap CIs, and (C)
+a Mann–Whitney U comparison <span class="citation"
+data-cites="mannwhitney1947">(Mann and Whitney 1947)</span> of five
+structural features between regression and non-regression queries.</p>
+<h2 id="sec:w7-method">W7 — Grounding audit</h2>
+<p>W7 is the project’s faithfulness layer. The leading question is:
+<em>is T5-small extracting content from the retrieved passages, or
+generating from its parametric memory and happening to overlap?</em></p>
+<h4 id="lexical-content-token-grounding.">Lexical content-token
+grounding.</h4>
+<p>For each prediction, compute the fraction of unique non-stopword
+tokens in the prediction (lowercased) that appear anywhere in the union
+of the prompt’s top-3 passages. A local 85-word stopword list keeps the
+metric self-contained. A score of <span class="math inline">1.0</span>
+means every distinct content word the model emitted is present in one of
+the passages it was conditioned on; the metric is
+bag-of-content-tokens.</p>
+<h4 id="gram-grounding.">3-gram grounding.</h4>
+<p>Tighter than the lexical metric: fraction of the prediction’s
+contiguous 3-grams (case-folded, stopwords retained — order is the
+signal) that appear as a contiguous span in at least one passage.
+Catches “the model strung together the right words in the wrong order”
+cases the bag-of- content-tokens score misses.</p>
+<h4 id="nli-entailment-grounding-w7-a.">NLI-entailment grounding
+(W7-A).</h4>
+<p>An NLI cross-encoder
+(<code>cross-encoder/nli-deberta-v3-small</code> <span class="citation"
+data-cites="he2023debertav3 williams2018mnli">(He et al. 2023; Williams
+et al. 2018)</span>) scores <em>entailment</em><span
+class="math inline">(passages → prediction)</span> on the same
+3 000-paired-qid subsample used by the W6 BERTScore proxy. Same
+paired-bootstrap-CI machinery. This is the semantic- faithfulness
+companion to the two lexical grounding metrics.</p>
+<h4 id="edge-cases.">Edge cases.</h4>
+<p>Predictions with no content tokens score lexical <span
+class="math inline">1.0</span> vacuously; predictions shorter than <span
+class="math inline"><em>n</em> = 3</span> tokens score 3-gram <span
+class="math inline">1.0</span> vacuously. Both counts are reported per
+arm so the convention cannot silently inflate the headline number; in
+practice the vacuous shape is identical on both arms, so the paired
+<span class="math inline"><em>Δ</em></span> is unaffected.</p>
+<h1 id="sec:results">Results</h1>
+<p>This section reports results in the order in which they were
+produced: the per-stage retrieval baselines (W2 / W4 / W5, <a
+href="#sec:w2-results,sec:w4-results,sec:w5-dense-rerank"
+data-reference-type="ref+Label"
+data-reference="sec:w2-results,sec:w4-results,sec:w5-dense-rerank">[sec:w2-results,sec:w4-results,sec:w5-dense-rerank]</a>),
+the paired generation comparison that constitutes the principal
+empirical finding (<a href="#sec:gen-x-retrieval"
+data-reference-type="ref+Label"
+data-reference="sec:gen-x-retrieval">5.6</a>), the first-stage <span
+class="math inline">×</span> reranker head-to-head (W5-A, <a
+href="#sec:w5a" data-reference-type="ref+Label"
+data-reference="sec:w5a">5.7</a>), and the two post-hoc calibration
+layers — semantic-proxy evaluation (<a href="#sec:w6"
+data-reference-type="ref+Label" data-reference="sec:w6">5.8</a>) and
+grounding audit (<a href="#sec:w7" data-reference-type="ref+Label"
+data-reference="sec:w7">5.9</a>). <a href="#sec:discussion"
+data-reference-type="ref+Label" data-reference="sec:discussion">6</a>
+integrates the findings.</p>
+<h2 id="sec:w2-results">W2: BM25 baseline (full corpus)</h2>
+<p><a href="#tab:w2-results" data-reference-type="ref+Label"
+data-reference="tab:w2-results">1</a> reports the W2 BM25 numbers on the
+full 8.8M-passage corpus and 6 980 <em>dev/small</em> queries, against
+the published Anserini/Lucene reference.</p>
+<div id="tab:w2-results">
+<table>
+<caption>W2 — BM25 on the full MS MARCO Passage corpus, 6 980
+<em>dev/small</em> queries. Reference: published Anserini/Lucene
+MRR@10 <span class="math inline"> ≈ 0.184</span> <span class="citation"
+data-cites="lin2021pyserini">(Lin et al. 2021)</span>. The <span
+class="math inline">∼ 0.014</span> gap is attributable to tokenizer
+differences between Lucene’s <code>EnglishAnalyzer</code> and the
+<code>bm25s</code> package default.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Metric</th>
+<th style="text-align: right;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">MRR@10</td>
+<td style="text-align: right;">0.1703</td>
+</tr>
+<tr>
+<td style="text-align: left;">nDCG@10</td>
+<td style="text-align: right;">0.2138</td>
+</tr>
+<tr>
+<td style="text-align: left;">Recall@100</td>
+<td style="text-align: right;">0.6212</td>
+</tr>
+<tr>
+<td style="text-align: left;">Recall@1000</td>
+<td style="text-align: right;">0.8154</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The Recall@100 <span class="math inline"> = 0.621</span> number
+deserves attention because it caps what any reranker on top of BM25 can
+achieve in MRR@10 / nDCG@10: on <span class="math inline">∼ 38 %</span>
+of <em>dev/small</em> queries, the relevant passage is not in the BM25
+top-100 <em>at all</em>. This recall ceiling is what makes the
+constrained-recovery comparison in <a href="#sec:w5a"
+data-reference-type="ref+Label" data-reference="sec:w5a">5.7</a>
+non-trivial.</p>
+<h2 id="sec:w4-results">W4: Dense vs. BM25 on the same sample</h2>
+<p><a href="#tab:w4-results" data-reference-type="ref+Label"
+data-reference="tab:w4-results">2</a> reports the W4 dense baseline
+against BM25 rebuilt on the <em>same</em> qrels-anchored 50k sample.
+Both columns evaluate on the same 6 980 queries.</p>
+<div id="tab:w4-results">
+<table>
+<caption>W4 — dense vs. BM25 on the same qrels-anchored 50k passage
+sample, 6 980 <em>dev/small</em> queries. Encoder:
+<code>sentence-transformers/all-MiniLM-L6-v2</code> (generic, not
+MS MARCO-tuned). Index: FAISS <code>IndexFlatIP</code> over
+L2-normalised embeddings. Absolute numbers are upper-bounded by the
+qrels-anchored sampling design (<a href="#sec:w4-sampling-caveat"
+data-reference-type="ref+Label"
+data-reference="sec:w4-sampling-caveat">4.3.0.2</a>); the meaningful
+comparison is the same-sample <span
+class="math inline"><em>Δ</em></span>.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Metric</th>
+<th style="text-align: right;">BM25 (sample)</th>
+<th style="text-align: right;">Dense (sample)</th>
+<th style="text-align: right;"><span
+class="math inline"><em>Δ</em></span> (dense <span
+class="math inline">−</span> BM25)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">MRR@10</td>
+<td style="text-align: right;">0.6948</td>
+<td style="text-align: right;">0.8830</td>
+<td style="text-align: right;"><span
+class="math inline">+0.1882</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">nDCG@10</td>
+<td style="text-align: right;">0.7270</td>
+<td style="text-align: right;">0.9041</td>
+<td style="text-align: right;"><span
+class="math inline">+0.1771</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">Recall@100</td>
+<td style="text-align: right;">0.9338</td>
+<td style="text-align: right;">0.9946</td>
+<td style="text-align: right;"><span
+class="math inline">+0.0608</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">Recall@1000</td>
+<td style="text-align: right;">0.9686</td>
+<td style="text-align: right;">0.9991</td>
+<td style="text-align: right;"><span
+class="math inline">+0.0305</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Two observations:</p>
+<ol>
+<li><p>Dense wins on every metric on the same pool. The MRR@10 <span
+class="math inline"><em>Δ</em> =  + 0.19</span> is the largest
+single-step gain in the pipeline; consistent with the literature that
+generic dense encoders close most of the semantic-matching gap that BM25
+leaves open, even without MS MARCO-specific tuning.</p></li>
+<li><p>Dense Recall@100 <span class="math inline"> = 0.9946</span> is
+effectively at the ceiling on this sampled setting. From W5 onward,
+recall is no longer the bottleneck; the reranker’s job is to tighten
+<em>local ordering</em> (rank-1 vs. rank-3 vs. rank-10) given that the
+relevant passage is already in the top-100.</p></li>
+</ol>
+<h2 id="sec:w4b">W4-B: encoder horizontal on the W4 sample</h2>
+<p><a href="#tab:w4b-encoders" data-reference-type="ref+Label"
+data-reference="tab:w4b-encoders">[tab:w4b-encoders]</a> compares three
+same-tier general-purpose encoders on the identical W4 50k
+qrels-anchored sample. All three runs share the same sample selection,
+same BM25-on-sample baseline, and the same evaluation pool, so the
+comparison is apples-to-apples.</p>
+<h4 id="read.">Read.</h4>
+<p>bge-small-en-v1.5 lifts MRR@10 by <span
+class="math inline">+0.019</span> over the W4 baseline at <span
+class="math inline">∼ 2 ×</span> encoding cost (CPU, ms/passage).
+MiniLM-L12 sits in the middle on both axes (<span
+class="math inline">+0.010</span> MRR@10 for the same <span
+class="math inline">∼ 2 ×</span> cost as bge-small). The throughput /
+quality trade is close to linear in this tier; none of the three
+encoders dominates strictly. The W4-A density sweep (<a href="#sec:w4a"
+data-reference-type="ref+Label" data-reference="sec:w4a">5.4</a>) uses
+bge-small as the encoder.</p>
+<h2 id="sec:w4a">W4-A: density sensitivity of the dense vs. BM25
+gap</h2>
+<p>The W4 50k baseline is one point on a wider trade-off: <em>how does
+the dense-vs-BM25 gap shift as the sample dilutes?</em> <a
+href="#tab:w4a-density" data-reference-type="ref+Label"
+data-reference="tab:w4a-density">[tab:w4a-density]</a> sweeps three
+sample sizes (15k, 30k, 50k) with bge-small (W4-B winner) and the same
+BM25-on-sample baseline at each size.</p>
+<figure id="fig:w4a-density-curve" data-latex-placement="H">
+<img src="w4a_density_curve.png" style="width:78.0%" />
+<figcaption>W4-A — MRR@10 vs. qrel-density on the same three
+qrels-anchored samples as <a href="#tab:w4a-density"
+data-reference-type="ref+Label"
+data-reference="tab:w4a-density">[tab:w4a-density]</a>. Encoder:
+<code>BAAI/bge-small-en-v1.5</code>. Density decreases left-to-right
+(50k sample on the left at <span class="math inline">∼ 15 %</span>, 15k
+sample on the right at <span class="math inline">∼ 50 %</span>). The
+dense-vs-BM25 gap widens monotonically as density drops — which is the
+load-bearing read; absolute MRR@10 levels are inflated by the
+qrels-anchored sampling design (<a href="#sec:w4-sampling-caveat"
+data-reference-type="ref+Label"
+data-reference="sec:w4-sampling-caveat">4.3.0.2</a>) on every
+row.</figcaption>
+</figure>
+<h4 id="read.-1">Read.</h4>
+<p>As the sample grows (density drops), dense’s advantage over BM25
+grows monotonically: <span
+class="math inline">+0.166 → +0.188 → +0.207</span> (<a
+href="#fig:w4a-density-curve" data-reference-type="ref+Label"
+data-reference="fig:w4a-density-curve">6</a> shows the two arms
+diverging visibly). This is consistent with the literature claim that
+BM25 is competitive at high relevant-density and loses headroom to a
+generic dense encoder as the distractor mass dilutes the pool. The trend
+is informative even though the absolute density range (15 %–50 %) is
+much higher than the 1/5/10 % the project plan originally targeted —
+those cells need 70k–700k samples to reach (dev/small has <span
+class="math inline">∼ 7, 437</span> unique relevant doc ids, so a true
+1 % density needs a <span class="math inline">∼ 700, 000</span>-passage
+sample) and are deferred.</p>
+<h2 id="sec:w5-dense-rerank">W5: Cross-encoder reranking on the dense
+top-100</h2>
+<p><a href="#tab:w5-results" data-reference-type="ref+Label"
+data-reference="tab:w5-results">3</a> reports the W5 cross-encoder
+reranking of the W4 dense top-100, on the full 6 980 <em>dev/small</em>
+queries.</p>
+<div id="tab:w5-results">
+<table>
+<caption>W5 — cross-encoder reranking of the W4 dense top-100, 6 980
+<em>dev/small</em> queries. Reranker:
+<code>cross-encoder/ ms-marco-MiniLM-L-6-v2</code> at depth <span
+class="math inline"><em>K</em> = 100</span>. Recall@100 is unchanged by
+construction (the reranker is order-only). The earlier 1 000-query
+subsample produced consistent deltas (MRR <span
+class="math inline"><em>Δ</em> =  + 0.0435</span>, nDCG <span
+class="math inline"><em>Δ</em> =  + 0.0398</span>), so the full-dev gain
+is not a subsample artefact.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Metric</th>
+<th style="text-align: right;">Dense (W4)</th>
+<th style="text-align: right;">Dense <span class="math inline">+</span>
+CE rerank</th>
+<th style="text-align: right;"><span
+class="math inline"><em>Δ</em></span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">MRR@10</td>
+<td style="text-align: right;">0.8830</td>
+<td style="text-align: right;">0.9304</td>
+<td style="text-align: right;"><span
+class="math inline"><strong>+</strong><strong>0.0474</strong></span></td>
+</tr>
+<tr>
+<td style="text-align: left;">nDCG@10</td>
+<td style="text-align: right;">0.9041</td>
+<td style="text-align: right;">0.9434</td>
+<td style="text-align: right;"><span
+class="math inline">+0.0393</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">Recall@100</td>
+<td style="text-align: right;">0.9946</td>
+<td style="text-align: right;">0.9946</td>
+<td style="text-align: right;"><span
+class="math inline">$\phantom{+}0.0000$</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The reranker buys <span class="math inline">∼  + 0.05</span> MRR even
+with recall saturated: it is doing exactly what <a
+href="#sec:w4-results" data-reference-type="ref+Label"
+data-reference="sec:w4-results">5.2</a> predicted it should — moving the
+relevant passage from rank 2–3 to rank 1. Wall-clock cost: <span
+class="math inline"> ≈ 4</span> h <span
+class="math inline">37</span> min on the laptop; peak RSS <span
+class="math inline"> ≈ 3.3</span> GiB. The cross-encoder is the slowest
+stage in the pipeline by approximately two orders of magnitude.</p>
+<h2 id="sec:gen-x-retrieval">Headline: Generation <span
+class="math inline">×</span> retrieval source</h2>
+<p>This is the load-bearing result of the project. The question:
+<em>does feeding cross-encoder-reranked top-K passages back into the
+T5-small generator actually improve answer quality?</em> The comparison
+is paired by design: same T5-small, same prompt, same top-3 passage
+count, same seed, same query ids — only the upstream retrieval source
+changes. Both runs are mutually restricted via
+<code>--restrict-to-run</code> so the two prediction sets cover the
+<em>exact same</em> 6 980 query ids (verified by qid set-difference
+equal to <span class="math inline">∅</span>).</p>
+<h4 id="surface-form-metrics.">Surface-form metrics.</h4>
+<p><a href="#tab:w3-headline" data-reference-type="ref+Label"
+data-reference="tab:w3-headline">4</a> reports the four corpus-level
+surface-form metrics, paired across the two arms.</p>
+<div id="tab:w3-headline">
+<table>
+<caption>Headline W3 paired generation comparison on the full 6 980
+shared qid set. Same T5-small, same prompt, same top-3 passage count;
+only the upstream retrieval source differs.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Retrieval <span
+class="math inline">→</span> T5-small</th>
+<th style="text-align: right;">ROUGE-L</th>
+<th style="text-align: right;">BLEU</th>
+<th style="text-align: right;">EM</th>
+<th style="text-align: right;">Token-F<sub>1</sub></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">BM25 top-3</td>
+<td style="text-align: right;">0.1859</td>
+<td style="text-align: right;">0.0717</td>
+<td style="text-align: right;">0.0135</td>
+<td style="text-align: right;">0.1966</td>
+</tr>
+<tr>
+<td style="text-align: left;">Reranked top-3</td>
+<td style="text-align: right;"><strong>0.3621</strong></td>
+<td style="text-align: right;"><strong>0.2922</strong></td>
+<td style="text-align: right;"><strong>0.0606</strong></td>
+<td style="text-align: right;"><strong>0.3677</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><span
+class="math inline"><em>Δ</em></span> (rerank <span
+class="math inline">−</span> BM25)</td>
+<td style="text-align: right;"><span
+class="math inline"><strong>+</strong><strong>0.1763</strong></span></td>
+<td style="text-align: right;"><span
+class="math inline"><strong>+</strong><strong>0.2206</strong></span></td>
+<td style="text-align: right;"><span
+class="math inline"><strong>+</strong><strong>0.0471</strong></span></td>
+<td style="text-align: right;"><span
+class="math inline"><strong>+</strong><strong>0.1711</strong></span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Reranking the first stage roughly doubles every surface-form
+generation metric on full <em>dev/small</em>.</strong></p>
+<h4 id="paired-bootstrap-confidence-intervals.">Paired-bootstrap
+confidence intervals.</h4>
+<p>Per-query scores for ROUGE-L and BLEU here come from
+<code>rouge_score.RougeScorer</code> and NLTK <code>sentence_bleu</code>
+(smoothing method 1) so the per-query means differ slightly from the HF
+corpus-level numbers above; what matters is that all four 95 % CIs lie
+strictly above zero, with negligible overlap (<a href="#tab:w3-ci"
+data-reference-type="ref+Label" data-reference="tab:w3-ci">5</a>).</p>
+<div id="tab:w3-ci">
+<table>
+<caption>W3 paired-bootstrap 95 % CI on <span
+class="math inline"><em>Δ</em></span> (rerank <span
+class="math inline">−</span> BM25). <span
+class="math inline"><em>n</em> = 6 980</span>, 10 000 resamples, seed
+42, percentile interval. Two-sided <span
+class="math inline"><em>p</em></span> from the bootstrap is <span
+class="math inline">&lt; 0.001</span> in every case.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Metric</th>
+<th style="text-align: right;">BM25 (per-q mean)</th>
+<th style="text-align: right;">Reranked</th>
+<th style="text-align: right;"><span
+class="math inline"><em>Δ</em></span></th>
+<th style="text-align: right;">95 % CI on <span
+class="math inline"><em>Δ</em></span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">ROUGE-L</td>
+<td style="text-align: right;">0.1934</td>
+<td style="text-align: right;">0.3677</td>
+<td style="text-align: right;"><span
+class="math inline">+0.1742</span></td>
+<td style="text-align: right;"><span
+class="math inline">[+0.1663,  + 0.1820]</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">BLEU (sentence)</td>
+<td style="text-align: right;">0.0423</td>
+<td style="text-align: right;">0.1754</td>
+<td style="text-align: right;"><span
+class="math inline">+0.1330</span></td>
+<td style="text-align: right;"><span
+class="math inline">[+0.1265,  + 0.1395]</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">Exact-Match</td>
+<td style="text-align: right;">0.0135</td>
+<td style="text-align: right;">0.0606</td>
+<td style="text-align: right;"><span
+class="math inline">+0.0471</span></td>
+<td style="text-align: right;"><span
+class="math inline">[+0.0417,  + 0.0527]</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">Token-F<sub>1</sub></td>
+<td style="text-align: right;">0.1966</td>
+<td style="text-align: right;">0.3677</td>
+<td style="text-align: right;"><span
+class="math inline">+0.1711</span></td>
+<td style="text-align: right;"><span
+class="math inline">[+0.1632,  + 0.1789]</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><a href="#fig:headline-forest" data-reference-type="ref+Label"
+data-reference="fig:headline-forest">7</a> renders the same four CIs as
+a forest plot.</p>
+<figure id="fig:headline-forest" data-latex-placement="H">
+
+<figcaption>Headline W3 paired-bootstrap forest plot (<a
+href="#tab:w3-ci" data-reference-type="ref+Label"
+data-reference="tab:w3-ci">5</a>). Dots: per-query mean <span
+class="math inline"><em>Δ</em></span> (reranked <span
+class="math inline">−</span> BM25); bars: 95 % percentile interval,
+10 000 resamples, seed 42. Dashed line at zero: all four intervals lie
+strictly above it, two-sided bootstrap <span
+class="math inline"><em>p</em> &lt; 0.001</span>
+throughout.</figcaption>
+</figure>
+<p>These CIs are <span class="math inline">∼ 6×</span> tighter than an
+earlier 200-query subsample comparison (n=200 vs. n=6 980), and the
+full-dev <span class="math inline"><em>Δ</em></span> point estimates all
+sit inside the 200-query CIs — so the original direction-and-magnitude
+claim survives the move to full <em>dev/small</em> intact, with the
+level numbers naturally deflating to the harder full benchmark.</p>
+<h4 id="retrieval-flag-mechanism.">Retrieval-flag mechanism.</h4>
+<p>The structural mechanism is visible in a single retrieval flag: the
+rate of having <span class="math inline">≥ 1</span> relevance-judged
+passage in the generator’s top-3 jumps from <span
+class="math inline"><strong>20.8</strong> <strong>%</strong></span>
+(BM25) to <span
+class="math inline"><strong>96.9</strong> <strong>%</strong></span>
+(reranked) over the 6 980 paired queries. The reranker’s job is
+precisely to put the right passage in the generator’s prompt; once it
+does, T5-small (which we will see in <a href="#sec:w7"
+data-reference-type="ref+Label" data-reference="sec:w7">5.9</a> is
+extracting almost all of its content from the prompt) reflects that.</p>
+<h4 id="per-query-outcome-distribution.">Per-query outcome
+distribution.</h4>
+<p>Per-query Token-F<sub>1</sub> splits 4 015 strict improvements /
+1 766 regressions / 1 199 ties — i.e. a <em>net</em> <span
+class="math inline">+2 249</span> / 6 980 queries (<span
+class="math inline">≈ 32 %</span>) strictly improved by feeding reranked
+passages, with the regressions mostly clustered around already-easy
+queries where BM25 happened to surface a usable passage. Of those 1 766
+strict per-query regressions, <strong>233</strong> fall into the
+narrower <em>regression bucket</em> on which <a href="#sec:w6"
+data-reference-type="ref+Label" data-reference="sec:w6">5.8</a> runs its
+failure taxonomy: queries where the reranker actually brought the
+relevant passage into the top-3 <em>and</em> the generator’s
+Token-F<sub>1</sub> dropped versus BM25. The distinction matters because
+the broader 1 766 count contains retrieval-equivalent queries on which
+the generator simply produced a different surface form; the narrower 233
+are the queries that “should have” worked on retrieval grounds but
+didn’t.</p>
+<h4 id="bucket-analysis-by-query-type.">Bucket analysis by query
+type.</h4>
+<p><a href="#tab:bucket-by-type" data-reference-type="ref+Label"
+data-reference="tab:bucket-by-type">6</a> breaks the per-query
+Token-F<sub>1</sub> <span class="math inline"><em>Δ</em></span> down by
+MS MARCO <code>query_type</code>.</p>
+<div id="tab:bucket-by-type">
+<table>
+<caption>W3 paired Token-F<sub>1</sub> broken down by MS MARCO
+<code>query_type</code>. Same 6 980 queries throughout.</caption>
+<thead>
+<tr>
+<th style="text-align: left;"><code>query_type</code></th>
+<th style="text-align: right;"><span
+class="math inline"><em>n</em></span></th>
+<th style="text-align: right;">BM25</th>
+<th style="text-align: right;">Reranked</th>
+<th style="text-align: right;"><span
+class="math inline"><em>Δ</em></span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">DESCRIPTION</td>
+<td style="text-align: right;">3 725</td>
+<td style="text-align: right;">0.1889</td>
+<td style="text-align: right;">0.3939</td>
+<td style="text-align: right;"><span
+class="math inline"><strong>+</strong><strong>0.2050</strong></span></td>
+</tr>
+<tr>
+<td style="text-align: left;">ENTITY</td>
+<td style="text-align: right;">631</td>
+<td style="text-align: right;">0.1765</td>
+<td style="text-align: right;">0.3186</td>
+<td style="text-align: right;"><span
+class="math inline">+0.1421</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">LOCATION</td>
+<td style="text-align: right;">498</td>
+<td style="text-align: right;">0.2495</td>
+<td style="text-align: right;">0.3928</td>
+<td style="text-align: right;"><span
+class="math inline">+0.1433</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">NUMERIC</td>
+<td style="text-align: right;">1 665</td>
+<td style="text-align: right;">0.1997</td>
+<td style="text-align: right;">0.3235</td>
+<td style="text-align: right;"><span
+class="math inline">+0.1238</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">PERSON</td>
+<td style="text-align: right;">461</td>
+<td style="text-align: right;">0.2186</td>
+<td style="text-align: right;">0.3557</td>
+<td style="text-align: right;"><span
+class="math inline">+0.1371</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code>DESCRIPTION</code> (53 % of the eval set) benefits most;
+<code>NUMERIC</code> benefits least. This direction is consistent with
+the intuition that short numeric answers depend on lexical surface match
+with the passage — so semantic-aware reranking of nearly- identical
+passages buys less than it does for long descriptive answers where the
+right passage materially changes the available phrasing.</p>
+<h4 id="qualitative-example.">Qualitative example.</h4>
+<p>Query <code>1043064</code> (<em>“what is the chemical formula for
+oxygen tetrafluoride?”</em>). BM25 top-3 leads the generator to emit
+<em>“Li<sub>2</sub>O”</em>; reranked top-3 leads it to emit
+<em>“N<sub>2</sub>F<sub>4</sub>”</em> — the correct reference. The
+retriever, not the generator, changed.</p>
+<h2 id="sec:w5a">W5-A: First-stage <span class="math inline">×</span>
+reranker head-to-head</h2>
+<p>A natural follow-up to <a href="#sec:w5-dense-rerank"
+data-reference-type="ref+Label"
+data-reference="sec:w5-dense-rerank">5.5</a>: does the same
+cross-encoder recover <em>more</em> from a weaker first stage? <a
+href="#tab:w5a-results" data-reference-type="ref+Label"
+data-reference="tab:w5a-results">7</a> runs the identical reranker over
+the W2 BM25 top-100 (full 8.8M corpus) and over the W4 dense top-100
+(50k sample), reporting absolute <span
+class="math inline"><em>Δ</em></span> and the <em>constrained recovery
+rate</em> <span
+class="math inline"><em>Δ</em> / (<em>R</em><em>e</em><em>c</em><em>a</em><em>l</em><em>l</em>@100 − first-stage)</span>
+that controls for each arm’s recall ceiling.</p>
+<div id="tab:w5a-results">
+<table>
+<caption>W5-A — same cross-encoder applied to two first stages of very
+different starting strength. “Constrained recovery” is <span
+class="math inline"><em>Δ</em> / (<em>R</em><em>e</em><em>c</em><em>a</em><em>l</em><em>l</em>@100 − first-stage)</span>,
+which controls for the fact that a reranker can only re-order what the
+first stage returned into the top-100. Same 6 980 queries on both
+arms.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">First stage</th>
+<th style="text-align: right;">MRR@10 (FS)</th>
+<th style="text-align: right;">MRR@10 (<span
+class="math inline">+</span>CE)</th>
+<th style="text-align: right;"><span
+class="math inline"><em>Δ</em><sub>MRR</sub></span></th>
+<th style="text-align: right;">Recov. MRR@10</th>
+<th style="text-align: right;">Recov. nDCG@10</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">BM25 (8.8M)</td>
+<td style="text-align: right;">0.1703</td>
+<td style="text-align: right;">0.3554</td>
+<td style="text-align: right;"><span
+class="math inline">+0.1851</span></td>
+<td style="text-align: right;">41.1 %</td>
+<td style="text-align: right;">46.1 %</td>
+</tr>
+<tr>
+<td style="text-align: left;">Dense L6 (50k)</td>
+<td style="text-align: right;">0.8830</td>
+<td style="text-align: right;">0.9304</td>
+<td style="text-align: right;"><span
+class="math inline">+0.0474</span></td>
+<td style="text-align: right;">42.4 %</td>
+<td style="text-align: right;">43.4 %</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The absolute <span class="math inline"><em>Δ</em></span> favours the
+BM25 arm by a factor of nearly four (more room to recover), but the
+<em>constrained recovery rate</em> comes in essentially tied: <span
+class="math inline">∼ 42 %</span> for MRR, <span
+class="math inline">∼ 44 %</span> for nDCG, on both arms. The cleanest
+reading is that the cross-encoder closes a fixed <em>fraction</em> of
+the ordering gap relative to the recall ceiling of its first stage,
+regardless of whether that first stage is sparse or dense.</p>
+<h4 id="caveat.-1">Caveat.</h4>
+<p>The two arms are not on the same corpus: the BM25 arm runs on the
+full 8.8M-passage corpus, while the dense arm runs on the 50k
+qrels-anchored sample (<a href="#sec:w4-sampling-caveat"
+data-reference-type="ref+Label"
+data-reference="sec:w4-sampling-caveat">4.3.0.2</a>). Absolute MRR
+levels are therefore not comparable across arms, only the within-arm
+<span class="math inline"><em>Δ</em></span> and the recovery rate.</p>
+<h2 id="sec:w6">W6: Evaluation layer</h2>
+<h3 id="sec:w6-bertscore">Semantic-proxy BERTScore</h3>
+<p>The four surface-form metrics in <a href="#tab:w3-ci"
+data-reference-type="ref+Label" data-reference="tab:w3-ci">5</a> are all
+overlap- or n-gram-based; T5-small’s tendency to emit verbose extractive
+outputs is a known source of mis-credit for surface-form metrics <span
+class="citation" data-cites="lin2004rouge papineni2002bleu">(Lin 2004;
+Papineni et al. 2002)</span>. The load-bearing question of W6 is
+therefore: does the rerank <span class="math inline"><em>Δ</em></span>
+also show up in a <em>semantic</em> similarity scorer?</p>
+<p><a href="#tab:w6-bertscore" data-reference-type="ref+Label"
+data-reference="tab:w6-bertscore">8</a> reports the DistilBERT-based
+BERTScore proxy on a 3 000-pair subsample of the shared qid set, with
+the same paired-bootstrap-CI machinery as <a href="#tab:w3-ci"
+data-reference-type="ref+Label" data-reference="tab:w3-ci">5</a>.</p>
+<div id="tab:w6-bertscore">
+<table>
+<caption>W6 — DistilBERT BERTScore proxy <span class="citation"
+data-cites="zhang2020bertscore sanh2019distilbert">(Zhang et al. 2020;
+Sanh et al. 2019)</span> on a 3 000-pair subsample of the W3 6 980
+shared qid set. <code>rescale_with_baseline=True</code>, multi-reference
+max-<span class="math inline"><em>F</em><sub>1</sub></span>, paired
+bootstrap 10 000 resamples seed 42, 95 % percentile interval. Per-query:
+rerank strictly better 64.8 %, tie 5.7 %, BM25 strictly better
+29.5 %.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Metric</th>
+<th style="text-align: right;">BM25</th>
+<th style="text-align: right;">Rerank</th>
+<th style="text-align: right;"><span
+class="math inline"><em>Δ</em></span></th>
+<th style="text-align: right;">95 % CI on <span
+class="math inline"><em>Δ</em></span></th>
+<th style="text-align: right;"><span
+class="math inline"><em>p</em></span> (two-sided)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">BERTScore-<span
+class="math inline"><em>F</em><sub>1</sub></span> (proxy)</td>
+<td style="text-align: right;">0.2192</td>
+<td style="text-align: right;">0.3920</td>
+<td style="text-align: right;"><span
+class="math inline"><strong>+</strong><strong>0.1728</strong></span></td>
+<td style="text-align: right;"><span
+class="math inline">[+0.1608,  + 0.1850]</span></td>
+<td style="text-align: right;"><span
+class="math inline"> &lt; 0.001</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The semantic-proxy <span class="math inline"><em>Δ</em></span> (<span
+class="math inline">+0.1728</span>) lands within <span
+class="math inline">±0.002</span> of the surface-form
+Token-F<sub>1</sub> <span class="math inline"><em>Δ</em></span> (<span
+class="math inline">+0.1711</span>) and the ROUGE-L <span
+class="math inline"><em>Δ</em></span> (<span
+class="math inline">+0.1742</span>). <strong>The rerank gain is
+therefore not a surface-form artefact.</strong> This is the result that
+justifies acting on the surface-form CIs of <a href="#tab:w3-ci"
+data-reference-type="ref+Label" data-reference="tab:w3-ci">5</a> without
+first running the canonical <code>roberta-large</code> BERTScore. The
+<code>roberta-large</code> pass on full dev is reserved as a paper-
+writing follow-up (citation-grade scorer, <span
+class="math inline">∼ </span>hours of CPU); it will refine the absolute
+level number but is not expected to change the qualitative
+direction.</p>
+<h3 id="sec:w6-taxonomy">Regression failure taxonomy</h3>
+<p><a href="#tab:w6-taxonomy" data-reference-type="ref+Label"
+data-reference="tab:w6-taxonomy">9</a> reports the 40-query seeded
+triage of the 233-strong regression bucket (<a
+href="#sec:gen-x-retrieval" data-reference-type="ref+Label"
+data-reference="sec:gen-x-retrieval">5.6</a>).</p>
+<div id="tab:w6-taxonomy">
+<table>
+<caption>W6 — regression failure taxonomy on a 40-query seeded sample
+(seed 42) of the 233-strong regression bucket. Labels are a
+deterministic five-way rule cascade; first-match wins.
+<code>semantic_mismatch</code> is the residual catch-all.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Failure mode</th>
+<th style="text-align: right;">Count</th>
+<th style="text-align: right;">Share</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>truncation_midword</code></td>
+<td style="text-align: right;">22</td>
+<td style="text-align: right;">55.0 %</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>truncation_short</code> (<span
+class="math inline">≤ 3</span> tok)</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">35.0 %</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>topic_drift</code></td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">5.0 %</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>extractive_passage_bias</code></td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">5.0 %</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>semantic_mismatch</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.0 %</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><span
+class="math inline"><strong>90</strong> <strong>%</strong></span> of the
+sample is generator-side truncation, not retrieval or semantic failure.
+Example (qid 49802, <em>“belizean cuisine”</em>): BM25 produced a
+24-token descriptive paragraph; the reranked-arm prediction was the two
+tokens <em>“Belizean cuisine”</em> — a passage title. The reranker is
+doing its job (richer passages); the generator’s extractive behaviour
+turns the richer context into less overlap- matching output on this
+slice of queries.</p>
+<p>At the time of the W6 report this observation pointed at the
+<code>max_new_tokens=64</code> cap as the cheapest intervention. The
+closure run of <a href="#sec:w6-closure" data-reference-type="ref+Label"
+data-reference="sec:w6-closure">5.8.3</a> <em>falsifies</em> that
+reading.</p>
+<h3 id="sec:w6-closure">Decoding-budget closure:
+<code>mnt=64 </code><span
+class="math inline">→</span><code> 128</code></h3>
+<p>Same generator, same prompts, same retrieval inputs, same seed; the
+<code>max_new_tokens</code> cap is the only thing that changes (64 <span
+class="math inline">→</span> 128). <a href="#tab:w6-closure"
+data-reference-type="ref+Label" data-reference="tab:w6-closure">10</a>
+reports the relevant signals.</p>
+<div id="tab:w6-closure">
+<table>
+<caption>W6 decoding-budget closure — same paired W3 comparison re-run
+with <code>max_new_tokens</code> = 128. Compared to the canonical
+<code>mnt=64</code> run on the same data. None of the four surface-form
+deltas move by more than <span class="math inline">0.005</span>; the
+regression bucket shrinks by 2 queries; the 40-query truncation share
+moves <span class="math inline">2.5</span> p.p.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Signal</th>
+<th style="text-align: right;"><code>mnt</code> = 64</th>
+<th style="text-align: right;"><code>mnt</code> = 128</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Token-F<sub>1</sub> <span
+class="math inline"><em>Δ</em></span></td>
+<td style="text-align: right;"><span
+class="math inline">+0.1711</span></td>
+<td style="text-align: right;"><span
+class="math inline">+0.1706</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">ROUGE-L <span
+class="math inline"><em>Δ</em></span></td>
+<td style="text-align: right;"><span
+class="math inline">+0.1742</span></td>
+<td style="text-align: right;"><span
+class="math inline">+0.1736</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">BLEU <span
+class="math inline"><em>Δ</em></span></td>
+<td style="text-align: right;"><span
+class="math inline">+0.1330</span></td>
+<td style="text-align: right;"><span
+class="math inline">+0.1325</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">EM <span
+class="math inline"><em>Δ</em></span></td>
+<td style="text-align: right;"><span
+class="math inline">+0.0471</span></td>
+<td style="text-align: right;"><span
+class="math inline">+0.0471</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">Regression bucket size</td>
+<td style="text-align: right;">233</td>
+<td style="text-align: right;">231</td>
+</tr>
+<tr>
+<td style="text-align: left;">Truncation share (40-query triage)</td>
+<td style="text-align: right;">90.0 %</td>
+<td style="text-align: right;">87.5 %</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>The W6 budget-cap hypothesis is falsified.</strong> T5-small
+is hitting end-of-sequence <em>naturally</em> on this prompt format; the
+mid-word-ending output style observed in <a href="#sec:w6-taxonomy"
+data-reference-type="ref+Label"
+data-reference="sec:w6-taxonomy">5.8.2</a> is intrinsic to the model on
+this prompt shape, not a symptom of the 64-token cap. Generator-side
+follow-up work therefore has to target either prompt format
+(multi-passage synthesis, citation-aware decoding) or the model itself
+(T5-base or larger, instruction-tuned variants), not the
+<code>max_new_tokens</code> knob.</p>
+<h3 id="sec:w6-followups">W6-A/B/C breakdowns</h3>
+<p>Three offline analyses on the per-query metrics; no new generation or
+reranking required.</p>
+<h4 id="w6-a-question-form-tagging.">W6-A — question-form tagging.</h4>
+<p>A nine-way syntactic tagger over all 6 980 <em>dev/small</em> queries
+(who / what / when / where / why / how / which / yes_no / other).
+Complementary to the MS MARCO native <code>query_type</code> label of <a
+href="#tab:bucket-by-type" data-reference-type="ref+Label"
+data-reference="tab:bucket-by-type">6</a>: the two are correlated but
+not redundant (e.g. “who” selects exclusively for <code>PERSON</code>;
+“where” selects almost exclusively for <code>LOCATION</code>; “what”
+spans every <code>query_type</code>).</p>
+<h4 id="w6-b-rerank-delta-by-question-form.">W6-B — rerank <span
+class="math inline"><em>Δ</em></span> by question-form.</h4>
+<p><a href="#tab:w6b" data-reference-type="ref+Label"
+data-reference="tab:w6b">11</a> reports per-form <span
+class="math inline"><em>Δ</em></span> Token-F<sub>1</sub> with
+paired-bootstrap CIs.</p>
+<div id="tab:w6b">
+<table>
+<caption>W6-B — rerank <span class="math inline"><em>Δ</em></span>
+Token-F<sub>1</sub> by question-form on the full 6 980 shared qid set,
+with paired-bootstrap 95 % CI (10 000 resamples, seed 42).</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Form</th>
+<th style="text-align: right;"><span
+class="math inline"><em>n</em></span></th>
+<th style="text-align: right;"><span
+class="math inline"><em>Δ</em></span> Token-F<sub>1</sub></th>
+<th style="text-align: right;">95 % CI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">who</td>
+<td style="text-align: right;">273</td>
+<td style="text-align: right;"><span
+class="math inline">+0.1472</span></td>
+<td style="text-align: right;"><span
+class="math inline">[+0.1059,  + 0.1886]</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">what</td>
+<td style="text-align: right;">2 751</td>
+<td style="text-align: right;"><span
+class="math inline">+0.2097</span></td>
+<td style="text-align: right;"><span
+class="math inline">[+0.1964,  + 0.2232]</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">when</td>
+<td style="text-align: right;">189</td>
+<td style="text-align: right;"><span
+class="math inline">+0.1207</span></td>
+<td style="text-align: right;"><span
+class="math inline">[+0.0813,  + 0.1590]</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">where</td>
+<td style="text-align: right;">283</td>
+<td style="text-align: right;"><span
+class="math inline">+0.1774</span></td>
+<td style="text-align: right;"><span
+class="math inline">[+0.1427,  + 0.2157]</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">why</td>
+<td style="text-align: right;">75</td>
+<td style="text-align: right;"><span
+class="math inline">+0.2267</span></td>
+<td style="text-align: right;"><span
+class="math inline">[+0.1509,  + 0.3082]</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">how</td>
+<td style="text-align: right;">837</td>
+<td style="text-align: right;"><span
+class="math inline">+0.1520</span></td>
+<td style="text-align: right;"><span
+class="math inline">[+0.1321,  + 0.1737]</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">which</td>
+<td style="text-align: right;">120</td>
+<td style="text-align: right;"><span
+class="math inline">+0.0250</span></td>
+<td style="text-align: right;"><span
+class="math inline">[−0.0281,  + 0.0773]</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">yes_no</td>
+<td style="text-align: right;">480</td>
+<td style="text-align: right;"><span
+class="math inline">+0.0680</span></td>
+<td style="text-align: right;"><span
+class="math inline">[+0.0455,  + 0.0913]</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">other</td>
+<td style="text-align: right;">1 972</td>
+<td style="text-align: right;"><span
+class="math inline">+0.1643</span></td>
+<td style="text-align: right;"><span
+class="math inline">[+0.1497,  + 0.1801]</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong><code>which</code> (n=120) is the only question form whose
+95 % CI on <span class="math inline"><em>Δ</em></span>
+Token-F<sub>1</sub> includes zero</strong> (<span
+class="math inline"><em>Δ</em> =  + 0.025</span>, <span
+class="math inline"><em>p</em> = 0.33</span>), <em>despite</em> a
+retrieval-side <span class="math inline"><em>Δ</em></span> MRR@10 of
+<span class="math inline">+0.71</span> on the same subset. Mechanism
+(hypothesised, not confirmed): <code>which</code> queries are typically
+selection-style (“which of X, Y, or Z is …”) and require the generator
+to choose among items the passage lists; reranking surfaces the right
+passage but doesn’t help the frozen extractive generator make the
+selection. The remaining factual wh-forms (what / where / why / how /
+who) all see CIs strictly above zero in the <span
+class="math inline">+0.12</span> to <span
+class="math inline">+0.23</span> range.</p>
+<h4 id="w6-c-structural-profile-of-regression-queries.">W6-C —
+structural profile of regression queries.</h4>
+<p>Mann–Whitney U <span class="citation"
+data-cites="mannwhitney1947">(Mann and Whitney 1947)</span> on five
+structural features between the 233-query regression bucket and the
+6 747 non-regression queries. Four of the five features (query length in
+tokens, query length in chars, number of qrels per query, BM25 top-3
+average passage length) show no detectable difference at any meaningful
+effect size. The only signal: regression-arm top-3 passage lengths are
+marginally shorter (<span
+class="math inline"><em>Δ</em> median =  − 2.7</span> tokens, <span
+class="math inline"><em>p</em> = 0.0073</span>, rank- biserial <span
+class="math inline"><em>r</em> =  − 0.103</span>). This is consistent
+with the <a href="#sec:w6-taxonomy" data-reference-type="ref+Label"
+data-reference="sec:w6-taxonomy">5.8.2</a> truncation finding: shorter
+passages give T5-small less material to extract. See <a
+href="#fig:w6c-query-length,fig:w6c-n-qrels,fig:w6c-top3-passage"
+data-reference-type="ref+Label"
+data-reference="fig:w6c-query-length,fig:w6c-n-qrels,fig:w6c-top3-passage">[fig:w6c-query-length,fig:w6c-n-qrels,fig:w6c-top3-passage]</a>.</p>
+<figure id="fig:w6c-query-length" data-latex-placement="H">
+<img src="w6c_regression_vs_other_query_length.png"
+style="width:62.0%" />
+<figcaption>W6-C — query-length distribution, regression bucket (n=233)
+vs. rest (n=6 747). Indistinguishable; Mann–Whitney <span
+class="math inline"><em>p</em> = 0.96</span>, effect size <span
+class="math inline"><em>r</em> =  − 0.002</span>.</figcaption>
+</figure>
+<figure id="fig:w6c-n-qrels" data-latex-placement="H">
+<img src="w6c_regression_vs_other_n_qrels.png" style="width:62.0%" />
+<figcaption>W6-C — number of relevance judgements per query. A very
+small downward shift in the regression bucket (<span
+class="math inline"><em>p</em> = 0.009</span>, effect size <span
+class="math inline"><em>r</em> =  − 0.040</span>); not meaningfully
+different from zero.</figcaption>
+</figure>
+<figure id="fig:w6c-top3-passage" data-latex-placement="H">
+<img src="w6c_regression_vs_other_top3_passage_length.png"
+style="width:62.0%" />
+<figcaption>W6-C — average rerank top-3 passage length. The only feature
+with a detectable effect: regression-arm top-3 passages are <span
+class="math inline">∼ 2.7</span> tokens shorter at the median (<span
+class="math inline"><em>p</em> = 0.0073</span>, <span
+class="math inline"><em>r</em> =  − 0.103</span>). Consistent with <a
+href="#tab:w6-taxonomy" data-reference-type="ref+Label"
+data-reference="tab:w6-taxonomy">9</a>: shorter passages give T5-small
+less to extract.</figcaption>
+</figure>
+<h2 id="sec:w7">W7: Grounding audit</h2>
+<p>The W6 closure (<a href="#sec:w6-closure"
+data-reference-type="ref+Label"
+data-reference="sec:w6-closure">5.8.3</a>) ruled out the decode budget
+as the bottleneck. W7 answers the question the closure left open:
+<em>what is T5-small actually doing on this prompt format — extracting
+from the passages, or generating from parametric memory?</em></p>
+<h3 id="lexical-and-3-gram-grounding">Lexical and 3-gram grounding</h3>
+<p><a href="#tab:w7-lex-ngram" data-reference-type="ref+Label"
+data-reference="tab:w7-lex-ngram">12</a> reports both lexical and 3-gram
+grounding on the full 6 980 paired qid set.</p>
+<div id="tab:w7-lex-ngram">
+<table>
+<caption>W7 — lexical and 3-gram grounding on the full 6 980 paired qid
+set. Paired bootstrap 10 000 resamples, seed 42, 95 % percentile
+interval. Both arms sit at the ceiling.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Metric</th>
+<th style="text-align: right;">BM25</th>
+<th style="text-align: right;">Rerank</th>
+<th style="text-align: right;"><span
+class="math inline"><em>Δ</em></span></th>
+<th style="text-align: right;">95 % CI</th>
+<th style="text-align: right;"><span
+class="math inline"><em>p</em></span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Lexical content-token</td>
+<td style="text-align: right;">0.9972</td>
+<td style="text-align: right;">0.9977</td>
+<td style="text-align: right;"><span
+class="math inline">+0.0005</span></td>
+<td style="text-align: right;"><span
+class="math inline">[−0.0003,  + 0.0014]</span></td>
+<td style="text-align: right;"><span
+class="math inline">0.24</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">3-gram</td>
+<td style="text-align: right;">0.9873</td>
+<td style="text-align: right;">0.9905</td>
+<td style="text-align: right;"><span
+class="math inline">+0.0032</span></td>
+<td style="text-align: right;"><span
+class="math inline">[+0.0015,  + 0.0050]</span></td>
+<td style="text-align: right;"><span
+class="math inline">&lt; 0.001</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Both arms sit at the ceiling.</strong> Almost every content
+word T5-small emits is already in the prompt. 3-gram grounding is
+slightly higher on the reranked arm (reranking surfaces passages with
+phrasings closer to the gold answer), but the <span
+class="math inline"><em>Δ</em></span> is <span
+class="math inline">+0.003</span> in absolute terms and both arms remain
+<span class="math inline">∼ 99 %</span>.</p>
+<h4 id="implication.">Implication.</h4>
+<p>T5-small on the <code>question: … context: …</code> prompt is
+performing <em>extractive</em> QA, not generative QA. The W3
+surface-form <span class="math inline"><em>Δ</em></span> of <a
+href="#tab:w3-headline" data-reference-type="ref+Label"
+data-reference="tab:w3-headline">4</a> is therefore almost entirely
+<em>downstream of retrieval</em>: the reranker puts the right words into
+the prompt and the generator copies them. This is a <em>calibration</em>
+of the headline result rather than a contradiction — the surface-form
+<span class="math inline"><em>Δ</em></span>s are real, but the mechanism
+is “better passages <span class="math inline">→</span> better extractive
+output”, not “better passages <span class="math inline">→</span> better
+neural reasoning”.</p>
+<h4 id="edge-cases-reported-separately.">Edge cases (reported
+separately).</h4>
+<p><span class="math inline">∼ 10 %</span> of predictions per arm are
+<span class="math inline">&lt; 3</span> tokens (the
+<code>truncation_short</code> / <code>extractive_passage_bias</code>
+pattern from <a href="#sec:w6-taxonomy" data-reference-type="ref+Label"
+data-reference="sec:w6-taxonomy">5.8.2</a>), scoring 3-gram grounding as
+<span class="math inline">1.0</span> vacuously. Lexical-vacuous
+predictions are negligible (<span
+class="math inline">&lt; 0.3 %</span>). Counts are identical-shape on
+both arms, so the paired <span class="math inline"><em>Δ</em></span> is
+unaffected.</p>
+<h3 id="sec:w7-nli">W7-A — NLI-entailment grounding</h3>
+<p><a href="#tab:w7-nli" data-reference-type="ref+Label"
+data-reference="tab:w7-nli">13</a> reports an NLI-entailment proxy
+(<span class="math inline">entailment(passages → prediction)</span>,
+<code>cross-encoder/nli-deberta-v3-small</code> <span class="citation"
+data-cites="he2023debertav3 williams2018mnli">(He et al. 2023; Williams
+et al. 2018)</span>) on the same 3 000-paired-qid subsample as the W6
+BERTScore proxy.</p>
+<div id="tab:w7-nli">
+<table>
+<caption>W7-A — NLI-entailment grounding on the same 3 000- paired-qid
+subsample (seed 42) used by the W6 BERTScore proxy. Same
+paired-bootstrap CI convention. This is the only paired metric in the
+entire project whose <span class="math inline"><em>Δ</em></span>
+reverses sign relative to the W3/W5/W6 surface-form story.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Metric</th>
+<th style="text-align: right;">BM25</th>
+<th style="text-align: right;">Rerank</th>
+<th style="text-align: right;"><span
+class="math inline"><em>Δ</em></span></th>
+<th style="text-align: right;">95 % CI on <span
+class="math inline"><em>Δ</em></span></th>
+<th style="text-align: right;"><span
+class="math inline"><em>p</em></span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">NLI grounding</td>
+<td style="text-align: right;">0.2270</td>
+<td style="text-align: right;">0.0821</td>
+<td style="text-align: right;"><span
+class="math inline"><strong>−</strong><strong>0.1448</strong></span></td>
+<td style="text-align: right;"><span
+class="math inline">[−0.1597,  − 0.1297]</span></td>
+<td style="text-align: right;"><span
+class="math inline">&lt; 0.001</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The NLI <span class="math inline"><em>Δ</em></span> is negative and
+strictly excludes zero. Section <a href="#sec:discussion-nli-flip"
+data-reference-type="ref+Label"
+data-reference="sec:discussion-nli-flip">6.2</a> discusses the most
+plausible mechanism and how to disambiguate.</p>
+<h3 id="w7-c-grounding-leftrightarrow-downstream-correlation">W7-C —
+grounding <span class="math inline">↔︎</span> downstream correlation</h3>
+<p>Per-query Spearman / Pearson correlations between each grounding
+metric and downstream Token-F<sub>1</sub> / BERTScore-<span
+class="math inline"><em>F</em><sub>1</sub></span>, with the high-vs-low
+(<span class="math inline">≥ 0.9</span>) bin Mann–Whitney as a second
+cut.</p>
+<p><strong>Direction is uniformly positive but magnitudes are
+small.</strong> Every binned cell has high-grounding <span
+class="math inline">−</span> low-grounding <span
+class="math inline">&gt; 0</span>; absolute differences sit between
+<span class="math inline">0.04</span> and <span
+class="math inline">0.10</span> on the Token-F<sub>1</sub> / BERTScore
+scale. Per-query Spearman / Pearson correlations are near zero (<span
+class="math inline"><em>ρ</em></span> <span
+class="math inline">&lt; 0.05</span> in every cell), entirely because
+both arms sit at the lex / 3-gram ceiling on <span
+class="math inline">≥ 99 %</span> of queries. The signal is in the
+<em>level</em>, not the per-query rank.</p>
+<h3 id="w7-d-low-grounding-case-study">W7-D — low-grounding case
+study</h3>
+<p>Of the 197 rerank-arm queries with <span
+class="math inline">lex &lt; 0.9</span> OR <span
+class="math inline">ngram &lt; 0.9</span>, 30 are sampled (seed 42) and
+labelled by a coarse five-way rule cascade. <a href="#tab:w7d"
+data-reference-type="ref+Label" data-reference="tab:w7d">14</a> reports
+the counts.</p>
+<div id="tab:w7d">
+<table>
+<caption>W7-D — low-grounding case study on a 30-query seeded triage
+(seed 42) of the 197 rerank-arm queries with lex <span
+class="math inline">&lt; 0.9</span> or 3-gram <span
+class="math inline">&lt; 0.9</span>. Categories applied in declaration
+order; first match wins. <code>parametric_or_external</code> would flag
+genuine hallucinations.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Label</th>
+<th style="text-align: right;">Count</th>
+<th style="text-align: right;">Share</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>paraphrase_reorder</code></td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">77 %</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>partial_external</code></td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">23 %</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>parametric_or_external</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0 %</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>prediction_too_short</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0 %</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>residual</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0 %</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The 23 <code>paraphrase_reorder</code> cases have all the content
+words in the prompt; only the order or phrasing changes. The 7
+<code>partial_external</code> cases are almost entirely tokenisation /
+morphology artefacts: <em>“350oF”</em> vs. <em>“350<span
+class="math inline"><sup>∘</sup></span>F”</em>, <em>“competed”</em>
+vs. <em>“compete”</em>. <strong>Zero genuine hallucinations</strong>
+(<code>parametric_or_external</code>) in the sample. This reinforces the
+W7 headline: T5-small on this prompt format is doing extractive QA even
+on its worst-grounded outputs.</p>
+<h2 id="sec:w8-triad">W8 — RAG triad diagnostic interface</h2>
+<p>The current repository adds a deterministic triad report as an
+engineering-facing diagnostic layer over the same W3 prediction schema.
+The <code>mgq-rag-triad</code> CLI writes <code>metrics.json</code>,
+<code>per_query_triad.jsonl</code>, <code>low_score_cases.jsonl</code>,
+and <code>report.md</code> for one or more generation configurations.
+The three dimensions are kept separate: context relevance (qrels hit
+when qrels are supplied, otherwise query–context lexical overlap),
+groundedness (lexical content-token support in the shown passages), and
+answer relevance (Token-F<sub>1</sub> against the stored reference
+answers).</p>
+<p>This is intentionally not promoted to a new headline result in this
+report. Its role is to make future regressions easier to diagnose: a low
+triad row can be inspected as retrieval-side evidence failure,
+unsupported generation, answer mismatch, or a combination of those
+failure modes. The CLI rejects unsupported evaluator names, so future
+model-assisted RAGAS/TruLens-style scoring must be opted into explicitly
+rather than silently mixed with deterministic scores.</p>
+<h2 id="sec:w9-context-packing">W9 — context packing and prompt
+compression</h2>
+<p>The current repository also adds a deterministic context-packing
+layer for generation runs. It is disabled for the historical baselines,
+but can be enabled with <code>mgq-generate --context-packing</code>. The
+packer uses character budgets as a CPU-friendly proxy for token cost,
+supports per-passage trimming, query-overlap sentence selection,
+deduplication, and rank-preserving ordering, and records span metadata
+that maps the packed prompt context back to source document ids.</p>
+<p>The paired report is produced by
+<code>mgq-context-packing-report</code>. It compares an uncompressed
+<code>predictions.jsonl</code> file against a compressed one on matched
+query ids, then writes <code>comparison.json</code>,
+<code>per_query.jsonl</code>, and <code>report.md</code>. The report
+keeps answer-quality deltas (Token-F<sub>1</sub> and exact match)
+separate from context-character savings, so compression can be evaluated
+as a cost–quality trade-off rather than as a hidden prompt-format
+change. Grounding and W8 triad reports should be read alongside this
+output before treating a packed prompt as a better RAG
+configuration.</p>
+<h1 id="sec:discussion">Discussion</h1>
+<h2 id="sec:discussion-where">Where does the rerank gain come from?</h2>
+<p>Combining <a href="#sec:gen-x-retrieval"
+data-reference-type="ref+Label"
+data-reference="sec:gen-x-retrieval">5.6</a> with <a href="#sec:w7"
+data-reference-type="ref+Label" data-reference="sec:w7">5.9</a>, the
+answer is unambiguous: the headline doubling of W3 surface-form metrics
+is <strong>a retrieval effect, not a generation effect</strong>.
+T5-small on this prompt format does not invent content; it copies
+content from the prompt. The reranker’s job is to ensure that the
+content the generator copies is the <em>right</em> content. Two pieces
+of evidence converge:</p>
+<ol>
+<li><p>The retrieval-flag rate of having <span
+class="math inline">≥ 1</span> relevance-judged passage in the top-3
+jumps from 20.8 % to 96.9 % across the two arms (<a
+href="#sec:gen-x-retrieval" data-reference-type="ref+Label"
+data-reference="sec:gen-x-retrieval">5.6</a>). This is the proximate
+mechanism.</p></li>
+<li><p>Lexical content-token grounding sits at <span
+class="math inline">∼ 0.997</span> on both arms (<a
+href="#tab:w7-lex-ngram" data-reference-type="ref+Label"
+data-reference="tab:w7-lex-ngram">12</a>). Whatever content words
+T5-small emits, <span class="math inline">∼ 99.7 %</span> of them are
+already in the prompt. There is no slack for “the generator thought of
+something better” to account for any meaningful portion of the W3 <span
+class="math inline"><em>Δ</em></span>.</p></li>
+</ol>
+<p>This reading has direct consequences for where further work should
+go. Decoding-budget interventions are ruled out by <a
+href="#sec:w6-closure" data-reference-type="ref+Label"
+data-reference="sec:w6-closure">5.8.3</a>; generator output-style
+interventions (<a href="#sec:w7-nli" data-reference-type="ref+Label"
+data-reference="sec:w7-nli">5.9.2</a>) are constrained by the ceiling
+effect; prompt- format and generator-capacity interventions become the
+natural next axes. <a href="#sec:plan-vs-actual"
+data-reference-type="ref+Label"
+data-reference="sec:plan-vs-actual">6.3</a> records the W7-B (T5-base
+swap) follow-up that is queued in the project’s reduced-scope plan.</p>
+<h2 id="sec:discussion-nli-flip">The W7-A NLI sign flip</h2>
+<p><a href="#tab:w7-nli" data-reference-type="ref+Label"
+data-reference="tab:w7-nli">13</a> is the only paired metric in this
+project whose <span class="math inline"><em>Δ</em></span> reverses sign
+relative to the otherwise-consistent W3/W5/W6 story: a robust <span
+class="math inline">−0.145</span>, with a 95 % CI that strictly excludes
+zero. Three candidate explanations are worth taking seriously.</p>
+<h4 id="i-output-shape-artefact-currently-the-best-supported.">(i)
+Output-shape artefact (currently the best-supported).</h4>
+<p>The 40-query taxonomy (<a href="#tab:w6-taxonomy"
+data-reference-type="ref+Label" data-reference="tab:w6-taxonomy">9</a>)
+and the W7-D case study (<a href="#tab:w7d"
+data-reference-type="ref+Label" data-reference="tab:w7d">14</a>) jointly
+show that the reranked-arm predictions contain more fragmentary /
+mid-word-cut / title-style outputs than the BM25-arm predictions. A
+sentence-level NLI cross-encoder cannot <em>entail</em> a fragmentary
+hypothesis — it requires syntactically complete propositions on both
+sides. So even when the rerank-arm prediction is lexically faithful (it
+copies content tokens from the right passage), the NLI scorer correctly
+returns low entailment because the prediction <em>as a sentence</em> is
+incomplete. Under this account, the NLI flip is a metric–model mismatch
+on a particular output style, not a semantic regression.</p>
+<h4 id="ii-true-semantic-regression-on-some-slice.">(ii) True semantic
+regression on some slice.</h4>
+<p>It is also possible that the reranker, by surfacing tighter / more
+on- topic passages, paradoxically encourages T5-small to extract
+title-style or list-style fragments instead of the descriptive
+paragraphs that would actually be reference-equivalent. Under this
+account the NLI flip is real: rerank-arm predictions are, on a
+semantic-faithfulness scale, worse despite being lexically tighter. This
+is harder to rule out from the existing data because the W7 binned
+analysis shows a small positive correlation between grounding and
+downstream metrics (<a href="#sec:w7" data-reference-type="ref+Label"
+data-reference="sec:w7">5.9</a>), but the sentence-completeness confound
+is unresolved.</p>
+<h4 id="iii-nli-checkpoint-artefact.">(iii) NLI checkpoint
+artefact.</h4>
+<p>The NLI cross-encoder in W7-A is
+<code>cross-encoder/nli-deberta-v3-small</code> — distilled,
+MNLI-trained <span class="citation"
+data-cites="he2023debertav3 williams2018mnli">(He et al. 2023; Williams
+et al. 2018)</span>. It is not domain-adapted to MS MARCO-style passages
+and could behave differently from a larger NLI scorer on the project’s
+characteristic short-passage / short-prediction inputs.</p>
+<h4 id="how-to-disambiguate.">How to disambiguate.</h4>
+<p>The cleanest test is a generator swap: rerun the W3 paired comparison
+with T5-base (or an instruction-tuned small model) in place of T5-small,
+holding everything else fixed, and recompute the NLI proxy. If the NLI
+<span class="math inline"><em>Δ</em></span> moves toward zero or flips
+back positive without changing the surface-form <span
+class="math inline"><em>Δ</em></span> much, account (i) is supported. If
+it stays negative at the same magnitude, account (ii) becomes the
+working hypothesis. This is the planned W7-B follow-up, deferred to the
+post-deadline T5-base run (<a href="#sec:plan-vs-actual"
+data-reference-type="ref+Label"
+data-reference="sec:plan-vs-actual">6.3</a>).</p>
+<h2 id="sec:plan-vs-actual">Plan vs. actual</h2>
+<p>The project’s initial 12-stage plan named the milestones in <a
+href="#tab:plan-vs-actual" data-reference-type="ref+Label"
+data-reference="tab:plan-vs-actual">15</a>. Eleven milestones elapsed;
+the table records what shipped, what was substituted, and what was
+de-scoped.</p>
+<div id="tab:plan-vs-actual">
+<table>
+<caption>Plan vs. actual. “Substituted” indicates that the planned
+milestone was replaced by an evidence-driven alternative that addressed
+the same underlying goal; “de-scoped” indicates work that was cut, not
+redirected.</caption>
+<thead>
+<tr>
+<th style="text-align: left;"><strong>Stage</strong></th>
+<th style="text-align: left;"><strong>Plan</strong></th>
+<th style="text-align: left;"><strong>Actual</strong></th>
+<th style="text-align: left;"><strong>Status</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Stage</strong></td>
+<td style="text-align: left;"><strong>Plan</strong></td>
+<td style="text-align: left;"><strong>Actual</strong></td>
+<td style="text-align: left;"><strong>Status</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">W1</td>
+<td style="text-align: left;">EDA</td>
+<td style="text-align: left;">EDA on the QA v2.1 validation 5k-row
+sample (<a href="#sec:dataset" data-reference-type="ref+Label"
+data-reference="sec:dataset">3</a>)</td>
+<td style="text-align: left;">shipped</td>
+</tr>
+<tr>
+<td style="text-align: left;">W2</td>
+<td style="text-align: left;">BM25 baseline</td>
+<td style="text-align: left;">Full 8.8M-corpus BM25 retrieve +
+MRR/Recall (<a href="#sec:w2-results" data-reference-type="ref+Label"
+data-reference="sec:w2-results">5.1</a>)</td>
+<td style="text-align: left;">shipped</td>
+</tr>
+<tr>
+<td style="text-align: left;">W3</td>
+<td style="text-align: left;">RAG baseline (T5/BART/Phi + top-3)</td>
+<td style="text-align: left;">T5-small RAG generator on the W2 top-3,
+200-query sample baseline + the load-bearing paired full-dev comparison
+(<a href="#sec:gen-x-retrieval" data-reference-type="ref+Label"
+data-reference="sec:gen-x-retrieval">5.6</a>)</td>
+<td style="text-align: left;">shipped</td>
+</tr>
+<tr>
+<td style="text-align: left;">W4</td>
+<td style="text-align: left;">Dense retrieval, ideally ANCE</td>
+<td style="text-align: left;">Generic <code>all-MiniLM-L6-v2</code> on a
+50k qrels-anchored sample with FAISS <code>IndexFlatIP</code> (<a
+href="#sec:w4-results" data-reference-type="ref+Label"
+data-reference="sec:w4-results">5.2</a>); same-tier encoder horizontal
+added (<a href="#sec:w4b" data-reference-type="ref+Label"
+data-reference="sec:w4b">5.3</a>: MiniLM-L12, bge-small-en-v1.5;
+bge-small wins <span class="math inline">+0.019</span> MRR@10) and
+density-sensitivity sweep added (<a href="#sec:w4a"
+data-reference-type="ref+Label" data-reference="sec:w4a">5.4</a>:
+15k/30k/50k samples). ANCE / MS MARCO-tuned encoders and true
+low-density cells (1/5/10 %, needing 70k–700k samples) deferred</td>
+<td style="text-align: left;">shipped</td>
+</tr>
+<tr>
+<td style="text-align: left;">W5</td>
+<td style="text-align: left;">Cross-encoder rerank</td>
+<td style="text-align: left;"><code>ms-marco-MiniLM-L-6-v2</code> over
+dense top-100, full-dev (<a href="#sec:w5-dense-rerank"
+data-reference-type="ref+Label"
+data-reference="sec:w5-dense-rerank">5.5</a>) + BM25-top-100 arm (<a
+href="#sec:w5a" data-reference-type="ref+Label"
+data-reference="sec:w5a">5.7</a>)</td>
+<td style="text-align: left;">shipped</td>
+</tr>
+<tr>
+<td style="text-align: left;">W6</td>
+<td style="text-align: left;">Generator fine-tuning</td>
+<td style="text-align: left;"><em>Substituted</em>: evaluation layer
+(BERTScore proxy + failure taxonomy + decode-budget closure; <a
+href="#sec:w6" data-reference-type="ref+Label"
+data-reference="sec:w6">5.8</a>). The W3 paired comparison made
+evaluation calibration the higher-leverage axis than SFT, and the W6
+closure + W7 grounding together explain why SFT is unlikely to be the
+bottleneck.</td>
+<td style="text-align: left;">substituted</td>
+</tr>
+<tr>
+<td style="text-align: left;">W7</td>
+<td style="text-align: left;">Hallucination &amp; citation</td>
+<td style="text-align: left;"><em>Substituted</em>: grounding audit
+(lexical / 3-gram / NLI; <a href="#sec:w7"
+data-reference-type="ref+Label" data-reference="sec:w7">5.9</a>). Same
+goal (faithfulness), more direct measurement. Span-level citation
+linking is in the explicit out-of-scope list.</td>
+<td style="text-align: left;">substituted</td>
+</tr>
+<tr>
+<td style="text-align: left;">W8</td>
+<td style="text-align: left;">Long-document handling</td>
+<td style="text-align: left;"><em>De-scoped</em> due to the project’s
+2026-05-22 deadline and the choice to prioritise the W6/W7 analyses on
+the already-shipped passage-level pipeline. The infrastructure
+(sliding-window prompt assembly) exists in the runner; the long-doc
+benchmark pass does not.</td>
+<td style="text-align: left;">de-scoped</td>
+</tr>
+<tr>
+<td style="text-align: left;">W9</td>
+<td style="text-align: left;">Integration &amp; acceleration (ONNX,
+quantisation)</td>
+<td style="text-align: left;">Engineering scaffolding shipped
+(manifests, lockfile, CI, lint; <a href="#sec:reproducibility"
+data-reference-type="ref+Label"
+data-reference="sec:reproducibility">9</a>); ONNX / quantisation not
+pursued on the CPU-only laptop where wall-clock cost is already
+dominated by the cross-encoder.</td>
+<td style="text-align: left;">partial</td>
+</tr>
+<tr>
+<td style="text-align: left;">W10</td>
+<td style="text-align: left;">Final evaluation</td>
+<td style="text-align: left;">The headline paired comparison serves as
+the final evaluation; no CodaLab submission.</td>
+<td style="text-align: left;">redirected</td>
+</tr>
+<tr>
+<td style="text-align: left;">W11</td>
+<td style="text-align: left;">Research paper</td>
+<td style="text-align: left;">This report.</td>
+<td style="text-align: left;">shipped</td>
+</tr>
+<tr>
+<td style="text-align: left;">W12</td>
+<td style="text-align: left;">Presentation</td>
+<td style="text-align: left;">Out of report scope.</td>
+<td style="text-align: left;">—</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The two W6 / W7 substitutions are the project’s main methodological
+deviation from the plan. The reasoning was empirical: once the W3 paired
+comparison shipped, evaluation calibration — “do these deltas hold up
+under a semantic-similarity scorer?”, “where do the remaining
+regressions come from?” — gave a clearer story than SFT would have, and
+the W6 closure run then made that story <em>actionable</em> by ruling
+out the most plausible cheap intervention (the decoding budget). The W7
+grounding audit then calibrated the headline result honestly: most of
+the gain is retrieval, the generator is extractive, and the only sign-
+reversing metric (<a href="#sec:w7-nli" data-reference-type="ref+Label"
+data-reference="sec:w7-nli">5.9.2</a>) is plausibly an output-shape
+artefact that a generator swap could disambiguate.</p>
+<h1 id="sec:limitations">Limitations</h1>
+<h4 id="no-fine-tuning-anywhere.">No fine-tuning anywhere.</h4>
+<p>No SFT pass on <span class="math inline">(question, gold
+passage, answer)</span> triples has been run. Every model is used as a
+generic pretrained checkpoint: T5-small for generation,
+<code>all-MiniLM-L6-v2</code> for dense retrieval,
+<code>ms-marco-MiniLM-L-6-v2</code> for the cross-encoder
+(MS MARCO-trained, but as-is). The absolute level numbers (ROUGE-L <span
+class="math inline">≈ 0.18</span> on BM25, <span
+class="math inline">≈ 0.36</span> on reranked) are therefore modest; the
+load-bearing claim is the paired <span
+class="math inline"><em>Δ</em></span> between rows, which is
+statistically robust on <span
+class="math inline"><em>n</em> = 6 980</span>.</p>
+<h4 id="w4-w5-numbers-are-on-a-qrels-anchored-sample.">W4 / W5 numbers
+are on a qrels-anchored sample.</h4>
+<p>The W4 50k sample includes every <em>dev/small</em> relevant doc by
+construction (<a href="#sec:w4-sampling-caveat"
+data-reference-type="ref+Label"
+data-reference="sec:w4-sampling-caveat">4.3.0.2</a>), inflating absolute
+MRR / Recall on the sampled setting. The legitimate comparison is
+within- sample (dense vs. BM25 on the same pool), not against the W2
+full-corpus number. This caveat is propagated to the W5 dense+ rerank
+numbers, which inherit the same sampling.</p>
+<h4 id="bm25-tokenizer-mismatch-with-anserini.">BM25 tokenizer mismatch
+with Anserini.</h4>
+<p>The W2 MRR@10 <span class="math inline"> = 0.170</span> versus
+reference <span class="math inline"> ≈ 0.184</span> is mostly
+attributable to tokenizer differences between <code>bm25s</code> default
+and Lucene <code>EnglishAnalyzer</code>. Acceptable for a single-
+machine pure-Python pipeline, but it does mean the project’s BM25 number
+cannot be directly compared to published Lucene-tokenizer baselines
+without bracketing for the tokenizer gap.</p>
+<h4 id="generation-metrics-are-dominated-by-surface-form.">Generation
+metrics are dominated by surface form.</h4>
+<p>The W6 BERTScore proxy (<a href="#sec:w6-bertscore"
+data-reference-type="ref+Label"
+data-reference="sec:w6-bertscore">5.8.1</a>) and the W7 grounding
+metrics (<a href="#sec:w7" data-reference-type="ref+Label"
+data-reference="sec:w7">5.9</a>) partially close the surface-form gap,
+but the canonical <code>roberta-large</code> BERTScore on full dev/small
+is still open.</p>
+<h4 id="the-w7-a-nli-sign-flip-is-unresolved.">The W7-A NLI sign flip is
+unresolved.</h4>
+<p>Section <a href="#sec:discussion-nli-flip"
+data-reference-type="ref+Label"
+data-reference="sec:discussion-nli-flip">6.2</a> identifies three
+candidate mechanisms; existing data cannot fully discriminate among
+them. A T5-base / instruction-tuned-small generator swap is the
+disambiguating experiment.</p>
+<h4
+id="devsmall-only-single-seed-for-the-distractor-sample."><em>dev/small</em>
+only, single seed for the distractor sample.</h4>
+<p>No held-out test split. The distractor sample is deterministic (seed
+42) but not averaged across multiple seeds.</p>
+<h4 id="cpu-only.">CPU-only.</h4>
+<p>All numbers in this report were produced on a six-core Apple Silicon
+laptop. No GPU. This is by design — the single-machine constraint is
+what makes the project’s reproducibility claim (one command per stage
+regenerates every number) tractable — but it caps the kinds of
+generators that can be evaluated within the deadline.</p>
+<h1 id="sec:conclusion">Conclusion</h1>
+<p>The principal empirical claim of this report is the following. On
+MS MARCO Passage <em>dev/small</em> (6 980 queries), replacing the
+upstream retriever from BM25 with a cross-encoder- reranked dense top-3
+— holding the generator, the prompt, and the random seed fixed —
+approximately doubles every surface-form generation metric, with 95 %
+paired-bootstrap confidence intervals strictly above zero on all four
+metrics (<a href="#tab:w3-ci" data-reference-type="ref+Label"
+data-reference="tab:w3-ci">5</a>). The effect is corroborated by a
+BERTScore semantic-similarity proxy at essentially the same magnitude
+(<a href="#tab:w6-bertscore" data-reference-type="ref+Label"
+data-reference="tab:w6-bertscore">8</a>). However, the grounding audit
+of <a href="#sec:w7" data-reference-type="ref+Label"
+data-reference="sec:w7">5.9</a> shows that both arms operate at the
+<span class="math inline">∼ 99 %</span> lexical and 3-gram grounding
+ceiling: under this prompt format T5-small is performing extractive QA,
+and the observed gain is almost entirely attributable to retrieval
+rather than to generation.</p>
+<p>The methodological contribution of the project lies in the discipline
+of treating every cross-stage comparison as a paired statistical test
+and of calibrating each surface-form metric against a
+semantic-similarity proxy and a grounding metric before accepting it as
+evidence. Three readings that would have appeared plausible from the W3
+surface-form numbers alone are rejected on this basis: that the residual
+regression bucket is driven by the decoding budget (falsified in <a
+href="#sec:w6-closure" data-reference-type="ref+Label"
+data-reference="sec:w6-closure">5.8.3</a>), that reranking materially
+improves grounding (<a href="#tab:w7-lex-ngram"
+data-reference-type="ref+Label" data-reference="tab:w7-lex-ngram">12</a>
+shows both arms at the lexical ceiling), and that the rerank <span
+class="math inline"><em>Δ</em></span> is uniformly positive across
+metric families (<a href="#tab:w7-nli" data-reference-type="ref+Label"
+data-reference="tab:w7-nli">13</a> shows the NLI proxy reversing
+sign).</p>
+<p>The most informative follow-up experiment is a generator-capacity
+swap (T5-base or an instruction-tuned small model) on the same prompts
+and the same retrieval inputs. Such an experiment simultaneously tests
+whether the surface-form <span class="math inline"><em>Δ</em></span>
+extends with capacity, whether the NLI sign flip persists under a more
+verbose generator, and whether the lexical-grounding ceiling moves. Each
+outcome is independently informative for the design of CPU-tractable
+open-domain QA pipelines on this benchmark.</p>
+<h2 class="unnumbered" id="sec:future-work">Future work</h2>
+<p>The roadmap has become more explicit since the original experiment
+window. The next steps are grouped by what they test rather than by
+stage number:</p>
+<ul>
+<li><p><strong>Retrieval fusion and retrieval measurement.</strong>
+Extend the current reciprocal-rank-fusion runner and same-qid matrix
+report with learned sparse retrieval as a SPLADE-style baseline, then
+report MRR@10 / nDCG@10 consistently across first-stage, reranked, and
+fused retrieval outputs.</p></li>
+<li><p><strong>Reranker alternatives.</strong> Evaluate BGE-style
+cross-encoder reranking and a ColBERT-style late-interaction path
+against the current MiniLM cross-encoder under matched candidate sets,
+including latency and memory notes.</p></li>
+<li><p><strong>Chunking and context assembly.</strong> Add semantic
+chunking and parent-child chunk retrieval experiments, then measure
+whether better context reconstruction improves the generation and
+grounding metrics without inflating prompt length.</p></li>
+<li><p><strong>Query transformation and adaptive retrieval.</strong> Add
+query expansion/de-contextualisation before retrieval and a
+retrieval-sufficiency check after reranking. The sufficiency layer
+should trigger a second retrieval pass or abstention rather than forcing
+unsupported generation.</p></li>
+<li><p><strong>Evaluation hardening.</strong> Extend the current paired
+bootstrap protocol and deterministic triad report with full-sample
+<code>roberta-large</code> BERTScore, an alternative-family faithfulness
+scorer, multiple-comparison correction, and TREC-DL qrels
+loaders.</p></li>
+<li><p><strong>Offline/online separation.</strong> Split batch indexing
+from online query handling: an offline job should read data, chunk
+passages, embed, build FAISS, and persist the index; the online path
+should load the index and serve retrieval or generation requests through
+a narrow API.</p></li>
+<li><p><strong>Generator and prompt ablations.</strong> Continue the
+T5-base / FLAN-T5 capacity sweep, citation-aware prompts, and
+tokenizer-aware prompt-compression work to test whether the current
+extractive-grounding ceiling can be moved without sacrificing
+faithfulness.</p></li>
+</ul>
+<p>The reproducibility scaffold (<a href="#sec:reproducibility"
+data-reference-type="ref+Label"
+data-reference="sec:reproducibility">9</a>) is designed so that each
+follow-up adds a controlled configuration or adapter, not a separate
+experimental codebase.</p>
+<h1 class="unnumbered" id="acknowledgements">Acknowledgements</h1>
+<p>The project depends entirely on open-source artefacts: MS MARCO
+itself <span class="citation"
+data-cites="bajaj2016msmarco nguyen2016msmarcoqa">(Bajaj et al. 2016;
+Nguyen et al. 2016)</span>, the Pyserini / Anserini ecosystem and the
+<code>bm25s</code> re-implementation <span class="citation"
+data-cites="lin2021pyserini lu2024bm25s">(Lin et al. 2021; Lù
+2024)</span>, FAISS for exact dense search <span class="citation"
+data-cites="johnson2019faiss">(Johnson et al. 2019)</span>, the
+Sentence-Transformers and Hugging Face Transformers ecosystems <span
+class="citation"
+data-cites="reimers2019sbert wolf2020transformers">(Reimers and Gurevych
+2019; Wolf et al. 2020)</span>, the <code>ir_datasets</code>
+loader <span class="citation"
+data-cites="macavaney2021irdatasets">(MacAvaney et al. 2021)</span>, the
+T5 pretrained model <span class="citation"
+data-cites="raffel2020t5">(Raffel et al. 2020)</span>, the
+<code>cross-encoder/ms-marco-MiniLM-L-6-v2</code> reranker, the
+DistilBERT and DeBERTa v3 encoders <span class="citation"
+data-cites="sanh2019distilbert he2023debertav3">(Sanh et al. 2019; He et
+al. 2023)</span>, and the <code>rouge_score</code> /
+<code>sacrebleu</code> / <code>evaluate</code> metric libraries <span
+class="citation" data-cites="lin2004rouge papineni2002bleu">(Lin 2004;
+Papineni et al. 2002)</span>.</p>
+<h1 id="sec:reproducibility">Configuration and reproducibility</h1>
+<h2 id="one-config-workflow-facade-and-stage-runners">One config,
+workflow facade, and stage runners</h2>
+<p>All four W2–W5 runners are driven by a single configuration file at
+<code>configs/baseline.yaml</code>; the W6/W7 analysis scripts and W8
+triad CLI read the on-disk W3 paired predictions directly. The current
+repository also exposes a workflow facade through <code>rag-eval</code>
+and installable <code>mgq-*</code> console scripts. <a
+href="#tab:repro-cmds" data-reference-type="ref+Label"
+data-reference="tab:repro-cmds">16</a> records the canonical command
+family for each layer.</p>
+<div id="tab:repro-cmds">
+<table>
+<caption>One canonical command per stage. All commands assume the
+project root as working directory and <code>pip install -e .</code> has
+registered the <code>src</code> package.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Stage</th>
+<th style="text-align: left;">Command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Workflow facade</td>
+<td style="text-align: left;">rag-eval run –config configs/baseline.yaml
+–dry-run</td>
+</tr>
+<tr>
+<td style="text-align: left;">W2</td>
+<td style="text-align: left;">python experiments/run_retrieval.py</td>
+</tr>
+<tr>
+<td style="text-align: left;">W3</td>
+<td style="text-align: left;">python
+experiments/run_generation_baseline.py</td>
+</tr>
+<tr>
+<td style="text-align: left;">W4</td>
+<td style="text-align: left;">python
+experiments/run_dense_retrieval.py</td>
+</tr>
+<tr>
+<td style="text-align: left;">W5</td>
+<td style="text-align: left;">python experiments/run_reranker.py</td>
+</tr>
+<tr>
+<td style="text-align: left;">W3 paired</td>
+<td style="text-align: left;">python
+scripts/run_full_generation_and_analysis.py</td>
+</tr>
+<tr>
+<td style="text-align: left;">W5-A</td>
+<td style="text-align: left;">python
+scripts/compare_rerank_first_stages.py</td>
+</tr>
+<tr>
+<td style="text-align: left;">W6 BERTScore</td>
+<td style="text-align: left;">python
+scripts/bertscore_paired_eval.py</td>
+</tr>
+<tr>
+<td style="text-align: left;">W6 taxonomy</td>
+<td style="text-align: left;">python
+scripts/regression_failure_taxonomy.py</td>
+</tr>
+<tr>
+<td style="text-align: left;">W6 closure</td>
+<td style="text-align: left;">python
+scripts/run_full_generation_and_analysis.py –max-new-tokens 128
+–out-suffix _mnt128</td>
+</tr>
+<tr>
+<td style="text-align: left;">W6-A/B/C</td>
+<td style="text-align: left;">scripts/tag_query_forms.py
+ / analyze_rerank_by_query_form.py  / regression_query_profile.py</td>
+</tr>
+<tr>
+<td style="text-align: left;">W7 grounding</td>
+<td style="text-align: left;">python scripts/grounding_audit.py</td>
+</tr>
+<tr>
+<td style="text-align: left;">W7-A NLI</td>
+<td style="text-align: left;">same script with –nli-n-pairs 3000</td>
+</tr>
+<tr>
+<td style="text-align: left;">W8 triad</td>
+<td style="text-align: left;">mgq-rag-triad –predictions bm25=…
+–predictions reranked=… –output-dir outputs/W8_rag_triad</td>
+</tr>
+<tr>
+<td style="text-align: left;">W9 context packing</td>
+<td style="text-align: left;">mgq-context-packing-report
+–baseline-predictions … –compressed-predictions … –output-dir
+outputs/W9_context_packing</td>
+</tr>
+<tr>
+<td style="text-align: left;">Input validation</td>
+<td style="text-align: left;">docs/input_validation.md</td>
+</tr>
+<tr>
+<td style="text-align: left;">Model-stack smoke</td>
+<td style="text-align: left;">python scripts/smoke_model_stack.py
+–config configs/baseline.yaml –device cpu</td>
+</tr>
+<tr>
+<td style="text-align: left;">Serving smoke</td>
+<td style="text-align: left;">mgq-serve</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="manifests">Manifests</h2>
+<p>Every runner writes <code>outputs/&lt;stage&gt;/manifest.json</code>
+alongside <code>metrics.json</code>. The manifest records: the current
+git commit (and a “dirty” flag if any tracked file was modified at
+launch time), the command line, the configuration file SHA-256, the
+requirements/lockfile/pyproject SHA-256s, and a per-output SHA-256
+(truncated) for every file the runner emits. This is sufficient to
+verify that a re-run produced byte-identical outputs, or to identify
+exactly which input changed if the outputs differ.</p>
+<h2 id="input-validation-boundary">Input validation boundary</h2>
+<p>The repository now distinguishes research-data assumptions from
+production-facing inputs. TREC <code>run.tsv</code> readers reject
+malformed six-column rows, empty identifiers, invalid or duplicate
+ranks, duplicate documents within a query, non-finite scores, and
+non-UTF-8 bytes before expensive generation or analysis starts.
+Generation prompt assembly normalises whitespace, rejects empty queries,
+drops empty optional passages, and applies deterministic character
+truncation before tokenizer-level truncation. Serving JSONL loaders
+reject duplicate ids, missing fields, invalid JSON,
+replacement-character-heavy text, and non-object records. The FastAPI
+wrapper maps these typed validation failures to structured
+<code>422</code> payloads with <code>error.type</code>,
+<code>error.message</code>, and <code>error.field</code>.</p>
+<h2 id="determinism">Determinism</h2>
+<p>Seed 42 is used everywhere a random choice enters: the W4
+qrels-anchored distractor sample, the W6 BERTScore subsample selection,
+the W6 regression-bucket triage sample, the W7-D low-grounding
+case-study sample, and the 10 000-resample paired bootstrap throughout.
+This is documented in the per-script CLI help and in the per-stage
+reports’ “Reproduce” sections.</p>
+<h2 id="what-is-and-isnt-committed">What is and isn’t committed</h2>
+<p>The project’s local operating contract codifies the policy:
+<code>outputs/</code>, <code>data/</code>, and the local-scratch
+directory are gitignored. The tracked artefacts are source code (under
+<code>src/</code>, <code>experiments/</code>, <code>scripts/</code>,
+<code>tests/</code>), configs, documentation, compact report outputs
+under <code>reports/</code>, and the figures required to render those
+reports. Large regenerable artefacts (every <code>metrics.json</code>,
+every <code>run.tsv</code>, every dataset cache, every model cache) stay
+outside git.</p>
+<h2 id="engineering-scaffolding">Engineering scaffolding</h2>
+<ul>
+<li><p><strong>Tests.</strong> The default pytest suite is fast and
+local: no network, no model downloads, and no MS MARCO data fetch. Slow
+and integration checks are explicitly marked and opt-in.</p></li>
+<li><p><strong>Lint.</strong> <code>ruff</code> runs over
+<code>src</code>, <code>tests</code>, <code>experiments</code>, and
+<code>scripts</code> with a conservative bug-finding rule set.</p></li>
+<li><p><strong>CI.</strong> <code>.github/workflows/ci.yml</code> runs
+default pytest, <code>ruff</code>, and headline-metric metadata checks
+on push and pull request events. The separate
+<code>secret-scan.yml</code> workflow runs the high-confidence secret
+scanner.</p></li>
+<li><p><strong>Lockfile.</strong> <code>requirements-lock.txt</code> is
+a pip-freeze snapshot of the current security-refreshed CPU dev
+environment. Historical experiment numbers remain anchored to the
+first-report tag rather than to moving dependency pins.</p></li>
+<li><p><strong>Optional checks.</strong> The model-stack smoke test
+loads the pinned generator and dense encoder, runs one short CPU
+generation, and verifies an embedding shape. It is kept out of default
+CI because it requires model downloads.</p></li>
+<li><p><strong>Service and tracking.</strong> The <code>serve</code>
+extra exposes <code>mgq-serve</code> with <code>/health</code> and
+<code>/generate</code>; the <code>tracking</code> extra leaves room for
+MLflow or Weights &amp; Biases while defaulting to local JSONL
+events.</p></li>
+</ul>
+<h1 id="sec:appendix-buckets">Full bucket counts and W6 analysis
+tables</h1>
+<p><a href="#tab:buckets-full" data-reference-type="ref+Label"
+data-reference="tab:buckets-full">17</a> reports the five-way bucket
+counts on the full 6 980 W3 paired comparison. The classification is
+from <code>scripts/analyze_generation_rerank.py</code>: each query is
+assigned exactly one bucket based on (i) whether the reranker brought a
+relevance-judged passage into the generator’s top-3 and (ii) whether the
+generator’s Token-F<sub>1</sub> improved, stayed equal, or worsened.</p>
+<div id="tab:buckets-full">
+<table>
+<caption>Five-way bucket counts on the full 6 980 W3 paired comparison.
+<code>rerank_fixed_generation_improved</code> is the “both retrieval and
+generator improved” headline bucket; <code>regression</code> is the
+narrower 233-strong bucket (<a href="#sec:w6-taxonomy"
+data-reference-type="ref+Label"
+data-reference="sec:w6-taxonomy">5.8.2</a> runs its taxonomy on this
+slice).</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Bucket</th>
+<th style="text-align: right;">Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td
+style="text-align: left;"><code>rerank_fixed_generation_still_failing</code></td>
+<td style="text-align: right;">2 684</td>
+</tr>
+<tr>
+<td
+style="text-align: left;"><code>rerank_fixed_generation_improved</code></td>
+<td style="text-align: right;">2 184</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>no_signal</code></td>
+<td style="text-align: right;">1 593</td>
+</tr>
+<tr>
+<td
+style="text-align: left;"><code>retrieval_equivalent_generation_differs</code></td>
+<td style="text-align: right;">286</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>regression</code></td>
+<td style="text-align: right;">233</td>
+</tr>
+<tr>
+<td style="text-align: left;">Total</td>
+<td style="text-align: right;">6 980</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h1 id="sec:appendix-glossary">Glossary of cross-references</h1>
+<ul>
+<li><p><strong>W2:</strong> BM25 retrieval, full corpus. Output:
+<code>outputs/W2_bm25/</code>.</p></li>
+<li><p><strong>W3:</strong> RAG generation baseline (T5-small over
+top-3). Output:
+<code>outputs/W3_generation_{bm25,reranked}_full/</code>.</p></li>
+<li><p><strong>W4:</strong> dense retrieval, 50k qrels-anchored sample.
+Output: <code>outputs/W4_dense/</code>.</p></li>
+<li><p><strong>W5:</strong> cross-encoder rerank over dense top-100.
+Output: <code>outputs/W5_reranker_full/</code>.</p></li>
+<li><p><strong>W5-A:</strong> same reranker over BM25 top-100. Output:
+<code>outputs/W5_rerank_first_stage_compare/</code>.</p></li>
+<li><p><strong>W6:</strong> BERTScore proxy + regression failure
+taxonomy + decode-budget closure. Outputs:
+<code>outputs/W6_bertscore_proxy/</code>,
+<code>outputs/W6_analysis/</code>,
+<code>outputs/W6_taxonomy_mnt128/</code>.</p></li>
+<li><p><strong>W6-A/B/C:</strong> question-form tagging, per-form <span
+class="math inline"><em>Δ</em></span>, regression structural profile.
+Outputs: <code>outputs/W6_querytype/</code>,
+<code>outputs/W6_rerank_by_form/</code>,
+<code>outputs/W6_regression_features/</code>.</p></li>
+<li><p><strong>W7:</strong> lexical + 3-gram grounding audit; W7-A adds
+the NLI proxy; W7-C grounding <span class="math inline">↔︎</span>
+downstream correlation; W7-D low-grounding case study. Outputs:
+<code>outputs/W7_grounding/</code>,
+<code>outputs/W7_grounding_correlation/</code>,
+<code>outputs/W7_low_grounding_cases/</code>.</p></li>
+<li><p><strong>W8 triad:</strong> deterministic context relevance,
+groundedness, and answer relevance diagnostics over one or more
+generation prediction files. Output:
+<code>outputs/W8_rag_triad/</code>.</p></li>
+<li><p><strong>W9 context packing:</strong> matched-qid comparison of
+plain versus packed generation prediction files, including
+answer-quality deltas and context-character savings. Output:
+<code>outputs/W9_context_packing/</code>.</p></li>
+</ul>
+<div id="refs" class="references csl-bib-body hanging-indent"
+role="list">
+<div id="ref-bajaj2016msmarco" class="csl-entry" role="listitem">
+Bajaj, Payal, Daniel Campos, Nick Craswell, et al. 2016. <span>“<span>MS
+MARCO</span>: A Human Generated MAchine Reading COmprehension
+Dataset.”</span> <em>arXiv Preprint arXiv:1611.09268</em>.
+</div>
+<div id="ref-he2023debertav3" class="csl-entry" role="listitem">
+He, Pengcheng, Jianfeng Gao, and Weizhu Chen. 2023.
+<span>“<span>DeBERTaV3</span>: Improving <span>DeBERTa</span> Using
+<span>ELECTRA</span>-Style Pre-Training with Gradient-Disentangled
+Embedding Sharing.”</span> <em>ICLR</em>.
+</div>
+<div id="ref-honovich2022true" class="csl-entry" role="listitem">
+Honovich, Or, Roee Aharoni, Jonathan Herzig, et al. 2022.
+<span>“<span>TRUE</span>: Re-Evaluating Factual Consistency
+Evaluation.”</span> <em>NAACL</em>.
+</div>
+<div id="ref-jarvelin2002ndcg" class="csl-entry" role="listitem">
+Järvelin, Kalervo, and Jaana Kekäläinen. 2002. <span>“Cumulated
+Gain-Based Evaluation of <span>IR</span> Techniques.”</span> <em>ACM
+Transactions on Information Systems (TOIS)</em> 20 (4): 422–46.
+</div>
+<div id="ref-ji2023hallucination" class="csl-entry" role="listitem">
+Ji, Ziwei, Nayeon Lee, Rita Frieske, et al. 2023. <span>“Survey of
+Hallucination in Natural Language Generation.”</span> <em>ACM Computing
+Surveys</em> 55 (12): 1–38.
+</div>
+<div id="ref-johnson2019faiss" class="csl-entry" role="listitem">
+Johnson, Jeff, Matthijs Douze, and Hervé Jégou. 2019.
+<span>“Billion-Scale Similarity Search with <span>GPUs</span>.”</span>
+<em>IEEE Transactions on Big Data</em>.
+</div>
+<div id="ref-koehn2004bootstrap" class="csl-entry" role="listitem">
+Koehn, Philipp. 2004. <span>“Statistical Significance Tests for Machine
+Translation Evaluation.”</span> <em>EMNLP</em>.
+</div>
+<div id="ref-lewis2020rag" class="csl-entry" role="listitem">
+Lewis, Patrick, Ethan Perez, Aleksandra Piktus, et al. 2020.
+<span>“Retrieval-Augmented Generation for Knowledge-Intensive
+<span>NLP</span> Tasks.”</span> <em>NeurIPS</em>.
+</div>
+<div id="ref-lin2004rouge" class="csl-entry" role="listitem">
+Lin, Chin-Yew. 2004. <span>“<span>ROUGE</span>: A Package for Automatic
+Evaluation of Summaries.”</span> <em>Text Summarization Branches
+Out</em>.
+</div>
+<div id="ref-lin2021pyserini" class="csl-entry" role="listitem">
+Lin, Jimmy, Xueguang Ma, Sheng-Chieh Lin, Jheng-Hong Yang, Ronak
+Pradeep, and Rodrigo Nogueira. 2021. <span>“<span>Pyserini</span>: A
+<span>P</span>ython Toolkit for Reproducible Information Retrieval
+Research with Sparse and Dense Representations.”</span> <em>SIGIR</em>.
+</div>
+<div id="ref-lu2024bm25s" class="csl-entry" role="listitem">
+Lù, Xing Han. 2024. <em><span>BM25S</span>: Orders of Magnitude Faster
+Lexical Search via Eager Sparse Scoring</em>. <a
+href="https://arxiv.org/abs/2407.03618">https://arxiv.org/abs/2407.03618</a>.
+</div>
+<div id="ref-macavaney2021irdatasets" class="csl-entry" role="listitem">
+MacAvaney, Sean, Andrew Yates, Sergey Feldman, Doug Downey, Arman Cohan,
+and Nazli Goharian. 2021. <span>“Simplified Data Wrangling with <span
+class="nocase">ir_datasets</span>.”</span> <em>SIGIR</em>.
+</div>
+<div id="ref-mannwhitney1947" class="csl-entry" role="listitem">
+Mann, Henry B., and Donald R. Whitney. 1947. <span>“On a Test of Whether
+One of Two Random Variables Is Stochastically Larger Than the
+Other.”</span> <em>The Annals of Mathematical Statistics</em> 18 (1):
+50–60.
+</div>
+<div id="ref-nguyen2016msmarcoqa" class="csl-entry" role="listitem">
+Nguyen, Tri, Mir Rosenberg, Xia Song, et al. 2016. <span>“<span>MS
+MARCO</span>: A Human-Generated MAchine Reading COmprehension
+Dataset.”</span> <em>NeurIPS Workshop on Cognitive Computation:
+Integrating Neural and Symbolic Approaches</em>.
+</div>
+<div id="ref-nogueira2019passage" class="csl-entry" role="listitem">
+Nogueira, Rodrigo, and Kyunghyun Cho. 2019. <span>“Passage Re-Ranking
+with <span>BERT</span>.”</span> <em>arXiv Preprint
+arXiv:1901.04085</em>.
+</div>
+<div id="ref-papineni2002bleu" class="csl-entry" role="listitem">
+Papineni, Kishore, Salim Roukos, Todd Ward, and Wei-Jing Zhu. 2002.
+<span>“<span>BLEU</span>: A Method for Automatic Evaluation of Machine
+Translation.”</span> <em>ACL</em>.
+</div>
+<div id="ref-raffel2020t5" class="csl-entry" role="listitem">
+Raffel, Colin, Noam Shazeer, Adam Roberts, et al. 2020. <span>“Exploring
+the Limits of Transfer Learning with a Unified Text-to-Text
+Transformer.”</span> <em>Journal of Machine Learning Research</em> 21
+(140): 1–67.
+</div>
+<div id="ref-reimers2019sbert" class="csl-entry" role="listitem">
+Reimers, Nils, and Iryna Gurevych. 2019.
+<span>“<span>Sentence-BERT</span>: Sentence Embeddings Using
+<span>S</span>iamese <span>BERT</span>-Networks.”</span>
+<em>EMNLP-IJCNLP</em>.
+</div>
+<div id="ref-robertson2009bm25" class="csl-entry" role="listitem">
+Robertson, Stephen, and Hugo Zaragoza. 2009. <span>“The Probabilistic
+Relevance Framework: <span>BM25</span> and Beyond.”</span>
+<em>Foundations and Trends in Information Retrieval</em> 3 (4): 333–89.
+<a
+href="https://doi.org/10.1561/1500000019">https://doi.org/10.1561/1500000019</a>.
+</div>
+<div id="ref-sanh2019distilbert" class="csl-entry" role="listitem">
+Sanh, Victor, Lysandre Debut, Julien Chaumond, and Thomas Wolf. 2019.
+<span>“<span>DistilBERT</span>, a Distilled Version of
+<span>BERT</span>: Smaller, Faster, Cheaper and Lighter.”</span>
+<em>NeurIPS EMC<span class="math inline"><sup>2</sup></span>
+Workshop</em>.
+</div>
+<div id="ref-wang2020minilm" class="csl-entry" role="listitem">
+Wang, Wenhui, Furu Wei, Li Dong, Hangbo Bao, Nan Yang, and Ming Zhou.
+2020. <span>“<span>MiniLM</span>: Deep Self-Attention Distillation for
+Task-Agnostic Compression of Pre-Trained Transformers.”</span>
+<em>NeurIPS</em>.
+</div>
+<div id="ref-williams2018mnli" class="csl-entry" role="listitem">
+Williams, Adina, Nikita Nangia, and Samuel Bowman. 2018. <span>“A
+Broad-Coverage Challenge Corpus for Sentence Understanding Through
+Inference.”</span> <em>NAACL</em>.
+</div>
+<div id="ref-wolf2020transformers" class="csl-entry" role="listitem">
+Wolf, Thomas, Lysandre Debut, Victor Sanh, et al. 2020.
+<span>“<span>HuggingFace</span>’s Transformers: State-of-the-Art Natural
+Language Processing.”</span> <em>EMNLP: System Demonstrations</em>.
+</div>
+<div id="ref-xiao2024bge" class="csl-entry" role="listitem">
+Xiao, Shitao, Zheng Liu, Peitian Zhang, and Niklas Muennighoff. 2024.
+<em><span>C-Pack</span>: Packaged Resources to Advance General
+<span>C</span>hinese Embedding</em>. <a
+href="https://arxiv.org/abs/2309.07597">https://arxiv.org/abs/2309.07597</a>.
+</div>
+<div id="ref-xiong2021ance" class="csl-entry" role="listitem">
+Xiong, Lee, Chenyan Xiong, Ye Li, et al. 2021. <span>“Approximate
+Nearest Neighbor Negative Contrastive Learning for Dense Text
+Retrieval.”</span> <em>ICLR</em>.
+</div>
+<div id="ref-zhang2020bertscore" class="csl-entry" role="listitem">
+Zhang, Tianyi, Varsha Kishore, Felix Wu, Kilian Q. Weinberger, and Yoav
+Artzi. 2020. <span>“<span>BERTScore</span>: Evaluating Text Generation
+with <span>BERT</span>.”</span> <em>ICLR</em>.
+</div>
+</div>
+</body>
+</html>

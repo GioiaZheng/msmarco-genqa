@@ -12,7 +12,7 @@ retriever-agnostic:
 
 Index choice: ``faiss.IndexFlatIP`` over L2-normalised embeddings → exact
 inner-product search ≡ cosine similarity. We deliberately avoid IVF/HNSW
-for the Week 4 sampled baseline so the only thing measured is the
+for the W4 sampled baseline so the only thing measured is the
 quality of the encoder, not the ANN approximation.
 """
 

@@ -76,6 +76,94 @@ def test_filter_and_format_rag_eval_plan(tmp_path):
     assert "outputs/bootstrap/bootstrap_ci.json" in rendered
 
 
+def test_build_rag_eval_plan_includes_retrieval_quality_report(tmp_path):
+    config_path = _write_config(tmp_path / "baseline.yaml")
+    cfg = load_rag_eval_config(config_path)
+    cfg["rag_eval"]["stages"] = ["retrieval_quality_report"]
+    cfg["rag_eval"]["retrieval_report_output_dir"] = "outputs/report_dense_vs_reranked"
+    cfg["rag_eval"]["retrieval_qrels_path"] = "data/qrels.dev.small.tsv"
+
+    plan = build_rag_eval_plan(cfg, config_path=config_path)
+
+    assert [stage.name for stage in plan] == ["retrieval_quality_report"]
+    cmd = plan[0].command
+    assert cmd[:2] == ["mgq-retrieval-report", "compare"]
+    assert cmd[cmd.index("--baseline-run") + 1] == "outputs/dense/run.tsv"
+    assert cmd[cmd.index("--candidate-run") + 1] == "outputs/reranked/run.tsv"
+    assert cmd[cmd.index("--qrels") + 1] == "data/qrels.dev.small.tsv"
+    assert "outputs/report_dense_vs_reranked/comparison.json" in plan[0].expected_outputs
+
+
+def test_build_rag_eval_plan_includes_query_transformation(tmp_path):
+    config_path = _write_config(tmp_path / "baseline.yaml")
+    cfg = load_rag_eval_config(config_path)
+    cfg["query_transform"] = {"method": "normalize", "output_dir": "outputs/query_norm"}
+    cfg["rag_eval"]["stages"] = ["query_transformation"]
+
+    plan = build_rag_eval_plan(cfg, config_path=config_path)
+
+    assert [stage.name for stage in plan] == ["query_transformation"]
+    assert plan[0].command == [
+        "mgq-transform-queries",
+        "--config",
+        config_path.as_posix(),
+        "--output-dir",
+        "outputs/query_norm",
+    ]
+    assert "outputs/query_norm/queries.jsonl" in plan[0].expected_outputs
+
+
+def test_build_rag_eval_plan_includes_rag_triad(tmp_path):
+    config_path = _write_config(tmp_path / "baseline.yaml")
+    cfg = load_rag_eval_config(config_path)
+    cfg["rag_eval"]["stages"] = ["rag_triad"]
+    cfg["rag_eval"]["triad_output_dir"] = "outputs/triad"
+    cfg["rag_eval"]["triad_context_top_k"] = 3
+
+    plan = build_rag_eval_plan(cfg, config_path=config_path)
+
+    assert [stage.name for stage in plan] == ["rag_triad"]
+    cmd = plan[0].command
+    assert cmd[:2] == ["mgq-rag-triad", "--predictions"]
+    assert "bm25=outputs/gen_bm25/predictions.jsonl" in cmd
+    assert "reranked=outputs/gen_reranked/predictions.jsonl" in cmd
+    assert cmd[cmd.index("--output-dir") + 1] == "outputs/triad"
+    assert cmd[cmd.index("--baseline-config") + 1] == "bm25"
+    assert cmd[cmd.index("--context-top-k") + 1] == "3"
+    assert "outputs/triad/per_query_triad.jsonl" in plan[0].expected_outputs
+
+
+def test_build_rag_eval_plan_includes_context_packing_report(tmp_path):
+    config_path = _write_config(tmp_path / "baseline.yaml")
+    cfg = load_rag_eval_config(config_path)
+    cfg["rag_eval"]["stages"] = ["generation_reranked_packed", "context_packing_report"]
+    cfg["rag_eval"]["packed_generation_dir"] = "outputs/gen_reranked_packed"
+    cfg["rag_eval"]["context_packing_report_dir"] = "outputs/context_packing"
+    cfg["rag_eval"]["context_max_chars"] = 700
+    cfg["rag_eval"]["context_max_passage_chars"] = 250
+    cfg["rag_eval"]["context_ordering"] = "shorter_first"
+    cfg["rag_eval"]["context_deduplicate"] = False
+
+    plan = build_rag_eval_plan(cfg, config_path=config_path)
+
+    assert [stage.name for stage in plan] == [
+        "generation_reranked_packed",
+        "context_packing_report",
+    ]
+    packed_cmd = plan[0].command
+    assert packed_cmd[packed_cmd.index("--input-run") + 1] == "outputs/reranked/run.tsv"
+    assert packed_cmd[packed_cmd.index("--output-dir") + 1] == "outputs/gen_reranked_packed"
+    assert packed_cmd[packed_cmd.index("--context-max-chars") + 1] == "700"
+    assert packed_cmd[packed_cmd.index("--context-max-passage-chars") + 1] == "250"
+    assert packed_cmd[packed_cmd.index("--context-ordering") + 1] == "shorter_first"
+    assert "--no-context-deduplicate" in packed_cmd
+    report_cmd = plan[1].command
+    assert report_cmd[:1] == ["mgq-context-packing-report"]
+    assert "outputs/gen_reranked/predictions.jsonl" in report_cmd
+    assert "outputs/gen_reranked_packed/predictions.jsonl" in report_cmd
+    assert "outputs/context_packing/comparison.json" in plan[1].expected_outputs
+
+
 def test_build_rag_eval_plan_rejects_unknown_stage(tmp_path):
     config_path = _write_config(tmp_path / "baseline.yaml")
     cfg = load_rag_eval_config(config_path)

@@ -38,7 +38,7 @@ is [`RESULTS.md`](RESULTS.md); reproducibility entry points are documented in
 | Retrieval | BM25, dense SBERT/FAISS, and BM25-on-sample comparisons under controlled qrels-anchored evaluation. |
 | Reranking | Cross-encoder reranking with aggregate lift, first-stage comparison, and query-level promoted/demoted/new-hit/lost-hit diagnostics. |
 | Generation | Paired BM25-vs-reranked generation runs using the same generator, prompt format, query set, and top-k depth. |
-| Evaluation | Paired-bootstrap confidence intervals, BERTScore proxy checks, grounding audit, query-form slicing, and regression taxonomy. |
+| Evaluation | Paired-bootstrap confidence intervals, BERTScore proxy checks, grounding audit, RAG triad reporting, query-form slicing, and regression taxonomy. |
 | Reproducibility | Config-driven runners, manifests, output hashes, metadata, CI, report artifacts, and optional experiment tracking. |
 
 ## Reports and notes
@@ -52,9 +52,13 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/architecture.md`](docs/architecture.md) — module boundaries and artifact flow.
 - [`docs/evaluation_protocol.md`](docs/evaluation_protocol.md) — reproducible evaluation contract.
 - [`docs/failure_taxonomy.md`](docs/failure_taxonomy.md) — regression and grounding error taxonomy.
+- [`docs/retrieval_quality_reporting.md`](docs/retrieval_quality_reporting.md) — run-level retrieval metrics and matched-qid comparison reports.
 - [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md) — query-level reranker lift analysis protocol.
+- [`docs/context_packing.md`](docs/context_packing.md) — prompt compression, provenance, and packed-vs-plain generation comparison.
+- [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md) — context relevance, groundedness, and answer relevance report protocol.
+- [`docs/input_validation.md`](docs/input_validation.md) — run-file, JSONL, prompt, and serving input validation contract.
 - [`notebooks/rag_eval_demo.ipynb`](notebooks/rag_eval_demo.ipynb) — lightweight evaluation workflow demo.
-- [`reports/internship_report/report.pdf`](reports/internship_report/report.pdf) — frozen internship report snapshot.
+- [`reports/repo_report/report.pdf`](reports/repo_report/report.pdf) / [`report.html`](reports/repo_report/report.html) — repository report with the current engineering surface and historical experiment results.
 
 ## Engineering surface
 
@@ -62,12 +66,13 @@ The repository includes engineering support for running, validating, and
 auditing the experiments:
 
 - **Config-driven pipeline.** `configs/pipeline.yaml` defines the BM25 → dense
-  → rerank → generation → paired-bootstrap → generator-capacity sequence.
+  → hybrid RRF → rerank → retrieval-matrix → generation → paired-bootstrap
+  → generator-capacity sequence.
   `python scripts/run_pipeline.py --dry-run` prints the executable plan without
   loading data or models.
 - **Research evaluation workflow.** `rag-eval run --config configs/baseline.yaml`
   builds the end-to-end BM25, dense, rerank, paired generation, bootstrap, and
-  grounding plan from the baseline config. Use `--dry-run` to inspect the
+  grounding-plus-triad plan from the baseline config. Use `--dry-run` to inspect the
   command sequence before touching data or models.
 - **Model-stack smoke.** `python scripts/smoke_model_stack.py --config
   configs/baseline.yaml` loads the pinned generator and dense encoder, runs one
@@ -79,16 +84,35 @@ auditing the experiments:
 - **Run metadata.** Major runners write `manifest.json`, `resolved_config.yaml`,
   metrics, output hashes, config hashes, git commit, dependency fingerprints,
   and sampling metadata.
+- **Retrieval quality reports.** `mgq-retrieval-report` evaluates any
+  TREC-format `run.tsv`, compares two runs on matched qids, and builds
+  multi-run matrices for BM25, dense, RRF, and reranked outputs. See
+  [`docs/retrieval_quality_reporting.md`](docs/retrieval_quality_reporting.md).
 - **Retrieval lift diagnostics.** `scripts/analyze_retrieval_lift.py` compares
   two `run.tsv` files per query, bucketizing reranker gains/losses into
   promoted, demoted, new-hit, and lost-hit cases. See
   [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md).
+- **RAG triad reporting.** `mgq-rag-triad` joins prediction files with optional
+  qrels and writes per-query context relevance, groundedness, and answer
+  relevance diagnostics. See
+  [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md).
+- **Context packing.** `mgq-generate --context-packing` applies deterministic
+  passage trimming, sentence selection, deduplication, and span provenance
+  before generation. `mgq-context-packing-report` compares packed and plain
+  prediction files on matched qids. See
+  [`docs/context_packing.md`](docs/context_packing.md).
+- **Input validation.** Shared validation rejects malformed `run.tsv` rows,
+  corrupted JSONL records, empty queries, duplicate ids, invalid ranks,
+  non-finite scores, and replacement-character-heavy text before expensive
+  runners or serving calls proceed. See
+  [`docs/input_validation.md`](docs/input_validation.md).
 - **Experiment tracking.** `msmarco_genqa.util.tracking.ExperimentTracker`
   writes local JSONL events by default and can use MLflow or Weights & Biases
   via `pip install -e ".[tracking]"`.
 - **Model serving.** `mgq-serve` exposes a lightweight FastAPI wrapper around
   the generator (`pip install -e ".[serve]"`), with `/health` and `/generate`
-  endpoints for local demos or integration tests. See
+  endpoints for local demos or integration tests. Validation failures are
+  returned as structured 422 payloads. See
   `examples/demo_payload.json` for a minimal request body:
 
   ```bash
@@ -107,20 +131,41 @@ auditing the experiments:
 - **`scripts/`** — analyses, ablations, validation, integration smokes that read `experiments/` outputs.
 - **`src/`** — importable library code backing both.
 - **`docs/`** — experiment narratives and reproducibility notes.
-- **`notebooks/`** — lightweight demos for inspecting the workflow without running heavy jobs.
+- **`notebooks/`** — lightweight demos over package APIs and CLI dry runs; they are
+  not required for metric reproduction.
 - **`reports/acl_findings/`** — ACL-Findings-style experimental report draft.
-- **`reports/internship_report/`** — frozen v1.0 PDF + sources.
+- **`reports/repo_report/`** — repository report PDF, HTML, sources, and figures.
+- **`reports/generated/artifacts/`** — checked machine-readable report table inputs.
+- **`reports/generated/tables/`** — LaTeX table fragments plus source sidecars.
 - **`metadata.json`** — project metadata summarising dataset scale, pipeline stages,
   headline metrics, CI, tracking, and serving support.
 
 See [§2 Directory layout](#2-directory-layout) for the full breakdown.
+
+Refresh report table fragments after metrics artifacts change:
+
+```bash
+python scripts/export_report_tables.py
+```
+
+CI runs the same exporter and fails if `reports/generated/tables/` drifts
+from the checked artifacts.
+
+Notebook demos are kept output-free and lightweight:
+
+```bash
+python scripts/check_notebooks.py
+```
+
+Use package entry points, scripts, and configs for reproducible experiments;
+notebooks are only for interactive inspection.
 
 ## 1. Status
 
 ### Stage 1 — EDA
 
 Dataset statistics + query/passage/answer-type distributions covered in §1 of
-[`reports/internship_report/report.pdf`](reports/internship_report/report.pdf).
+[`reports/repo_report/report.pdf`](reports/repo_report/report.pdf).
 Source figures: `figures/{query_length,passage_length,query_type,answer_type_by_query_type}_distribution.png`.
 
 ### Stage 2 — BM25 retrieval
@@ -151,8 +196,8 @@ not against the W2 full-corpus number.
 
 **W4 follow-ups:**
 
-- *Same-tier encoder horizontal* on the identical 50 k sample
-  ([`scripts/run_encoder_horizontal.py`](scripts/run_encoder_horizontal.py)):
+- *Same-tier encoder comparison* on the identical 50 k sample
+  ([`scripts/run_encoder_comparison.py`](scripts/run_encoder_comparison.py)):
 
   | Encoder | MRR@10 | nDCG@10 | Recall@100 | ms/passage |
   |---|---:|---:|---:|---:|
@@ -340,12 +385,12 @@ src/                 importable library code backing experiments/ and scripts/
   reranking/           cross_encoder.py, io.py
   generation/          rag_generator.py — T5/BART RAG generator
   evaluation/          retrieval.py, generation.py, grounding.py, nli_grounding.py,
-                       bertscore.py, bootstrap.py, query_form.py
+                       rag_triad.py, bertscore.py, bootstrap.py, query_form.py
   util/                manifest.py, environment.py — per-run provenance
 tests/               pytest suite (no network, no models)
 docs/                experiments.md — pipeline narrative (BM25 → dense → rerank → gen)
 reports/
-  internship_report/   report.tex + report.pdf + figures/ (committed, frozen at v1.0)
+  repo_report/         report.tex + report.pdf + report.html + figures/
 figures/             plots used in the report (committed)
 outputs/             run.tsv, metrics.json, examples.jsonl, manifest.json per stage (gitignored)
 data/                raw/, processed/, cache/ — all gitignored, .gitkeep tracked
@@ -365,7 +410,7 @@ data/                raw/, processed/, cache/ — all gitignored, .gitkeep track
   | [`experiments/run_generation_baseline.py`](experiments/run_generation_baseline.py) | RAG generation |
 
   These runners produce the numbers cited in
-  [`reports/internship_report/report.pdf`](reports/internship_report/report.pdf)
+  [`reports/repo_report/report.pdf`](reports/repo_report/report.pdf)
   and in [`docs/experiments.md`](docs/experiments.md).
 
 - **`scripts/`** — everything that reads or analyses outputs of
@@ -374,18 +419,18 @@ data/                raw/, processed/, cache/ — all gitignored, .gitkeep track
 
   | Kind | Examples |
   |---|---|
-  | Evaluation drivers | `bootstrap_generation_comparison.py`, `bertscore_paired_eval.py`, `grounding_audit.py`, `grounding_correlation.py` |
+  | Evaluation drivers | `bootstrap_generation_comparison.py`, `bertscore_paired_eval.py`, `grounding_audit.py`, `grounding_correlation.py`, `mgq-rag-triad` |
   | Failure / case analysis | `regression_failure_taxonomy.py`, `regression_query_profile.py`, `low_grounding_case_study.py` |
   | Slicing / tagging | `tag_query_forms.py`, `analyze_rerank_by_query_form.py`, `analyze_generation_rerank.py` |
-  | Ablation drivers | `run_density_sweep.py`, `run_encoder_horizontal.py`, `run_k_sweep.py`, `run_generator_capacity_sweep.py` |
+  | Ablation drivers | `run_density_sweep.py`, `run_encoder_comparison.py`, `run_topk_sweep.py`, `run_generator_capacity_sweep.py` |
   | End-to-end driver | `run_full_generation_and_analysis.py` |
   | Validation / smoke | `validate_full_rerank.py`, `smoke_test_resume.py` |
 
   Scripts may change shape as analyses evolve; only the `experiments/`
   output schema is held fixed.
 
-Everything runs from the project root. Scripts add `PROJECT_ROOT` to
-`sys.path` themselves; no `PYTHONPATH` needed.
+Everything runs from the project root after the editable install registers
+the package; no `PYTHONPATH` needed.
 
 ## 3. Setup
 
@@ -436,8 +481,31 @@ python experiments/run_retrieval.py    # script form
 mgq-retrieve                            # console form
 ```
 
-Console names: `mgq-retrieve`, `mgq-dense`, `mgq-rerank`, `mgq-generate`.
+Console names: `mgq-transform-queries`, `mgq-query-transform-ablation`,
+`mgq-retrieve`, `mgq-dense`, `mgq-fuse`, `mgq-retrieval-report`,
+`mgq-context-packing-report`,
+`mgq-rag-triad`,
+`mgq-rerank`, `mgq-generate`.
 The examples below use the script form.
+
+### Optional pre-retrieval query transformation
+
+Query transformation is disabled for canonical baselines, but the repository
+has deterministic artifacts for normalization, lexical expansion, and
+de-contextualization ablations:
+
+```bash
+mgq-transform-queries --config configs/baseline.yaml --method normalize \
+    --output-dir outputs/query_transform/normalize
+
+mgq-query-transform-ablation \
+    --summary none=outputs/query_transform/none/summary.json \
+    --summary normalize=outputs/query_transform/normalize/summary.json \
+    --output-dir outputs/query_transform/ablation
+```
+
+Add `--metrics method=path/to/metrics.json` entries after evaluating matched
+retrieval runs to report metric deltas alongside changed-query coverage.
 
 ### Stage 2 — BM25
 
@@ -455,11 +523,11 @@ python experiments/run_retrieval.py --resume         # picks up at next chunk bo
 python experiments/run_retrieval.py --rebuild-index  # force fresh index
 ```
 
-Outputs: `outputs/week02_bm25/{metrics.json, run.tsv, examples.jsonl, manifest.json}`.
+Outputs: `outputs/W2_bm25/{metrics.json, run.tsv, examples.jsonl, manifest.json}`.
 
 ### Stage 3 — RAG generation
 
-Requires Stage 2 output `outputs/week02_bm25/run.tsv`.
+Requires Stage 2 output `outputs/W2_bm25/run.tsv`.
 
 ```bash
 python experiments/run_generation_baseline.py
@@ -476,14 +544,42 @@ The runner is retrieval-source agnostic — feed it any TREC-format
 
 ```bash
 python experiments/run_generation_baseline.py \
-    --input-run outputs/week05_reranker/run.tsv \
-    --output-dir outputs/week03_generation_reranked \
+    --input-run outputs/W5_reranker/run.tsv \
+    --output-dir outputs/W3_generation_reranked \
     --retrieval-source reranked
 ```
 
 Use `--restrict-to-run <other_run.tsv>` to force two runs to evaluate on
 the same query subsample even when their upstream retrievers cover
 different sets — used in *Generation × retrieval source* above.
+
+To compare prompt compression under the same retrieval source, keep the
+baseline output untouched and write a packed run to a separate directory:
+
+```bash
+mgq-generate \
+    --config configs/baseline.yaml \
+    --input-run outputs/W5_reranker_full/run.tsv \
+    --output-dir outputs/W3_generation_reranked_packed \
+    --retrieval-source reranked_packed \
+    --restrict-to-run outputs/W2_bm25/run.tsv \
+    --num-eval-queries 9999 \
+    --context-packing \
+    --context-max-chars 900 \
+    --context-max-passage-chars 320 \
+    --context-sentence-selection query_overlap \
+    --context-ordering rank
+
+mgq-context-packing-report \
+    --baseline-predictions outputs/W3_generation_reranked_full/predictions.jsonl \
+    --compressed-predictions outputs/W3_generation_reranked_packed/predictions.jsonl \
+    --baseline-name reranked \
+    --compressed-name reranked_packed \
+    --output-dir outputs/W9_context_packing
+```
+
+The packed `predictions.jsonl` keeps `context_packing` span metadata so each
+prompt segment can be traced back to its source document id.
 
 ### Stage 4 — Dense retrieval
 
@@ -501,9 +597,49 @@ runs reuse the cached index. Tunable knobs:
 - `dense.sample_size` (default 50 000)
 - `dense.compare_bm25_on_sample`
 
+### Stage 4B - Hybrid RRF fusion
+
+Fuse two or more TREC-format first-stage runs with weighted Reciprocal
+Rank Fusion (RRF). The sample-matched BM25 and dense outputs from Stage 4
+are the recommended first comparison because both runs share the same
+candidate pool and qrels caveat.
+
+```bash
+python experiments/run_hybrid_fusion.py \
+    --input-run bm25_sample=outputs/W4_dense/run_bm25_sample.tsv \
+    --input-run dense=outputs/W4_dense/run.tsv \
+    --output-dir outputs/W4_hybrid_rrf \
+    --top-k 1000
+```
+
+Pass `--qrels <path>` to compute MRR, nDCG, and recall in `metrics.json`.
+The runner always writes `run.tsv`, `provenance.jsonl`, `metrics.json`,
+`resolved_config.yaml`, and `manifest.json`.
+
+For a same-qid RRF comparison table, rerank the fused run and then build a
+matrix over BM25-on-sample, dense, RRF, and RRF-plus-rerank:
+
+```bash
+python experiments/run_reranker.py \
+    --input-run outputs/W4_hybrid_rrf/run.tsv \
+    --output-dir outputs/W5_hybrid_rrf_reranker \
+    --resume
+
+mgq-retrieval-report matrix \
+    --run bm25_sample=outputs/W4_dense/run_bm25_sample.tsv \
+    --run dense=outputs/W4_dense/run.tsv \
+    --run rrf=outputs/W4_hybrid_rrf/run.tsv \
+    --run rrf_reranked=outputs/W5_hybrid_rrf_reranker/run.tsv \
+    --baseline-name bm25_sample \
+    --output-dir outputs/retrieval_reports/hybrid_matrix
+```
+
+The matrix report writes `matrix.json`, `pairwise_deltas.jsonl`, and
+`report.md`; every row is restricted to the qids shared by all four runs.
+
 ### Stage 5 — Cross-encoder reranking
 
-Requires Stage 4 output `outputs/week04_dense/run.tsv`.
+Requires Stage 4 output `outputs/W4_dense/run.tsv`.
 
 ```bash
 python experiments/run_reranker.py
@@ -530,30 +666,39 @@ The block reproduced in *Generation × retrieval source*:
 ```bash
 # Generation on full dev/small (~1 h each on a 6-core CPU; mutually restricted):
 python experiments/run_generation_baseline.py \
-    --input-run outputs/week02_bm25/run.tsv \
-    --output-dir outputs/week03_generation_bm25_full \
+    --input-run outputs/W2_bm25/run.tsv \
+    --output-dir outputs/W3_generation_bm25_full \
     --retrieval-source bm25 \
-    --restrict-to-run outputs/week05_reranker_full/run.tsv \
+    --restrict-to-run outputs/W5_reranker_full/run.tsv \
     --num-eval-queries 9999
 
 python experiments/run_generation_baseline.py \
-    --input-run outputs/week05_reranker_full/run.tsv \
-    --output-dir outputs/week03_generation_reranked_full \
+    --input-run outputs/W5_reranker_full/run.tsv \
+    --output-dir outputs/W3_generation_reranked_full \
     --retrieval-source reranked \
-    --restrict-to-run outputs/week02_bm25/run.tsv \
+    --restrict-to-run outputs/W2_bm25/run.tsv \
     --num-eval-queries 9999
 
-# Paired bootstrap + bucket analysis + grounding:
+# Paired bootstrap + bucket analysis + grounding + triad:
 python scripts/bootstrap_generation_comparison.py \
-    --bm25-dir outputs/week03_generation_bm25_full \
-    --reranked-dir outputs/week03_generation_reranked_full \
-    --output-dir outputs/week03_generation_bootstrap_full
+    --bm25-dir outputs/W3_generation_bm25_full \
+    --reranked-dir outputs/W3_generation_reranked_full \
+    --output-dir outputs/W3_generation_bootstrap_full
 python scripts/analyze_generation_rerank.py \
-    --bm25-dir outputs/week03_generation_bm25_full \
-    --reranked-dir outputs/week03_generation_reranked_full \
-    --output-dir outputs/week06_analysis
+    --bm25-dir outputs/W3_generation_bm25_full \
+    --reranked-dir outputs/W3_generation_reranked_full \
+    --output-dir outputs/W6_analysis
 python scripts/bertscore_paired_eval.py --n-pairs 3000
 python scripts/regression_failure_taxonomy.py
+python scripts/grounding_audit.py \
+    --bm25-dir outputs/W3_generation_bm25_full \
+    --reranked-dir outputs/W3_generation_reranked_full \
+    --output-dir outputs/W7_grounding
+mgq-rag-triad \
+    --predictions bm25=outputs/W3_generation_bm25_full/predictions.jsonl \
+    --predictions reranked=outputs/W3_generation_reranked_full/predictions.jsonl \
+    --baseline-config bm25 \
+    --output-dir outputs/W8_rag_triad
 ```
 
 ## 4.5. Single-query demo
@@ -624,25 +769,22 @@ All knobs live in [`configs/baseline.yaml`](configs/baseline.yaml). Key ones:
 | Unit tests | works | `make test` / `pytest -q` — no network, no heavy deps. Slow tests excluded by `pytest.ini_options`. |
 | Slow tests | works (skips gracefully) | `make test-slow` includes `@pytest.mark.slow`. HF metric scripts skip if unavailable. |
 | Lockfile | basic | `requirements-lock.txt` is pip-freeze-style; sub-dep transitive closure + hash pinning are TODO. Model-stack pins are checked with `scripts/smoke_model_stack.py`. |
-| Installable package | basic | `pip install -e .` registers `src` via `pyproject.toml`. Existing `sys.path.insert` shims in `experiments/` and `scripts/` are kept for now. |
+| Installable package | works | `pip install -e .` registers `src` via `pyproject.toml`; scripts import the installed package without local `sys.path` shims. |
 | CI | basic | `.github/workflows/ci.yml`: pytest + ruff on push/PR to main. No slow tests, no data download. |
 | Lint | minimal | `ruff` with `F` + `W` (pyflakes + whitespace). `E` / `I` / `UP` are off on the first pass. |
 | Artifact manifest | wired | `src/msmarco_genqa/util/manifest.py` writes `outputs/<stage>/manifest.json` alongside `metrics.json`. Captures git commit + dirty flag, command, config hash, dependency-file hashes, per-output sha256 (truncated). |
-| Numbers in `reports/internship_report/report.pdf` | historical | Reflect the dev environment at tag `v1.0-internship-final`. Current dependencies are security-refreshed; use the frozen tag for archival reproduction. |
+| Historical experiment numbers in `reports/repo_report/report.pdf` | historical | Reflect the dev environment at tag `v1.0-first-report`. Current dependencies are security-refreshed; use the first-report tag for archival reproduction. |
 
-**Historical output-path naming.** `outputs/week02_bm25/`,
-`outputs/week04_dense/`, `outputs/week05_reranker/` retain
-`outputs/weekNN_<topic>/` names even though the rest of the repo
-speaks in *stages*. These are the snapshot anchors referenced by the
-`provenance.backfill.json` files committed alongside tag
-`v1.0-internship-final` (`5a35de9c18ea`); renaming them would
-invalidate those provenance records.
+**Historical output-path naming.** Historical snapshot anchors now use
+stage-oriented names such as `outputs/W2_bm25/`, `outputs/W4_dense/`,
+and `outputs/W5_reranker/`. Their committed `provenance.backfill.json`
+files remain the archival reproduction anchors for tag
+`v1.0-first-report`.
 
 Limitations to be aware of:
 
 - The lockfile reflects a macOS CPU-only dev environment. Linux / CUDA may resolve different versions; install `torch` from the appropriate PyTorch index first.
 - Corpus, encoder, and reranker checkpoints are downloaded by `ir_datasets` / HuggingFace at first run and are not checksummed by the project.
-- `experiments/run_*.py` still rely on `sys.path.insert(0, PROJECT_ROOT)` at the top of the file. `pip install -e .` makes this unnecessary; the shim is kept until a later pass removes it.
 
 ## 7. Known limitations
 
@@ -653,7 +795,7 @@ Limitations to be aware of:
 
 ## 8. Next
 
-- **W5-B — K-sweep Pareto.** K ∈ {50, 100, 200} perf-latency Pareto on
+- **W5-B — top-k Pareto.** K ∈ {50, 100, 200} perf-latency Pareto on
   both first stages (1 000-q subsample for K=50/200; K=100 reuses W5
   full-dev). Queued.
 - **W7-B — generator capacity, not decode budget.** The W6 closure
@@ -675,6 +817,11 @@ Limitations to be aware of:
   `python -m msmarco_genqa.demo.ask "<question>"` wrapper around the
   composition shown in §4.5.
 
-## 9. License
+## 9. Contributing
+
+Setup, the `make test` / `make lint` gates, and the branch, commit, and
+pull-request conventions are documented in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## 10. License
 
 See [LICENSE](LICENSE).

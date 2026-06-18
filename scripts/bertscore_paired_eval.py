@@ -23,9 +23,9 @@ The two prediction files must cover the same qid set in the same order
 Usage::
 
     python scripts/bertscore_paired_eval.py \\
-        --bm25-dir outputs/week03_generation_bm25_full \\
-        --reranked-dir outputs/week03_generation_reranked_full \\
-        --output-dir outputs/week06_bertscore_proxy \\
+        --bm25-dir outputs/W3_generation_bm25_full \\
+        --reranked-dir outputs/W3_generation_reranked_full \\
+        --output-dir outputs/W6_bertscore_proxy \\
         --n-pairs 3000
 
 Outputs:
@@ -59,17 +59,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--bm25-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week03_generation_bm25_full",
+        default=PROJECT_ROOT / "outputs/W3_generation_bm25_full",
     )
     parser.add_argument(
         "--reranked-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week03_generation_reranked_full",
+        default=PROJECT_ROOT / "outputs/W3_generation_reranked_full",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week06_bertscore_proxy",
+        default=PROJECT_ROOT / "outputs/W6_bertscore_proxy",
     )
     parser.add_argument(
         "--n-pairs",

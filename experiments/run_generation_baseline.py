@@ -1,16 +1,16 @@
-"""End-to-end Week 3 RAG generation baseline.
+"""End-to-end W3 RAG generation baseline.
 
 Pipeline:
 
 1. Load a TREC-format retrieval run (``--input-run``; defaults to the W2
-   BM25 run at ``outputs/week02_bm25/run.tsv``).
+   BM25 run at ``outputs/W2_bm25/run.tsv``).
 2. Load dev/small queries and the MS MARCO Passage docs_store (random access).
 3. Cross-reference dev/small query ids with MS MARCO QA v2.1 (HuggingFace
    ``ms_marco`` dataset, validation split) to recover human-written answers
    for evaluation.
 4. For each evaluated query, take the top-K passages from the run, generate
    an answer with the Seq2Seq model, and score predictions.
-5. Persist (under ``--output-dir``, defaults to ``outputs/week03_generation``):
+5. Persist (under ``--output-dir``, defaults to ``outputs/W3_generation``):
    - ``predictions.jsonl``
    - ``metrics.json``
    - ``examples.jsonl``
@@ -30,8 +30,8 @@ Run from the project root::
 
     # Reranked → T5-small, restricted to reranker-covered queries
     python experiments/run_generation_baseline.py \\
-        --input-run outputs/week05_reranker/run.tsv \\
-        --output-dir outputs/week03_generation_reranked \\
+        --input-run outputs/W5_reranker/run.tsv \\
+        --output-dir outputs/W3_generation_reranked \\
         --retrieval-source reranked
 """
 
@@ -49,7 +49,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 from msmarco_genqa.data.msmarco import get_docs_store, load_msmarco_passage
 from msmarco_genqa.evaluation.generation import evaluate_generation
+from msmarco_genqa.generation.context_packing import ContextPackingConfig, pack_context
 from msmarco_genqa.generation.rag_generator import RAGGenerationConfig, RAGGenerator
+from msmarco_genqa.reranking.io import read_run_tsv
 from msmarco_genqa.util.environment import capture_environment
 from msmarco_genqa.util.manifest import (
     compute_data_fingerprint,
@@ -142,6 +144,40 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--context-packing",
+        action="store_true",
+        help="Enable deterministic context packing for this generation run.",
+    )
+    parser.add_argument(
+        "--context-max-chars",
+        type=int,
+        default=None,
+        help="Override generation.context_packing.max_context_chars.",
+    )
+    parser.add_argument(
+        "--context-max-passage-chars",
+        type=int,
+        default=None,
+        help="Override generation.context_packing.max_passage_chars.",
+    )
+    parser.add_argument(
+        "--context-sentence-selection",
+        choices=["head", "query_overlap"],
+        default=None,
+        help="Override generation.context_packing.sentence_selection.",
+    )
+    parser.add_argument(
+        "--context-ordering",
+        choices=["rank", "shorter_first"],
+        default=None,
+        help="Override generation.context_packing.ordering.",
+    )
+    parser.add_argument(
+        "--no-context-deduplicate",
+        action="store_true",
+        help="Disable generation.context_packing.deduplicate for this run.",
+    )
+    parser.add_argument(
         "--require-clean-tree",
         action="store_true",
         help=(
@@ -185,11 +221,11 @@ def infer_retrieval_source(input_run: Path) -> str:
     flag ``--retrieval-source`` is preferred whenever the caller knows.
     """
     name = input_run.parent.name.lower()
-    if "week02" in name or "bm25" in name:
+    if "W2" in name or "bm25" in name:
         return "bm25"
-    if "week04" in name or "dense" in name:
+    if "W4" in name or "dense" in name:
         return "dense"
-    if "week05" in name or "rerank" in name:
+    if "W5" in name or "rerank" in name:
         return "reranked"
     return "unknown"
 
@@ -211,22 +247,10 @@ def compute_eligible(
 
 def load_runs(run_path: Path) -> dict[str, list[str]]:
     """Read a TREC-format run file into qid -> ranked doc_ids."""
-    runs: dict[str, list[str]] = {}
-    with open(run_path) as f:
-        for line in f:
-            parts = line.rstrip("\n").split("\t")
-            if len(parts) < 4:
-                continue
-            qid, _, doc_id, rank = parts[0], parts[1], parts[2], int(parts[3])
-            bucket = runs.setdefault(qid, [])
-            # Pad if rank is sparse / out-of-order
-            while len(bucket) < rank:
-                bucket.append(None)  # type: ignore[arg-type]
-            bucket[rank - 1] = doc_id
-    # Drop any None gaps (rank gaps shouldn't really exist for our writer)
-    for q in runs:
-        runs[q] = [d for d in runs[q] if d is not None]
-    return runs
+    return {
+        qid: [doc_id for doc_id, _score in docs]
+        for qid, docs in read_run_tsv(run_path).items()
+    }
 
 
 def load_qa_references(cache_dir: Path | None) -> dict[str, list[str]]:
@@ -259,6 +283,19 @@ def main() -> None:
         # Override before config snapshot is captured into the manifest so
         # the snapshot reflects the effective value, not the file default.
         cfg.setdefault("generation", {})["max_new_tokens"] = args.max_new_tokens
+    packing_overrides = cfg.setdefault("generation", {}).setdefault("context_packing", {})
+    if args.context_packing:
+        packing_overrides["enabled"] = True
+    if args.context_max_chars is not None:
+        packing_overrides["max_context_chars"] = args.context_max_chars
+    if args.context_max_passage_chars is not None:
+        packing_overrides["max_passage_chars"] = args.context_max_passage_chars
+    if args.context_sentence_selection is not None:
+        packing_overrides["sentence_selection"] = args.context_sentence_selection
+    if args.context_ordering is not None:
+        packing_overrides["ordering"] = args.context_ordering
+    if args.no_context_deduplicate:
+        packing_overrides["deduplicate"] = False
     seed = cfg.get("seed", 42)
     seed_coverage = set_global_seed(seed)
 
@@ -323,24 +360,44 @@ def main() -> None:
     logger.info("Evaluating on %d queries.", len(sample_qids))
 
     top_k_passages = int(cfg["generation"].get("top_k_passages", 3))
+    context_packing_cfg = ContextPackingConfig.from_mapping(
+        cfg["generation"].get("context_packing", {})
+    )
 
     # ---- 3. Build (query, passages, references) batches ----
     queries: list[str] = []
     passages_per_query: list[list[str]] = []
     references_per_query: list[list[str]] = []
     top_doc_ids_per_query: list[list[str]] = []
+    context_packing_per_query: list[dict | None] = []
     for qid in sample_qids:
-        top_ids = runs[qid][:top_k_passages]
-        passages = []
-        for d in top_ids:
+        raw_top_ids = runs[qid][:top_k_passages]
+        raw_passages = []
+        for d in raw_top_ids:
             try:
-                passages.append(docs_store.get(d).text)
+                raw_passages.append(docs_store.get(d).text)
             except KeyError:
-                passages.append("")
-        queries.append(data.queries[qid])
+                raw_passages.append("")
+        query = data.queries[qid]
+        if context_packing_cfg.enabled:
+            packed = pack_context(
+                query=query,
+                doc_ids=raw_top_ids,
+                passages=raw_passages,
+                config=context_packing_cfg,
+            )
+            passages = packed.passages
+            top_ids = packed.doc_ids
+            context_packing = packed.to_json(context_packing_cfg)
+        else:
+            passages = raw_passages
+            top_ids = raw_top_ids
+            context_packing = None
+        queries.append(query)
         passages_per_query.append(passages)
         references_per_query.append(qid_to_answers[qid])
         top_doc_ids_per_query.append(top_ids)
+        context_packing_per_query.append(context_packing)
 
     # ---- 4. Generate ----
     gen_model_name = args.model_name or cfg["generation"].get("model_name", "t5-small")
@@ -373,26 +430,27 @@ def main() -> None:
     # ---- 5. Persist predictions.jsonl ----
     pred_path = output_dir / "predictions.jsonl"
     with open(pred_path, "w") as f:
-        for qid, q, passages, top_ids, pred, refs in zip(
+        for qid, q, passages, top_ids, pred, refs, context_packing in zip(
             sample_qids,
             queries,
             passages_per_query,
             top_doc_ids_per_query,
             predictions,
             references_per_query,
+            context_packing_per_query,
         ):
+            row = {
+                "query_id": qid,
+                "query": q,
+                "top_doc_ids": top_ids,
+                "passages": passages,
+                "prediction": pred,
+                "references": refs,
+            }
+            if context_packing is not None:
+                row["context_packing"] = context_packing
             f.write(
-                json.dumps(
-                    {
-                        "query_id": qid,
-                        "query": q,
-                        "top_doc_ids": top_ids,
-                        "passages": passages,
-                        "prediction": pred,
-                        "references": refs,
-                    },
-                    ensure_ascii=False,
-                )
+                json.dumps(row, ensure_ascii=False)
                 + "\n"
             )
     logger.info("Wrote predictions to %s", pred_path)
@@ -400,20 +458,27 @@ def main() -> None:
     # ---- 6. examples.jsonl (small qualitative subset) ----
     examples_path = output_dir / "examples.jsonl"
     with open(examples_path, "w") as f:
-        for qid, q, passages, pred, refs in list(
-            zip(sample_qids, queries, passages_per_query, predictions, references_per_query)
+        for qid, q, passages, pred, refs, context_packing in list(
+            zip(
+                sample_qids,
+                queries,
+                passages_per_query,
+                predictions,
+                references_per_query,
+                context_packing_per_query,
+            )
         )[:20]:
+            row = {
+                "query_id": qid,
+                "query": q,
+                "passages": passages,
+                "prediction": pred,
+                "references": refs,
+            }
+            if context_packing is not None:
+                row["context_packing"] = context_packing
             f.write(
-                json.dumps(
-                    {
-                        "query_id": qid,
-                        "query": q,
-                        "passages": passages,
-                        "prediction": pred,
-                        "references": refs,
-                    },
-                    ensure_ascii=False,
-                )
+                json.dumps(row, ensure_ascii=False)
                 + "\n"
             )
     logger.info("Wrote %d qualitative examples to %s", min(20, len(predictions)), examples_path)
@@ -447,6 +512,19 @@ def main() -> None:
         "wall_clock_seconds": {"generation": gen_time},
         "environment": env_dict,
     }
+    if context_packing_cfg.enabled:
+        packing_rows = [row for row in context_packing_per_query if row is not None]
+        original_chars = [int(row["original_context_chars"]) for row in packing_rows]
+        packed_chars = [int(row["packed_context_chars"]) for row in packing_rows]
+        payload["context_packing"] = {
+            "config": context_packing_cfg.to_json(),
+            "mean_original_context_chars": _mean_ints(original_chars),
+            "mean_packed_context_chars": _mean_ints(packed_chars),
+            "mean_compression_ratio": _mean_floats(
+                [float(row["compression_ratio"]) for row in packing_rows]
+            ),
+            "n_queries_with_empty_context": sum(1 for chars in packed_chars if chars == 0),
+        }
     with open(output_dir / "metrics.json", "w") as f:
         json.dump(payload, f, indent=2, default=str)
     logger.info("Wrote metrics to %s", output_dir / "metrics.json")
@@ -474,6 +552,7 @@ def main() -> None:
         "input_run": input_run_rel,
         "retrieval_source": retrieval_source,
         "run_name": output_dir.name,
+        "context_packing": context_packing_cfg.to_json(),
         "resolved_config_hash": resolved_config_hash,
         "data_fingerprint": data_fingerprint,
         "env_fingerprint": env_fingerprint,
@@ -499,6 +578,14 @@ def main() -> None:
         if key in metrics:
             print(f"  {key:14s} = {metrics[key]:.4f}")
     print(f"outputs: {output_dir}")
+
+
+def _mean_ints(values: list[int]) -> float:
+    return sum(values) / len(values) if values else 0.0
+
+
+def _mean_floats(values: list[float]) -> float:
+    return sum(values) / len(values) if values else 0.0
 
 
 if __name__ == "__main__":

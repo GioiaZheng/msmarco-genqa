@@ -26,9 +26,9 @@ Outputs:
 Usage::
 
     python scripts/bootstrap_generation_comparison.py \\
-        --bm25-dir outputs/week03_generation_bm25 \\
-        --reranked-dir outputs/week03_generation_reranked \\
-        --output-dir outputs/week03_generation_bootstrap
+        --bm25-dir outputs/W3_generation_bm25 \\
+        --reranked-dir outputs/W3_generation_reranked \\
+        --output-dir outputs/W3_generation_bootstrap
 
 The defaults point at the 200-query W3 comparison directories.
 """
@@ -58,17 +58,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--bm25-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week03_generation_bm25",
+        default=PROJECT_ROOT / "outputs/W3_generation_bm25",
     )
     parser.add_argument(
         "--reranked-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week03_generation_reranked",
+        default=PROJECT_ROOT / "outputs/W3_generation_reranked",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week03_generation_bootstrap",
+        default=PROJECT_ROOT / "outputs/W3_generation_bootstrap",
     )
     parser.add_argument("--n-resamples", type=int, default=10000)
     parser.add_argument("--ci", type=float, default=0.95)

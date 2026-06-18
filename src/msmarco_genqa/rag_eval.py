@@ -17,14 +17,19 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 DEFAULT_STAGE_ORDER: tuple[str, ...] = (
+    "query_transformation",
     "bm25_retrieval",
     "dense_retrieval",
     "cross_encoder_rerank",
+    "retrieval_quality_report",
     "retrieval_lift_analysis",
     "generation_bm25",
     "generation_reranked",
+    "generation_reranked_packed",
+    "context_packing_report",
     "paired_bootstrap_ci",
     "grounding_audit",
+    "rag_triad",
 )
 
 
@@ -91,6 +96,15 @@ def _build_all_stages(
     bm25_run = _as_posix(Path(bm25_dir) / "run.tsv")
     dense_run = _as_posix(Path(dense_dir) / "run.tsv")
     reranker_run = _as_posix(Path(reranker_dir) / "run.tsv")
+    query_transform_settings = cfg.get("query_transform", {})
+    query_transform_output_dir = "outputs/query_transform/none"
+    if isinstance(query_transform_settings, dict):
+        query_transform_output_dir = str(
+            query_transform_settings.get("output_dir", query_transform_output_dir)
+        )
+    query_transform_dir = _as_posix(
+        settings.get("query_transform_output_dir", query_transform_output_dir)
+    )
 
     bm25_generation_dir = _as_posix(
         settings.get("bm25_generation_dir", _default_named_dir(generation_dir, "bm25_full"))
@@ -98,16 +112,34 @@ def _build_all_stages(
     reranked_generation_dir = _as_posix(
         settings.get("reranked_generation_dir", _default_named_dir(generation_dir, "reranked_full"))
     )
+    packed_generation_dir = _as_posix(
+        settings.get("packed_generation_dir", "outputs/W3_generation_reranked_packed")
+    )
+    context_packing_report_dir = _as_posix(
+        settings.get("context_packing_report_dir", "outputs/W9_context_packing")
+    )
     bootstrap_dir = _as_posix(
         settings.get("bootstrap_output_dir", _default_named_dir(generation_dir, "bootstrap_full"))
     )
     retrieval_lift_dir = _as_posix(
-        settings.get("retrieval_lift_output_dir", "outputs/week05_retrieval_lift_analysis")
+        settings.get("retrieval_lift_output_dir", "outputs/W5_retrieval_lift_analysis")
     )
-    grounding_dir = _as_posix(settings.get("grounding_output_dir", "outputs/week07_grounding"))
+    retrieval_report_dir = _as_posix(
+        settings.get("retrieval_report_output_dir", "outputs/retrieval_reports/dense_vs_reranked")
+    )
+    retrieval_qrels_path = settings.get("retrieval_qrels_path")
+    grounding_dir = _as_posix(settings.get("grounding_output_dir", "outputs/W7_grounding"))
+    triad_dir = _as_posix(settings.get("triad_output_dir", "outputs/W8_rag_triad"))
+    triad_evaluator = str(settings.get("triad_evaluator", "deterministic"))
+    triad_low_score_threshold = str(settings.get("triad_low_score_threshold", 0.5))
+    triad_context_top_k = settings.get("triad_context_top_k")
     num_eval_queries = str(settings.get("num_eval_queries", cfg["generation"].get("num_eval_queries", 200)))
     n_resamples = str(settings.get("bootstrap_resamples", 10000))
     grounding_nli_pairs = str(settings.get("grounding_nli_pairs", 0))
+    context_max_chars = str(settings.get("context_max_chars", 900))
+    context_max_passage_chars = str(settings.get("context_max_passage_chars", 320))
+    context_sentence_selection = str(settings.get("context_sentence_selection", "query_overlap"))
+    context_ordering = str(settings.get("context_ordering", "rank"))
 
     rerank_command = [
         "mgq-rerank",
@@ -119,7 +151,86 @@ def _build_all_stages(
     if settings.get("reranker_resume", True):
         rerank_command.append("--resume")
 
+    retrieval_report_command = [
+        "mgq-retrieval-report",
+        "compare",
+        "--baseline-run",
+        dense_run,
+        "--candidate-run",
+        reranker_run,
+        "--baseline-name",
+        "dense",
+        "--candidate-name",
+        "reranked",
+        "--output-dir",
+        retrieval_report_dir,
+    ]
+    if retrieval_qrels_path:
+        retrieval_report_command.extend(["--qrels", _as_posix(retrieval_qrels_path)])
+
+    triad_command = [
+        "mgq-rag-triad",
+        "--predictions",
+        f"bm25={_as_posix(Path(bm25_generation_dir) / 'predictions.jsonl')}",
+        "--predictions",
+        f"reranked={_as_posix(Path(reranked_generation_dir) / 'predictions.jsonl')}",
+        "--output-dir",
+        triad_dir,
+        "--baseline-config",
+        "bm25",
+        "--evaluator",
+        triad_evaluator,
+        "--low-score-threshold",
+        triad_low_score_threshold,
+    ]
+    if retrieval_qrels_path:
+        triad_command.extend(["--qrels", _as_posix(retrieval_qrels_path)])
+    if triad_context_top_k is not None:
+        triad_command.extend(["--context-top-k", str(triad_context_top_k)])
+
+    packed_generation_command = [
+        "mgq-generate",
+        "--config",
+        config_arg,
+        "--input-run",
+        reranker_run,
+        "--output-dir",
+        packed_generation_dir,
+        "--retrieval-source",
+        "reranked_packed",
+        "--restrict-to-run",
+        bm25_run,
+        "--num-eval-queries",
+        num_eval_queries,
+        "--context-packing",
+        "--context-max-chars",
+        context_max_chars,
+        "--context-max-passage-chars",
+        context_max_passage_chars,
+        "--context-sentence-selection",
+        context_sentence_selection,
+        "--context-ordering",
+        context_ordering,
+    ]
+    if settings.get("context_deduplicate", True) is False:
+        packed_generation_command.append("--no-context-deduplicate")
+
     return {
+        "query_transformation": RAGEvalStage(
+            name="query_transformation",
+            description="Deterministic query transformation audit artifacts before retrieval.",
+            command=[
+                "mgq-transform-queries",
+                "--config",
+                config_arg,
+                "--output-dir",
+                query_transform_dir,
+            ],
+            expected_outputs=[
+                _as_posix(Path(query_transform_dir) / "queries.jsonl"),
+                _as_posix(Path(query_transform_dir) / "summary.json"),
+            ],
+        ),
         "bm25_retrieval": RAGEvalStage(
             name="bm25_retrieval",
             description="Full-corpus BM25 retrieval on MS MARCO dev/small.",
@@ -141,6 +252,16 @@ def _build_all_stages(
                 _as_posix(Path(reranker_dir) / "metrics.json"),
             ],
         ),
+        "retrieval_quality_report": RAGEvalStage(
+            name="retrieval_quality_report",
+            description="Matched-qid retrieval metric report for dense vs reranked runs.",
+            command=retrieval_report_command,
+            expected_outputs=[
+                _as_posix(Path(retrieval_report_dir) / "comparison.json"),
+                _as_posix(Path(retrieval_report_dir) / "per_query.jsonl"),
+                _as_posix(Path(retrieval_report_dir) / "report.md"),
+            ],
+        ),
         "retrieval_lift_analysis": RAGEvalStage(
             name="retrieval_lift_analysis",
             description="Query-level retrieval gain/loss buckets after reranking.",
@@ -154,7 +275,7 @@ def _build_all_stages(
                 "--output-dir",
                 retrieval_lift_dir,
             ],
-            expected_outputs=[_as_posix(Path(retrieval_lift_dir) / "summary.json")],
+            expected_outputs=[_as_posix(Path(retrieval_lift_dir) / "retrieval_lift.json")],
         ),
         "generation_bm25": RAGEvalStage(
             name="generation_bm25",
@@ -202,6 +323,37 @@ def _build_all_stages(
                 _as_posix(Path(reranked_generation_dir) / "metrics.json"),
             ],
         ),
+        "generation_reranked_packed": RAGEvalStage(
+            name="generation_reranked_packed",
+            description="Generation from reranked passages with deterministic context packing.",
+            command=packed_generation_command,
+            expected_outputs=[
+                _as_posix(Path(packed_generation_dir) / "predictions.jsonl"),
+                _as_posix(Path(packed_generation_dir) / "metrics.json"),
+            ],
+        ),
+        "context_packing_report": RAGEvalStage(
+            name="context_packing_report",
+            description="Matched-qid answer-quality and context-cost report for packed prompts.",
+            command=[
+                "mgq-context-packing-report",
+                "--baseline-predictions",
+                _as_posix(Path(reranked_generation_dir) / "predictions.jsonl"),
+                "--compressed-predictions",
+                _as_posix(Path(packed_generation_dir) / "predictions.jsonl"),
+                "--baseline-name",
+                "reranked",
+                "--compressed-name",
+                "reranked_packed",
+                "--output-dir",
+                context_packing_report_dir,
+            ],
+            expected_outputs=[
+                _as_posix(Path(context_packing_report_dir) / "comparison.json"),
+                _as_posix(Path(context_packing_report_dir) / "per_query.jsonl"),
+                _as_posix(Path(context_packing_report_dir) / "report.md"),
+            ],
+        ),
         "paired_bootstrap_ci": RAGEvalStage(
             name="paired_bootstrap_ci",
             description="Paired-bootstrap confidence intervals for reranked minus BM25 generation.",
@@ -239,6 +391,17 @@ def _build_all_stages(
             expected_outputs=[
                 _as_posix(Path(grounding_dir) / "summary.json"),
                 _as_posix(Path(grounding_dir) / "per_query_grounding.jsonl"),
+            ],
+        ),
+        "rag_triad": RAGEvalStage(
+            name="rag_triad",
+            description="Triad report linking context relevance, groundedness, and answer relevance.",
+            command=triad_command,
+            expected_outputs=[
+                _as_posix(Path(triad_dir) / "metrics.json"),
+                _as_posix(Path(triad_dir) / "per_query_triad.jsonl"),
+                _as_posix(Path(triad_dir) / "low_score_cases.jsonl"),
+                _as_posix(Path(triad_dir) / "report.md"),
             ],
         ),
     }

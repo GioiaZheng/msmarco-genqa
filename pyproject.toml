@@ -82,6 +82,12 @@ exclude = ["tests*", "scripts*"]
 # re-exports main() from the matching experiments/run_<name>.py.
 mgq-retrieve = "msmarco_genqa.cli.retrieve:main"
 mgq-dense    = "msmarco_genqa.cli.dense:main"
+mgq-fuse     = "msmarco_genqa.cli.fuse:main"
+mgq-transform-queries = "msmarco_genqa.cli.query_transform:main"
+mgq-query-transform-ablation = "msmarco_genqa.cli.query_transform_ablation:main"
+mgq-retrieval-report = "msmarco_genqa.cli.retrieval_report:main"
+mgq-context-packing-report = "msmarco_genqa.cli.context_packing_report:main"
+mgq-rag-triad = "msmarco_genqa.cli.rag_triad:main"
 mgq-rerank   = "msmarco_genqa.cli.rerank:main"
 mgq-generate = "msmarco_genqa.cli.generate:main"
 mgq-pipeline = "msmarco_genqa.cli.pipeline:main"

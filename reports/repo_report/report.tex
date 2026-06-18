@@ -1,7 +1,7 @@
 % =============================================================================
-% MS MARCO Generative QA — v1.0 Report
+% MS MARCO Generative QA — Repository Report
 % Author : GioiaZheng  <gioia.zheng.stud@gmail.com>
-% Date   : 2026-05-21
+% Date   : 2026-06-12
 % Build  : latexmk -pdf report.tex   (or:  see Makefile)
 % =============================================================================
 
@@ -15,7 +15,7 @@
 % Allow line breaks inside long \texttt{} paths so the per-output
 % directory names in the appendices don't push the right margin.
 \usepackage{seqsplit}
-\usepackage[htt]{hyphenat}
+\usepackage{hyphenat}
 % Slightly more open vertical rhythm than article's default; paragraphs
 % separated by a blank line rather than indentation (engineering-report style).
 \usepackage{parskip}
@@ -24,9 +24,9 @@
 % Section header polish: smaller sans-serif headings, slightly tighter
 % spacing above so a section doesn't push its first paragraph too far down.
 \usepackage[explicit]{titlesec}
-\titleformat{\section}{\Large\bfseries\sffamily}{\thesection}{0.6em}{#1}
-\titleformat{\subsection}{\large\bfseries\sffamily}{\thesubsection}{0.55em}{#1}
-\titleformat{\subsubsection}{\normalsize\bfseries\sffamily}{\thesubsubsection}{0.5em}{#1}
+\titleformat{\section}{\Large\bfseries}{\thesection}{0.6em}{#1}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{0.55em}{#1}
+\titleformat{\subsubsection}{\normalsize\bfseries}{\thesubsubsection}{0.5em}{#1}
 \titlespacing*{\section}{0pt}{1.4em plus 0.4em}{0.6em}
 \titlespacing*{\subsection}{0pt}{1.0em plus 0.3em}{0.4em}
 \titlespacing*{\subsubsection}{0pt}{0.8em plus 0.2em}{0.3em}
@@ -35,7 +35,7 @@
 % Global mild sloppiness: lets TeX stretch lines a little to avoid
 % overfull boxes on lines with long unbreakable tokens (code paths,
 % URLs, citation clusters).  Standard remedy in IEEE / ACM templates.
-\setlength{\emergencystretch}{2.2em}
+\setlength{\emergencystretch}{3em}
 
 % --- Page geometry & headers ------------------------------------------------
 \usepackage[a4paper,margin=2.4cm,headheight=14pt]{geometry}
@@ -43,7 +43,7 @@
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[LE,LO]{\small\nouppercase{\leftmark}}
-\fancyhead[RE,RO]{\small\itshape MS~MARCO Generative QA --- v1.0 Report}
+\fancyhead[RE,RO]{\small\itshape MS~MARCO Generative QA --- Repository Report}
 \fancyfoot[C]{\small\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
 \renewcommand{\footrulewidth}{0pt}
@@ -105,12 +105,13 @@
 % --- PDF metadata -----------------------------------------------------------
 \hypersetup{
   pdftitle={MS MARCO Generative QA: A Reproducible Retrieve--Rerank--Generate
-            Pipeline with a Grounding Audit},
+            Pipeline with Grounding and Triad Audits},
   pdfauthor={GioiaZheng},
-  pdfsubject={v1.0 Report --- 11-week project (12-week plan)},
+  pdfsubject={Repository report --- updated 2026-06-12;
+              experiment window 2026-03-06 to 2026-05-21},
   pdfkeywords={MS MARCO; BM25; dense retrieval; cross-encoder reranking;
                retrieval-augmented generation; BERTScore; NLI;
-               extractive QA; paired bootstrap}
+               RAG triad; extractive QA; paired bootstrap}
 }
 
 % --- Convenience macros -----------------------------------------------------
@@ -155,7 +156,9 @@
   {\Huge\bfseries MS\,MARCO Generative QA\par}
   \vspace{0.55cm}
   {\Large\itshape A Reproducible Retrieve--Rerank--Generate Pipeline\\[0.25em]
-   with a Grounding Audit\par}
+   with Grounding and Triad Audits\par}
+  \vspace{0.35cm}
+  {\large Repository report --- updated 2026-06-12\par}
   \vspace{1.05cm}
   \rule{\linewidth}{1.2pt}\par
 
@@ -173,9 +176,9 @@
   {\renewcommand{\arraystretch}{1.30}%
    \begin{tabular}{@{}r@{\hskip 1.4em}l@{}}
      \toprule
-     \textbf{Period}  & 2026-03-06\,--\,2026-05-21 \quad{\small(11 weeks elapsed; 12-week plan)} \\
-     \textbf{Scope}   & Single-machine, CPU-only; English passage retrieval + QA \\
-     \textbf{Date}    & 2026-05-21 \\
+     \textbf{Experiment period} & 2026-03-06\,--\,2026-05-21 \quad{\small(11 milestones completed; 12-stage plan)} \\
+     \textbf{Current update}    & 2026-06-12 \\
+     \textbf{Scope}             & Batch evaluation, CPU-only; English passage retrieval + QA \\
      \bottomrule
    \end{tabular}\par}
 
@@ -194,8 +197,8 @@
 \thispagestyle{empty}
 \section*{Abstract}
 
-This report documents an eleven-week project that
-reproduces and analyses a complete \emph{retrieve--rerank--generate}
+This report documents a research-engineering project that reproduces
+and analyses a complete \emph{retrieve--rerank--generate}
 question-answering pipeline on the \msmarco{} Passage Ranking
 benchmark~\cite{bajaj2016msmarco,nguyen2016msmarcoqa}.  Each stage is
 implemented from open-source components on a single laptop, with no
@@ -238,17 +241,28 @@ fragmentary midword-cut outputs that defeat sentence-level NLI rather
 than as a true semantic regression.
 
 The report covers, in order: the dataset characterisation, the four
-modelling stages, two layers of post-hoc evaluation (semantic proxy
-\& grounding), an honest comparison between the initial 12-week
+modelling stages, post-hoc evaluation layers (semantic proxy,
+grounding, and the current triad diagnostic interface), an honest
+comparison between the initial 12-stage
 project plan and what actually shipped, and the engineering
 scaffolding (reproducibility manifests, paired-bootstrap confidence
 intervals, deterministic seeds) that lets every number in this
-document be regenerated from one command per week.
+document be regenerated from one command per stage.
+
+This 2026-06-12 update keeps the empirical claims anchored to the
+original experiment outputs while bringing the repository description
+up to date.  Since the experiment window closed, the project has
+gained an installable CLI surface, the \texttt{rag-eval} workflow
+facade, optional model-stack smoke validation, local experiment
+tracking, a lightweight serving wrapper, refreshed CI, secret
+scanning, a deterministic RAG triad CLI, stricter input-validation
+boundaries for run files / JSONL / serving calls, and a clearer
+advanced-RAG roadmap.
 
 \vspace{2em}
 \noindent\textit{Keywords.}~~MS~MARCO; passage retrieval; \bmtwofive{};
 dense retrieval; cross-encoder reranking; retrieval-augmented
-generation; \bertscore{}; NLI grounding; paired bootstrap;
+generation; \bertscore{}; NLI grounding; RAG triad; paired bootstrap;
 extractive QA.
 
 \newpage
@@ -274,11 +288,11 @@ relevance judgements are human-annotated, and its v2.1 Q\&A flavour
 ships human-written answers that allow surface-form generation
 evaluation~\cite{nguyen2016msmarcoqa}.
 
-The brief named twelve weekly milestones spanning EDA, sparse
+The brief named twelve planned milestones spanning EDA, sparse
 retrieval, generation baselines, dense retrieval, reranking,
 generator fine-tuning, hallucination mitigation, long-document
 processing, system integration and acceleration, and a final
-write-up.  In practice the project ran for eleven weeks on a
+write-up.  In practice the project ran through eleven milestones on a
 single-user, CPU-only Apple Silicon laptop, with no fine-tuning at
 any stage.  \Cref{sec:plan-vs-actual} compares the plan to the actual
 deliverables and explains the deviations.
@@ -288,7 +302,7 @@ deliverables and explains the deviations.
 Three principles shaped every decision the project made:
 
 \begin{enumerate}
-  \item \textbf{Honest baselines before optimisation.}  Every week
+  \item \textbf{Honest baselines before optimisation.}  Every stage
         produces a numerically reproducible \emph{baseline} ---
         \bmtwofive{} MRR, generation \Tokenf{} on a fixed query set,
         reranking $\Delta$\mrr{} versus a precisely identified first
@@ -348,8 +362,14 @@ This report contributes the following:
         commit, dependency hashes, command line, and per-output
         SHA-256s; deterministic seeds throughout; a single config
         file driving all four runners) sufficient to re-derive every
-        number in this report from one command per week on a
+        number in this report from one command per stage on a
         comparable single-machine setup.
+  \item A maintained repository surface around the experiments:
+        installable console entry points, the \texttt{rag-eval}
+        workflow facade, optional model-stack smoke validation,
+        local experiment tracking, a lightweight \texttt{mgq-serve}
+        FastAPI wrapper, CI, secret scanning, and separate
+        reproducibility/security notes.
 \end{itemize}
 
 \subsection{Roadmap}
@@ -360,9 +380,10 @@ actually used.  \Cref{sec:method} steps through the four modelling
 stages (W1--W5) in implementation order.  \Cref{sec:results} is the
 central empirical chapter, presenting the W2--W5 retrieval numbers,
 the load-bearing W3 paired generation comparison, the W5-A
-first-stage head-to-head, the W6 evaluation layer, and the W7
-grounding audit.  \Cref{sec:discussion} discusses what the
-combination of W6 closure and W7 grounding actually means about
+first-stage head-to-head, the W6 evaluation layer, the W7
+grounding audit, and the W8 triad diagnostic interface.
+\Cref{sec:discussion} discusses what the combination of W6 closure,
+W7 grounding, and W8 triad diagnostics actually means about
 where the gain comes from, treats the NLI sign flip on its own
 terms, and compares ship versus plan.  \Cref{sec:limitations} states
 the limitations.  \Cref{sec:conclusion} concludes.
@@ -371,6 +392,47 @@ The question-form breakdown is reported inline with the rest of W6
 reproducibility scaffolding (\Cref{sec:reproducibility}), the full
 five-way bucket counts (\Cref{sec:appendix-buckets}), and a
 short glossary of cross-references (\Cref{sec:appendix-glossary}).
+
+\subsection{Repository status as of 2026-06-12}
+
+The project has moved from a report-centred experiment bundle to a
+small research-engineering repository.  The headline metrics in this
+document remain historical experiment results, but the codebase now
+has a clearer operating surface:
+
+\begin{itemize}
+  \item \textbf{Workflow facade.}  \texttt{rag-eval run --config
+        configs/baseline.yaml} builds or dry-runs the configured
+        retrieval, reranking, generation, context-packing,
+        bootstrap, grounding, and triad-evaluation workflow from one
+        entry point.
+  \item \textbf{Package and CLI surface.}  The project installs via
+        \texttt{pip install -e .} and exposes stage-level
+        \texttt{mgq-*} commands plus \texttt{mgq-serve} for local
+        serving experiments.  The current evaluation surface includes
+        \texttt{mgq-retrieval-report matrix} for same-qid
+        \bmtwofive{} / dense / RRF / reranked comparison tables and
+        \texttt{mgq-context-packing-report} for packed-vs-plain
+        generation prompt comparisons, plus
+        \texttt{mgq-rag-triad} for context-relevance, groundedness,
+        and answer-relevance diagnostics over existing generation
+        outputs.
+  \item \textbf{Validation.}  Default CI runs fast pytest coverage,
+        \texttt{ruff}, headline-metric metadata checks, and a
+        high-confidence secret scan.  Heavy model and data checks stay
+        opt-in through the model-stack smoke and slow/integration test
+        markers.
+  \item \textbf{Reproducibility.}  The manifest contract now records
+        command lines, dependency-file hashes, config hashes, git
+        state, output hashes, and cache/profile metadata.  The
+        documentation separates quick local checks from heavyweight
+        data/model reproduction.
+  \item \textbf{Research backlog.}  Follow-up issues now separate
+        learned sparse retrieval, stronger rerankers, chunking
+        protocols, query transformation, offline/online indexing,
+        citation-aware generation, and adaptive
+        retrieval sufficiency checks.
+\end{itemize}
 
 % =============================================================================
 \clearpage\section{Related Work}
@@ -530,7 +592,7 @@ load-bearing W3 comparison uses, the proportions are
 
 \Cref{fig:query-type,fig:answer-by-type} show the W1 distributional
 read on the validation sample.  Two observations end up shaping
-later weeks:
+later stages:
 
 \begin{enumerate}
   \item \texttt{DESCRIPTION} and \texttt{NUMERIC} dominate.
@@ -591,13 +653,17 @@ the meaningful quantity.
 \label{sec:method}
 
 This section describes the four modelling stages (W2--W5) and the
-two post-hoc analysis layers (W6--W7) in implementation order.  All
+post-hoc analysis layers (W6--W8) in implementation order.  All
 of W2--W5 ship as scripted command-line entrypoints under
 \texttt{experiments/run\_*.py}, driven by a single configuration
-file at \texttt{configs/baseline.yaml}; all of W6--W7 are analysis
-scripts under \texttt{scripts/*.py} that read W3's already-on-disk
-paired predictions and write JSON / Markdown summaries beneath
-\texttt{outputs/week06\_*/} and \texttt{outputs/week07\_*/}.
+file at \texttt{configs/baseline.yaml}; W6--W7 are analysis scripts
+under \texttt{scripts/*.py}, W8 is an installable
+\texttt{mgq-rag-triad} diagnostic, and W9 is an installable
+\texttt{mgq-context-packing-report} comparison over packed versus
+plain generation predictions.  These layers write JSON / Markdown
+summaries beneath \texttt{outputs/W6\_*/}, \texttt{outputs/W7\_*/},
+\texttt{outputs/W8\_rag\_triad/}, and
+\texttt{outputs/W9\_context\_packing/}.
 \Cref{sec:reproducibility} documents the reproducibility scaffold.
 
 \Cref{fig:pipeline} sketches the end-to-end flow and the place each
@@ -629,12 +695,13 @@ stage occupies in it.
     \draw[flow] (gen) -- (ans);
 
     \node[aux, below=10mm of gen]             (eval)
-      {\textbf{W6}~semantic proxy\\\textbf{W7}~grounding audit};
+      {\textbf{W6}~semantic proxy\\\textbf{W7}~grounding audit\\\textbf{W8}~triad report};
     \draw[side] (gen.south) -- (eval.north);
   \end{tikzpicture}
   \caption{End-to-end pipeline.  Solid boxes are the four modelling
   stages of \Cref{sec:method}; the dashed box is the post-hoc
-  evaluation layer (\Cref{sec:w6,sec:w7}), which consumes the
+  evaluation layer (\Cref{sec:w6,sec:w7}), plus the current triad
+  diagnostic interface, which consumes the
   already-on-disk W3 paired predictions and does not re-run any
   modelling stage.  W2 and W4 are interchangeable first stages
   feeding into the same downstream pipeline; the W3 paired
@@ -671,7 +738,8 @@ costs the full hour.
 \devsmall{} qrels.  \mrr{} follows the standard \msmarco{}
 definition (reciprocal rank of the first relevant document in the
 top-$10$, zero if none); \recallH{} and \recallK{} are computed at
-$K\!\in\!\{100,1000\}$; \ndcg{} uses binary gain.
+$K\!\in\!\{100,1000\}$; \ndcg{} uses binary gain following the
+standard discounted cumulative gain formulation~\cite{jarvelin2002ndcg}.
 
 \subsection{W3 --- RAG generation baseline}
 \label{sec:w3}
@@ -716,7 +784,7 @@ scores comparable across queries with one versus three references.
 \label{sec:w4}
 
 \paragraph{Encoder \& index.}  The W4 dense retriever uses
-\texttt{sentence-transformers/all-MiniLM-L6-v2}~\cite{reimers2019sbert,wang2020minilm}
+\texttt{\seqsplit{sentence-transformers/all-MiniLM-L6-v2}}~\cite{reimers2019sbert,wang2020minilm}
 --- a generic semantic-similarity encoder, deliberately
 \emph{not} \msmarco{}-tuned --- to embed both queries and passages
 into a 384-dimensional space.  Embeddings are L2-normalised and
@@ -853,7 +921,7 @@ together the right words in the wrong order'' cases the bag-of-
 content-tokens score misses.
 
 \paragraph{NLI-entailment grounding (W7-A).}  An NLI cross-encoder
-(\texttt{cross-encoder/nli-deberta-v3-small}~\cite{he2023debertav3,williams2018mnli})
+(\texttt{\seqsplit{cross-encoder/nli-deberta-v3-small}}~\cite{he2023debertav3,williams2018mnli})
 scores \emph{entailment}$(\text{passages} \to \text{prediction})$ on
 the same 3\,000-paired-qid subsample used by the W6 \bertscore{}
 proxy.  Same paired-bootstrap-CI machinery.  This is the semantic-
@@ -932,16 +1000,7 @@ Both columns evaluate on the same \fdev{} queries.
   the qrels-anchored sampling design (\Cref{sec:w4-sampling-caveat});
   the meaningful comparison is the same-sample $\Delta$.}
   \label{tab:w4-results}
-  \begin{tabular}{lrrr}
-    \toprule
-    Metric        & \bmtwofive{} (sample) & Dense (sample) & $\Delta$ (dense $-$ \bmtwofive{}) \\
-    \midrule
-    \mrr{}        & 0.6948 & 0.8830 & $+0.1882$ \\
-    \ndcg{}       & 0.7270 & 0.9041 & $+0.1771$ \\
-    \recallH{}    & 0.9338 & 0.9946 & $+0.0608$ \\
-    \recallK{}    & 0.9686 & 0.9991 & $+0.0305$ \\
-    \bottomrule
-  \end{tabular}
+  \input{../generated/tables/w4_dense_sample.tex}
 \end{table}
 
 Two observations:
@@ -974,6 +1033,7 @@ and the same evaluation pool, so the comparison is apples-to-apples.
   qrels-anchored sample.  Encoding throughput (ms/passage) measured
   on a single CPU process. Best per column in \textbf{bold}.}
   \label{tab:w4b-encoders}
+  \resizebox{\linewidth}{!}{%
   \begin{tabular}{lrrrrr}
     \toprule
     Encoder & \mrr{} & \ndcg{} & \recallH{} & \recallK{} & ms/passage \\
@@ -982,7 +1042,8 @@ and the same evaluation pool, so the comparison is apples-to-apples.
     \texttt{all-MiniLM-L12-v2}              & 0.8933 & 0.9131 & 0.9955 & \textbf{0.9996} & 31.3 \\
     \texttt{BAAI/bge-small-en-v1.5}         & \textbf{0.9021} & \textbf{0.9196} & \textbf{0.9967} & 0.9994 & 34.4 \\
     \bottomrule
-  \end{tabular}
+  \end{tabular}%
+  }
 \end{table}
 
 \paragraph{Read.}  bge-small-en-v1.5 lifts \mrr{} by $+0.019$ over
@@ -1012,6 +1073,7 @@ baseline at each size.
   fills with distractors, so density falls monotonically as the
   sample grows.}
   \label{tab:w4a-density}
+  \resizebox{\linewidth}{!}{%
   \begin{tabular}{lrrrrr}
     \toprule
     Sample & Density & \bmtwofive{} \mrr{} & Dense \mrr{} & $\Delta$ (dense $-$ \bmtwofive{}) & Dense \recallH{} \\
@@ -1020,7 +1082,8 @@ baseline at each size.
     30k & 24.8\,\% & 0.7349 & 0.9232 & $+0.1883$ & 0.998 \\
     50k & 14.9\,\% & 0.6948 & 0.9021 & $\mathbf{+0.2074}$ & 0.997 \\
     \bottomrule
-  \end{tabular}
+  \end{tabular}%
+  }
 \end{table}
 
 \begin{figure}[H]
@@ -1066,15 +1129,7 @@ W4 dense top-100, on the full \fdev{} \devsmall{} queries.
   (MRR $\Delta\!=\!+0.0435$, nDCG $\Delta\!=\!+0.0398$), so the
   full-dev gain is not a subsample artefact.}
   \label{tab:w5-results}
-  \begin{tabular}{lrrr}
-    \toprule
-    Metric        & Dense (W4) & Dense $+$ CE rerank & $\Delta$ \\
-    \midrule
-    \mrr{}        & 0.8830 & 0.9304 & $\mathbf{+0.0474}$ \\
-    \ndcg{}       & 0.9041 & 0.9434 & $+0.0393$ \\
-    \recallH{}    & 0.9946 & 0.9946 & $\phantom{+}0.0000$ \\
-    \bottomrule
-  \end{tabular}
+  \input{../generated/tables/w5_dense_rerank.tex}
 \end{table}
 
 The reranker buys $\sim\!+0.05$ MRR even with recall saturated: it
@@ -1107,15 +1162,7 @@ arms.
   \fdev{} shared qid set.  Same T5-small, same prompt, same top-3
   passage count; only the upstream retrieval source differs.}
   \label{tab:w3-headline}
-  \begin{tabular}{lrrrr}
-    \toprule
-    Retrieval $\to$ T5-small & \rougel{} & BLEU & EM & \Tokenf{} \\
-    \midrule
-    \bmtwofive{} top-3       & 0.1859 & 0.0717 & 0.0135 & 0.1966 \\
-    Reranked top-3           & \textbf{0.3621} & \textbf{0.2922} & \textbf{0.0606} & \textbf{0.3677} \\
-    $\Delta$ (rerank $-$ \bmtwofive{}) & $\mathbf{+0.1763}$ & $\mathbf{+0.2206}$ & $\mathbf{+0.0471}$ & $\mathbf{+0.1711}$ \\
-    \bottomrule
-  \end{tabular}
+  \input{../generated/tables/w3_headline_generation.tex}
 \end{table}
 
 \textbf{Reranking the first stage roughly doubles every
@@ -1135,16 +1182,7 @@ zero, with negligible overlap (\Cref{tab:w3-ci}).
   interval.  Two-sided $p$ from the bootstrap is $<\!0.001$ in every
   case.}
   \label{tab:w3-ci}
-  \begin{tabular}{lrrrr}
-    \toprule
-    Metric            & \bmtwofive{} (per-q mean) & Reranked & $\Delta$ & 95\,\% CI on $\Delta$ \\
-    \midrule
-    \rougel{}         & 0.1934 & 0.3677 & $+0.1742$ & $[+0.1663,\,+0.1820]$ \\
-    BLEU (sentence)   & 0.0423 & 0.1754 & $+0.1330$ & $[+0.1265,\,+0.1395]$ \\
-    Exact-Match       & 0.0135 & 0.0606 & $+0.0471$ & $[+0.0417,\,+0.0527]$ \\
-    \Tokenf{}         & 0.1966 & 0.3677 & $+0.1711$ & $[+0.1632,\,+0.1789]$ \\
-    \bottomrule
-  \end{tabular}
+  \input{../generated/tables/w3_bootstrap_ci.tex}
 \end{table}
 
 \Cref{fig:headline-forest} renders the same four CIs as a forest
@@ -1202,7 +1240,7 @@ plot.
       at (0.0527*\sx + 0.15, 2) {$+0.047$};
 
     % --- Token-F1: 0.1711, [0.1632, 0.1789]
-    \node[anchor=east, font=\small] at (-0.2, 1) {\Tokenf{}};
+    \node[anchor=east, font=\small] at (-0.2, 1) {Token-F$_1$};
     \draw[bar] (0.1632*\sx, 1) -- (0.1789*\sx, 1);
     \node[point] at (0.1711*\sx, 1) {};
     \node[anchor=west, font=\scriptsize, gray!60!black]
@@ -1696,6 +1734,51 @@ in the sample.  This reinforces the W7 headline: T5-small on this
 prompt format is doing extractive QA even on its worst-grounded
 outputs.
 
+\subsection{W8 --- RAG triad diagnostic interface}
+\label{sec:w8-triad}
+
+The current repository adds a deterministic triad report as an
+engineering-facing diagnostic layer over the same W3 prediction
+schema.  The \texttt{mgq-rag-triad} CLI writes
+\texttt{metrics.json}, \texttt{per\_query\_triad.jsonl},
+\texttt{low\_score\_cases.jsonl}, and \texttt{report.md} for one or
+more generation configurations.  The three dimensions are kept
+separate: context relevance (qrels hit when qrels are supplied,
+otherwise query--context lexical overlap), groundedness (lexical
+content-token support in the shown passages), and answer relevance
+(\Tokenf{} against the stored reference answers).
+
+This is intentionally not promoted to a new headline result in this
+report.  Its role is to make future regressions easier to diagnose:
+a low triad row can be inspected as retrieval-side evidence failure,
+unsupported generation, answer mismatch, or a combination of those
+failure modes.  The CLI rejects unsupported evaluator names, so
+future model-assisted RAGAS/TruLens-style scoring must be opted into
+explicitly rather than silently mixed with deterministic scores.
+
+\subsection{W9 --- context packing and prompt compression}
+\label{sec:w9-context-packing}
+
+The current repository also adds a deterministic context-packing
+layer for generation runs.  It is disabled for the historical
+baselines, but can be enabled with \texttt{mgq-generate
+--context-packing}.  The packer uses character budgets as a
+CPU-friendly proxy for token cost, supports per-passage trimming,
+query-overlap sentence selection, deduplication, and rank-preserving
+ordering, and records span metadata that maps the packed prompt
+context back to source document ids.
+
+The paired report is produced by
+\texttt{mgq-context-packing-report}.  It compares an uncompressed
+\texttt{predictions.jsonl} file against a compressed one on matched
+query ids, then writes \texttt{comparison.json},
+\texttt{per\_query.jsonl}, and \texttt{report.md}.  The report keeps
+answer-quality deltas (\Tokenf{} and exact match) separate from
+context-character savings, so compression can be evaluated as a
+cost--quality trade-off rather than as a hidden prompt-format change.
+Grounding and W8 triad reports should be read alongside this output
+before treating a packed prompt as a better RAG configuration.
+
 % =============================================================================
 \clearpage\section{Discussion}
 \label{sec:discussion}
@@ -1767,7 +1850,7 @@ grounding and downstream metrics (\Cref{sec:w7}), but the
 sentence-completeness confound is unresolved.
 
 \paragraph{(iii) NLI checkpoint artefact.}  The NLI cross-encoder
-in W7-A is \texttt{cross-encoder/nli-deberta-v3-small} ---
+in W7-A is \texttt{\seqsplit{cross-encoder/nli-deberta-v3-small}} ---
 distilled, MNLI-trained~\cite{he2023debertav3,williams2018mnli}.
 It is not domain-adapted to \msmarco{}-style passages and could
 behave differently from a larger NLI scorer on the project's
@@ -1786,23 +1869,23 @@ to the post-deadline T5-base run (\Cref{sec:plan-vs-actual}).
 \subsection{Plan vs.\ actual}
 \label{sec:plan-vs-actual}
 
-The project's initial 12-week plan named the milestones in
-\Cref{tab:plan-vs-actual}.  Eleven calendar weeks elapsed; the
+The project's initial 12-stage plan named the milestones in
+\Cref{tab:plan-vs-actual}.  Eleven milestones elapsed; the
 table records what shipped, what was substituted, and what was
 de-scoped.
 
 \small
 \begin{longtable}{@{}
-    p{0.90cm}
+    p{1.10cm}
     >{\raggedright\arraybackslash}p{3.70cm}
-    >{\raggedright\arraybackslash}p{7.55cm}
+    >{\raggedright\arraybackslash}p{7.35cm}
     >{\raggedright\arraybackslash}p{2.10cm}@{}}
 \toprule
-\textbf{Week} & \textbf{Plan} & \textbf{Actual} & \textbf{Status} \\
+\textbf{Stage} & \textbf{Plan} & \textbf{Actual} & \textbf{Status} \\
 \midrule
 \endfirsthead
 \toprule
-\textbf{Week} & \textbf{Plan} & \textbf{Actual} & \textbf{Status} \\
+\textbf{Stage} & \textbf{Plan} & \textbf{Actual} & \textbf{Status} \\
 \midrule
 \endhead
 W1 & EDA & EDA on the QA v2.1 validation 5k-row sample
@@ -1919,7 +2002,7 @@ No held-out test split.  The distractor sample is deterministic
 \paragraph{CPU-only.}  All numbers in this report were produced on
 a six-core Apple Silicon laptop.  No GPU.  This is by design --- the
 single-machine constraint is what makes the project's reproducibility
-claim (one command per week regenerates every number) tractable ---
+claim (one command per stage regenerates every number) tractable ---
 but it caps the kinds of generators that can be evaluated within
 the deadline.
 
@@ -1968,51 +2051,51 @@ of CPU-tractable open-domain QA pipelines on this benchmark.
 \subsection*{Future work}
 \label{sec:future-work}
 
-Consolidating the deferred items recorded throughout the report
-(\Cref{sec:plan-vs-actual}), the most immediately tractable
-follow-ups, in roughly descending expected information-gain order:
+The roadmap has become more explicit since the original experiment
+window.  The next steps are grouped by what they test rather than by
+stage number:
 
 \begin{itemize}
-  \item \textbf{W7-B --- T5-base generator swap.}  The disambiguating
-        experiment of \Cref{sec:discussion-nli-flip}: rerun the W3
-        paired comparison with T5-base (frozen, same prompt) and
-        recompute both the surface-form $\Delta$ and the NLI
-        grounding $\Delta$.  Resolves whether the W7-A sign flip
-        is an output-shape artefact or a genuine semantic
-        regression.
-  \item \textbf{W4-B propagation through W5\barrow{}W3.}  Propagate
-        the BGE-small-en-v1.5 encoder (\Cref{tab:w4b-encoders})
-        through the cross-encoder reranker and the generator and
-        re-run the paired generation comparison.  Tests whether the
-        $+0.019$ \mrr{} W4-B encoder gain survives the
-        \recallH{}-saturated rerank step into a downstream
-        \Tokenf{} $\Delta$.
-  \item \textbf{W5-B --- rerank-depth $K$ sweep.}  $K\!\in\!\{50,
-        100, 200\}$ with the same checkpoint, on a query-id
-        subsample sized for the project's CPU budget.  Quantifies
-        the marginal $\Delta$\mrr{} per additional reranked
-        candidate.
-  \item \textbf{Citation-grade BERTScore.}  Replace the W6
-        DistilBERT proxy with \texttt{roberta-large} \bertscore{}
-        on the full \fdev{} paired qid set.  Refines the absolute
-        level number; the W6 proxy already pins direction and
-        magnitude.
-  \item \textbf{ANCE / msmarco-tuned dense encoder} as a strict
-        upper-bound check on what \msmarco{}-specific tuning buys
-        on top of the generic encoders already tried.
-  \item \textbf{Long-document handling (W8).}  The sliding-window
-        prompt assembly exists in the W3 runner; the missing piece
-        is a benchmark pass on a long-doc slice.
-  \item \textbf{Prompt-format ablations.}  Citation-aware /
-        multi-passage-synthesis prompts to test whether the
-        $\sim\!0.997$ lexical-grounding ceiling (\Cref{tab:w7-lex-ngram})
-        can be moved off the floor of ``extract from a single
-        passage''.
+  \item \textbf{Retrieval fusion and retrieval measurement.}
+        Extend the current reciprocal-rank-fusion runner and
+        same-qid matrix report with learned sparse retrieval as a
+        SPLADE-style baseline, then report \mrr{} / \ndcg{}
+        consistently across first-stage, reranked, and fused
+        retrieval outputs.
+  \item \textbf{Reranker alternatives.}  Evaluate BGE-style
+        cross-encoder reranking and a ColBERT-style late-interaction
+        path against the current MiniLM cross-encoder under matched
+        candidate sets, including latency and memory notes.
+  \item \textbf{Chunking and context assembly.}  Add semantic
+        chunking and parent-child chunk retrieval experiments, then
+        measure whether better context reconstruction improves the
+        generation and grounding metrics without inflating prompt
+        length.
+  \item \textbf{Query transformation and adaptive retrieval.}
+        Add query expansion/de-contextualisation before retrieval and
+        a retrieval-sufficiency check after reranking.  The
+        sufficiency layer should trigger a second retrieval pass or
+        abstention rather than forcing unsupported generation.
+  \item \textbf{Evaluation hardening.}  Extend the current paired
+        bootstrap protocol and deterministic triad report with
+        full-sample \texttt{roberta-large} \bertscore{}, an
+        alternative-family faithfulness scorer, multiple-comparison
+        correction, and TREC-DL qrels loaders.
+  \item \textbf{Offline/online separation.}  Split batch indexing
+        from online query handling: an offline job should read data,
+        chunk passages, embed, build FAISS, and persist the index;
+        the online path should load the index and serve retrieval or
+        generation requests through a narrow API.
+  \item \textbf{Generator and prompt ablations.}  Continue the
+        T5-base / FLAN-T5 capacity sweep, citation-aware prompts, and
+        tokenizer-aware prompt-compression work to test whether the
+        current extractive-grounding ceiling can be moved without
+        sacrificing faithfulness.
 \end{itemize}
 
 The reproducibility scaffold (\Cref{sec:reproducibility}) is
-designed precisely so that each of these is one configuration edit
-and one runner invocation, not a re-implementation.
+designed so that each follow-up adds a controlled configuration or
+adapter, not a separate experimental codebase.
 
 % =============================================================================
 \clearpage
@@ -2045,12 +2128,14 @@ metric libraries~\cite{lin2004rouge,papineni2002bleu}.
 \section{Configuration and reproducibility}
 \label{sec:reproducibility}
 
-\subsection{One config, one runner per week}
+\subsection{One config, workflow facade, and stage runners}
 
 All four W2--W5 runners are driven by a single configuration file
-at \texttt{configs/baseline.yaml}; the W6/W7 analysis scripts read
-the on-disk W3 paired predictions directly.  \Cref{tab:repro-cmds}
-records the canonical command for each stage.
+at \texttt{configs/baseline.yaml}; the W6/W7 analysis scripts and
+W8 triad CLI read the on-disk W3 paired predictions directly.  The current repository
+also exposes a workflow facade through \texttt{rag-eval} and
+installable \texttt{mgq-*} console scripts.  \Cref{tab:repro-cmds}
+records the canonical command family for each layer.
 
 \begin{table}[H]
   \centering\small
@@ -2062,6 +2147,7 @@ records the canonical command for each stage.
     \toprule
     Stage & \normalfont Command \\
     \midrule
+    Workflow facade & rag-eval run \mbox{--config} configs/baseline.yaml \mbox{--dry-run} \\
     W2  & python experiments/run\_retrieval.py \\
     W3  & python experiments/run\_generation\_baseline.py \\
     W4  & python experiments/run\_dense\_retrieval.py \\
@@ -2074,13 +2160,18 @@ records the canonical command for each stage.
     W6-A/B/C     & scripts/tag\_query\_forms.py \ /\ analyze\_rerank\_by\_query\_form.py \ /\ regression\_query\_profile.py \\
     W7 grounding & python scripts/grounding\_audit.py \\
     W7-A NLI     & same script with \mbox{--nli-n-pairs}~3000 \\
+    W8 triad     & mgq-rag-triad \mbox{--predictions} bm25=\ldots{} \mbox{--predictions} reranked=\ldots{} \mbox{--output-dir} outputs/W8\_rag\_triad \\
+    W9 context packing & mgq-context-packing-report \mbox{--baseline-predictions} \ldots{} \mbox{--compressed-predictions} \ldots{} \mbox{--output-dir} outputs/W9\_context\_packing \\
+    Input validation & docs/input\_validation.md \\
+    Model-stack smoke & python scripts/smoke\_model\_stack.py \mbox{--config} configs/baseline.yaml \mbox{--device} cpu \\
+    Serving smoke & mgq-serve \quad{\normalfont(after installing the \texttt{serve} extra)} \\
     \bottomrule
   \end{tabularx}
 \end{table}
 
 \subsection{Manifests}
 
-Every runner writes \texttt{outputs/<week>/manifest.json} alongside
+Every runner writes \texttt{outputs/<stage>/manifest.json} alongside
 \texttt{metrics.json}.  The manifest records: the current git
 commit (and a ``dirty'' flag if any tracked file was modified at
 launch time), the command line, the configuration file SHA-256,
@@ -2089,6 +2180,22 @@ SHA-256 (truncated) for every file the runner emits.  This is
 sufficient to verify that a re-run produced byte-identical outputs,
 or to identify exactly which input changed if the outputs differ.
 
+\subsection{Input validation boundary}
+
+The repository now distinguishes research-data assumptions from
+production-facing inputs.  TREC \texttt{run.tsv} readers reject
+malformed six-column rows, empty identifiers, invalid or duplicate
+ranks, duplicate documents within a query, non-finite scores, and
+non-UTF-8 bytes before expensive generation or analysis starts.
+Generation prompt assembly normalises whitespace, rejects empty
+queries, drops empty optional passages, and applies deterministic
+character truncation before tokenizer-level truncation.  Serving
+JSONL loaders reject duplicate ids, missing fields, invalid JSON,
+replacement-character-heavy text, and non-object records.  The
+FastAPI wrapper maps these typed validation failures to structured
+\texttt{422} payloads with \texttt{error.type},
+\texttt{error.message}, and \texttt{error.field}.
+
 \subsection{Determinism}
 
 Seed 42 is used everywhere a random choice enters: the W4
@@ -2096,39 +2203,47 @@ qrels-anchored distractor sample, the W6 BERTScore subsample
 selection, the W6 regression-bucket triage sample, the W7-D
 low-grounding case-study sample, and the 10\,000-resample paired
 bootstrap throughout.  This is documented in the per-script CLI
-help and in the per-week reports' ``Reproduce'' sections.
+help and in the per-stage reports' ``Reproduce'' sections.
 
 \subsection{What is and isn't committed}
 
 The project's local operating contract codifies the policy:
 \texttt{outputs/}, \texttt{data/}, and the local-scratch directory
-are gitignored; the only experimental artefacts that ever enter git
-are source code (under \texttt{src/}, \texttt{experiments/},
-\texttt{scripts/}, \texttt{tests/}), \texttt{README.md}, the report
-\emph{templates} under \texttt{reports/templates/}, and the final
-\emph{viewable} report PDFs under \texttt{reports/generated/}.
-This keeps the repository small and decouples regenerable
-artefacts (every \texttt{metrics.json}, every \texttt{run.tsv})
-from the source of truth.
+are gitignored.  The tracked artefacts are source code (under
+\texttt{src/}, \texttt{experiments/}, \texttt{scripts/},
+\texttt{tests/}), configs, documentation, compact report outputs
+under \texttt{reports/}, and the figures required to render those
+reports.  Large regenerable artefacts (every \texttt{metrics.json},
+every \texttt{run.tsv}, every dataset cache, every model cache) stay
+outside git.
 
 \subsection{Engineering scaffolding}
 
 \begin{itemize}
-  \item \textbf{Tests.}  78 unit tests under \texttt{tests/}; runs
-        in $<\!10$~s on the laptop; no network, no heavy deps.
-        Slow tests gated behind \texttt{@pytest.mark.slow}.
-  \item \textbf{Lint.}  \texttt{ruff} with the \texttt{F} and
-        \texttt{W} rule sets enabled (pyflakes + whitespace); style
-        rules deliberately disabled for the first pass.
-  \item \textbf{CI.}  \texttt{.github/workflows/ci.yml} runs pytest
-        + ruff on every push / PR to \texttt{main}.  Does not
-        download \msmarco{} data or run the slow tests.
+  \item \textbf{Tests.}  The default pytest suite is fast and local:
+        no network, no model downloads, and no MS MARCO data fetch.
+        Slow and integration checks are explicitly marked and opt-in.
+  \item \textbf{Lint.}  \texttt{ruff} runs over \texttt{src},
+        \texttt{tests}, \texttt{experiments}, and \texttt{scripts}
+        with a conservative bug-finding rule set.
+  \item \textbf{CI.}  \texttt{.github/workflows/ci.yml} runs default
+        pytest, \texttt{ruff}, and headline-metric metadata checks on
+        push and pull request events.  The separate
+        \texttt{secret-scan.yml} workflow runs the high-confidence
+        secret scanner.
   \item \textbf{Lockfile.}  \texttt{requirements-lock.txt} is a
-        pip-freeze snapshot of the author's macOS CPU-only dev
-        environment.  Hash pinning and transitive closure are
-        explicitly listed as TODO; the lockfile is calibrated for
-        ``can I rebuild this on a comparable machine?'', not
-        ``bit-identical builds on arbitrary infrastructure''.
+        pip-freeze snapshot of the current security-refreshed CPU dev
+        environment.  Historical experiment numbers remain anchored
+        to the first-report tag rather than to moving dependency pins.
+  \item \textbf{Optional checks.}  The model-stack smoke test loads
+        the pinned generator and dense encoder, runs one short CPU
+        generation, and verifies an embedding shape.  It is kept out
+        of default CI because it requires model downloads.
+  \item \textbf{Service and tracking.}  The \texttt{serve} extra
+        exposes \texttt{mgq-serve} with \texttt{/health} and
+        \texttt{/generate}; the \texttt{tracking} extra leaves room
+        for MLflow or Weights \& Biases while defaulting to local
+        JSONL events.
 \end{itemize}
 
 \section{Full bucket counts and W6 analysis tables}
@@ -2174,33 +2289,41 @@ or worsened.
 \hbadness=99999
 \begin{itemize}
   \item \textbf{W2:} \bmtwofive{} retrieval, full corpus.  Output:
-        \texttt{outputs/week02\_bm25/}.
+        \texttt{outputs/W2\_bm25/}.
   \item \textbf{W3:} RAG generation baseline (T5-small over top-3).
         Output:
-        \code{outputs/week03\_\allowbreak generation\_\allowbreak \{bm25,reranked\}\_\allowbreak full/}.
+        \code{outputs/W3\_\allowbreak generation\_\allowbreak \{bm25,reranked\}\_\allowbreak full/}.
   \item \textbf{W4:} dense retrieval, 50k qrels-anchored sample.
-        Output: \texttt{outputs/week04\_dense/}.
+        Output: \texttt{outputs/W4\_dense/}.
   \item \textbf{W5:} cross-encoder rerank over dense top-100.
-        Output: \texttt{outputs/week05\_reranker\_full/}.
+        Output: \texttt{outputs/W5\_reranker\_full/}.
   \item \textbf{W5-A:} same reranker over \bmtwofive{} top-100.
         Output:
-        \code{outputs/week05\_\allowbreak rerank\_\allowbreak first\_\allowbreak stage\_\allowbreak compare/}.
+        \code{outputs/W5\_\allowbreak rerank\_\allowbreak first\_\allowbreak stage\_\allowbreak compare/}.
   \item \textbf{W6:} \bertscore{} proxy + regression failure
         taxonomy + decode-budget closure.  Outputs:
-        \code{outputs/week06\_\allowbreak bertscore\_\allowbreak proxy/},
-        \code{outputs/week06\_\allowbreak analysis/},
-        \code{outputs/week06\_\allowbreak taxonomy\_\allowbreak mnt128/}.
+        \code{outputs/W6\_\allowbreak bertscore\_\allowbreak proxy/},
+        \code{outputs/W6\_\allowbreak analysis/},
+        \code{outputs/W6\_\allowbreak taxonomy\_\allowbreak mnt128/}.
   \item \textbf{W6-A/B/C:} question-form tagging,
         per-form $\Delta$, regression structural profile.
-        Outputs: \code{outputs/week06\_\allowbreak querytype/},
-        \code{outputs/week06\_\allowbreak rerank\_\allowbreak by\_\allowbreak form/},
-        \code{outputs/week06\_\allowbreak regression\_\allowbreak features/}.
+        Outputs: \code{outputs/W6\_\allowbreak querytype/},
+        \code{outputs/W6\_\allowbreak rerank\_\allowbreak by\_\allowbreak form/},
+        \code{outputs/W6\_\allowbreak regression\_\allowbreak features/}.
   \item \textbf{W7:} lexical + 3-gram grounding audit; W7-A adds
         the NLI proxy; W7-C grounding $\leftrightarrow$ downstream
         correlation; W7-D low-grounding case study.  Outputs:
-        \code{outputs/week07\_\allowbreak grounding/},
-        \code{outputs/week07\_\allowbreak grounding\_\allowbreak correlation/},
-        \code{outputs/week07\_\allowbreak low\_\allowbreak grounding\_\allowbreak cases/}.
+        \code{outputs/W7\_\allowbreak grounding/},
+        \code{outputs/W7\_\allowbreak grounding\_\allowbreak correlation/},
+        \code{outputs/W7\_\allowbreak low\_\allowbreak grounding\_\allowbreak cases/}.
+  \item \textbf{W8 triad:} deterministic context relevance,
+        groundedness, and answer relevance diagnostics over one or
+        more generation prediction files.  Output:
+        \code{outputs/W8\_\allowbreak rag\_\allowbreak triad/}.
+  \item \textbf{W9 context packing:} matched-qid comparison of
+        plain versus packed generation prediction files, including
+        answer-quality deltas and context-character savings.  Output:
+        \code{outputs/W9\_\allowbreak context\_\allowbreak packing/}.
 \end{itemize}
 \endgroup
 

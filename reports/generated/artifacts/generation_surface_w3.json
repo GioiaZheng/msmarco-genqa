@@ -1,0 +1,105 @@
+{
+  "schema": "msmarco-genqa.table-artifact.v1",
+  "artifact_id": "generation_surface_w3",
+  "metric_schema": "generation.surface_and_bootstrap.v1",
+  "query_set": {
+    "id": "msmarco-dev-small-paired",
+    "n_queries": 6980
+  },
+  "model_revision": {
+    "generator": "t5-small",
+    "retrieval_depth": 3,
+    "bm25_arm": "W2 top-3",
+    "reranked_arm": "W5 cross-encoder reranked top-3"
+  },
+  "tables": [
+    {
+      "id": "w3_headline_generation",
+      "columns": [
+        {
+          "heading": "Retrieval $\\to$ T5-small",
+          "align": "l"
+        },
+        {
+          "heading": "\\rougel{}",
+          "align": "r"
+        },
+        {
+          "heading": "BLEU",
+          "align": "r"
+        },
+        {
+          "heading": "EM",
+          "align": "r"
+        },
+        {
+          "heading": "\\Tokenf{}",
+          "align": "r"
+        }
+      ],
+      "rows": [
+        {
+          "cells": ["\\bmtwofive{} top-3", "0.1859", "0.0717", "0.0135", "0.1966"]
+        },
+        {
+          "cells": [
+            "Reranked top-3",
+            "\\textbf{0.3621}",
+            "\\textbf{0.2922}",
+            "\\textbf{0.0606}",
+            "\\textbf{0.3677}"
+          ]
+        },
+        {
+          "cells": [
+            "$\\Delta$ (rerank $-$ \\bmtwofive{})",
+            "$\\mathbf{+0.1763}$",
+            "$\\mathbf{+0.2206}$",
+            "$\\mathbf{+0.0471}$",
+            "$\\mathbf{+0.1711}$"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "w3_bootstrap_ci",
+      "columns": [
+        {
+          "heading": "Metric",
+          "align": "l"
+        },
+        {
+          "heading": "\\bmtwofive{} (per-q mean)",
+          "align": "r"
+        },
+        {
+          "heading": "Reranked",
+          "align": "r"
+        },
+        {
+          "heading": "$\\Delta$",
+          "align": "r"
+        },
+        {
+          "heading": "95\\,\\% CI on $\\Delta$",
+          "align": "r"
+        }
+      ],
+      "rows": [
+        {
+          "cells": ["\\rougel{}", "0.1934", "0.3677", "$+0.1742$", "$[+0.1663,\\,+0.1820]$"]
+        },
+        {
+          "cells": ["BLEU (sentence)", "0.0423", "0.1754", "$+0.1330$", "$[+0.1265,\\,+0.1395]$"]
+        },
+        {
+          "cells": ["Exact-Match", "0.0135", "0.0606", "$+0.0471$", "$[+0.0417,\\,+0.0527]$"]
+        },
+        {
+          "cells": ["\\Tokenf{}", "0.1966", "0.3677", "$+0.1711$", "$[+0.1632,\\,+0.1789]$"]
+        }
+      ]
+    }
+  ]
+}
+

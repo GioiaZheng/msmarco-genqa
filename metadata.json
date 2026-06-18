@@ -9,11 +9,15 @@
   "pipeline": [
     "bm25_retrieval",
     "dense_retrieval",
+    "hybrid_rrf_fusion",
+    "retrieval_matrix_reporting",
     "cross_encoder_reranking",
     "retrieval_lift_diagnostics",
     "rag_generation",
+    "context_packing_evaluation",
     "paired_bootstrap_evaluation",
-    "semantic_grounding_audit"
+    "semantic_grounding_audit",
+    "rag_triad_evaluation"
   ],
   "headline_metrics": {
     "bm25_to_reranked_t5_small": {
@@ -32,6 +36,10 @@
     "config_driven": true,
     "manifested_runs": true,
     "query_level_retrieval_diagnostics": true,
+    "retrieval_matrix_reporting": true,
+    "context_packing_reporting": true,
+    "rag_triad_reporting": true,
+    "input_validation": true,
     "experiment_tracking": ["jsonl", "mlflow_optional", "wandb_optional"],
     "serving": ["fastapi_optional"]
   }

@@ -1,4 +1,4 @@
-"""Cross-encoder reranking utilities (Week 5)."""
+"""Cross-encoder reranking utilities (W5)."""
 
 from .cross_encoder import CrossEncoderReranker
 

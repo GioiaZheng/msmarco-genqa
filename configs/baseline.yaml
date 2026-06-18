@@ -34,11 +34,31 @@ retrieval:
   n_threads: 0
   bm25s_chunksize: 50
 
+query_transform:
+  # Default stays off so historical retrieval baselines remain reproducible.
+  # Set to normalize or lexical_expansion for controlled ablations.
+  method: none
+  output_dir: outputs/query_transform/none
+  lowercase: true
+  strip_terminal_punctuation: true
+  max_query_terms_for_expansion: 6
+  max_expansion_terms: 4
+  expansion_terms:
+    covid: [coronavirus]
+    fda: [food and drug administration]
+    flu: [influenza]
+    heart attack: [myocardial infarction]
+    irs: [internal revenue service]
+    nyc: [new york city]
+    u.s.: [united states]
+    uk: [united kingdom]
+    usa: [united states]
+
 eval_retrieval:
   ks_mrr: [10]
   ks_ndcg: [10]
   ks_recall: [100, 1000]
-  output_dir: outputs/week02_bm25
+  output_dir: outputs/W2_bm25
   n_examples: 20                # qualitative examples dumped to examples.jsonl
 
 generation:
@@ -53,12 +73,21 @@ generation:
   max_new_tokens: 64
   top_k_passages: 3
   num_eval_queries: 200         # subset for the W3 baseline (CPU-friendly)
-  output_dir: outputs/week03_generation
+  output_dir: outputs/W3_generation
+  # Disabled for canonical historical baselines. Enable in a separate
+  # output directory when comparing prompt cost versus answer quality.
+  context_packing:
+    enabled: false
+    max_context_chars: 1200
+    max_passage_chars: 500
+    sentence_selection: query_overlap
+    deduplicate: true
+    ordering: rank
 
 eval_generation:
   metrics: [rouge-l, bleu, exact-match, token-f1]
 
-# Week 4: dense retrieval baseline on a *sampled* sub-corpus.
+# W4: dense retrieval baseline on a *sampled* sub-corpus.
 # We do NOT embed the full 8.8M corpus on a CPU laptop. The sample is
 # qrels-anchored: every dev/small relevant doc is included, then random
 # distractors fill to ``sample_size``. This makes BM25-on-sample vs
@@ -73,12 +102,12 @@ dense:
   device: null            # null -> auto (cuda if available, else cpu)
   index_dir: data/processed/dense_index_minilm_50k
   bm25_sample_index_dir: data/processed/bm25_sample_index_50k
-  output_dir: outputs/week04_dense
+  output_dir: outputs/W4_dense
   top_k: 1000
   compare_bm25_on_sample: true
   n_examples: 20          # qualitative examples dumped to examples.jsonl
 
-# Week 5: cross-encoder reranking on top of the W4 dense run.
+# W5: cross-encoder reranking on top of the W4 dense run.
 # We score (query, passage) pairs with a small MS MARCO cross-encoder.
 # Cost is O(rerank_top_k) forward passes per query -- do NOT default to
 # 1000. Top-100 is the standard reranking depth.
@@ -90,7 +119,7 @@ reranker:
   batch_size: 64
   max_length: 512
   device: null            # null -> auto (cuda if available, else cpu)
-  output_dir: outputs/week05_reranker
+  output_dir: outputs/W5_reranker
   n_examples: 20
 
   # Resume / chunking. ``chunk_size`` queries are scored and appended to
@@ -102,25 +131,40 @@ reranker:
 
 # Research evaluation workflow facade. `rag-eval run --config configs/baseline.yaml`
 # reads this section to build an auditable BM25 -> dense -> rerank -> generation
-# -> bootstrap -> grounding plan without duplicating stage logic.
+# -> context packing -> bootstrap -> grounding -> triad plan without duplicating
+# stage logic.
 rag_eval:
   stages:
+    - query_transformation
     - bm25_retrieval
     - dense_retrieval
     - cross_encoder_rerank
+    - retrieval_quality_report
     - retrieval_lift_analysis
     - generation_bm25
     - generation_reranked
+    - generation_reranked_packed
+    - context_packing_report
     - paired_bootstrap_ci
     - grounding_audit
+    - rag_triad
   num_eval_queries: 9999
-  bm25_generation_dir: outputs/week03_generation_bm25_full
-  reranker_output_dir: outputs/week05_reranker_full
+  bm25_generation_dir: outputs/W3_generation_bm25_full
+  reranker_output_dir: outputs/W5_reranker_full
   reranker_resume: true
-  reranked_generation_dir: outputs/week03_generation_reranked_full
-  bootstrap_output_dir: outputs/week03_generation_bootstrap_full
-  retrieval_lift_output_dir: outputs/week05_retrieval_lift_analysis
-  grounding_output_dir: outputs/week07_grounding
+  reranked_generation_dir: outputs/W3_generation_reranked_full
+  packed_generation_dir: outputs/W3_generation_reranked_packed
+  context_packing_report_dir: outputs/W9_context_packing
+  context_max_chars: 900
+  context_max_passage_chars: 320
+  context_sentence_selection: query_overlap
+  context_ordering: rank
+  context_deduplicate: true
+  bootstrap_output_dir: outputs/W3_generation_bootstrap_full
+  retrieval_report_output_dir: outputs/retrieval_reports/dense_vs_reranked
+  retrieval_lift_output_dir: outputs/W5_retrieval_lift_analysis
+  grounding_output_dir: outputs/W7_grounding
+  triad_output_dir: outputs/W8_rag_triad
   bootstrap_resamples: 10000
   grounding_nli_pairs: 0
   tracking:

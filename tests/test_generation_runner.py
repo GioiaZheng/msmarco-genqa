@@ -24,6 +24,8 @@ from experiments.run_generation_baseline import (
     resolve_input_run,
     resolve_output_dir,
 )
+from msmarco_genqa.generation.rag_generator import RAGGenerationConfig, RAGGenerator
+from msmarco_genqa.reranking.io import RunTsvFormatError
 
 
 # --------------------------------------------------------------------------- #
@@ -53,11 +55,11 @@ class TestLoadRuns:
         runs = load_runs(run)
         assert runs == {"q1": ["d_a", "d_b", "d_c"], "q2": ["d_x"]}
 
-    def test_skips_malformed_short_lines(self, tmp_path: Path):
+    def test_rejects_malformed_short_lines(self, tmp_path: Path):
         run = tmp_path / "run.tsv"
         run.write_text("q1\tQ0\td_a\t1\t9.0\ttest\nbroken\nq2\tQ0\td_x\t1\t1.0\ttest\n")
-        runs = load_runs(run)
-        assert runs == {"q1": ["d_a"], "q2": ["d_x"]}
+        with pytest.raises(RunTsvFormatError, match="expected 6 tab-separated fields"):
+            load_runs(run)
 
     def test_handles_out_of_order_ranks(self, tmp_path: Path):
         run = tmp_path / "run.tsv"
@@ -72,6 +74,18 @@ class TestLoadRuns:
         runs = load_runs(run)
         assert runs["q1"] == ["d_a", "d_b", "d_c"]
 
+    def test_rejects_duplicate_document_ids(self, tmp_path: Path):
+        run = tmp_path / "run.tsv"
+        _write_run(
+            run,
+            [
+                ("q1", "d_a", 1, 9.0),
+                ("q1", "d_a", 2, 8.0),
+            ],
+        )
+        with pytest.raises(RunTsvFormatError, match="duplicate document id"):
+            load_runs(run)
+
 
 # --------------------------------------------------------------------------- #
 # parse_args + resolve_* — CLI vs config-derived defaults
@@ -81,8 +95,8 @@ class TestLoadRuns:
 @pytest.fixture
 def fake_cfg() -> dict:
     return {
-        "eval_retrieval": {"output_dir": "outputs/week02_bm25"},
-        "generation": {"output_dir": "outputs/week03_generation"},
+        "eval_retrieval": {"output_dir": "outputs/W2_bm25"},
+        "generation": {"output_dir": "outputs/W3_generation"},
     }
 
 
@@ -95,13 +109,13 @@ class TestResolveInputRun:
     def test_default_is_bm25_w2_run(self, fake_cfg, fake_root):
         args = parse_args([])
         assert resolve_input_run(args, fake_cfg, fake_root) == (
-            fake_root / "outputs/week02_bm25/run.tsv"
+            fake_root / "outputs/W2_bm25/run.tsv"
         )
 
     def test_cli_override_relative(self, fake_cfg, fake_root):
-        args = parse_args(["--input-run", "outputs/week05_reranker/run.tsv"])
+        args = parse_args(["--input-run", "outputs/W5_reranker/run.tsv"])
         assert resolve_input_run(args, fake_cfg, fake_root) == (
-            fake_root / "outputs/week05_reranker/run.tsv"
+            fake_root / "outputs/W5_reranker/run.tsv"
         )
 
     def test_cli_override_absolute(self, fake_cfg, fake_root, tmp_path):
@@ -115,13 +129,13 @@ class TestResolveOutputDir:
     def test_default_is_w3_output_dir(self, fake_cfg, fake_root):
         args = parse_args([])
         assert resolve_output_dir(args, fake_cfg, fake_root) == (
-            fake_root / "outputs/week03_generation"
+            fake_root / "outputs/W3_generation"
         )
 
     def test_cli_override(self, fake_cfg, fake_root):
-        args = parse_args(["--output-dir", "outputs/week03_generation_reranked"])
+        args = parse_args(["--output-dir", "outputs/W3_generation_reranked"])
         assert resolve_output_dir(args, fake_cfg, fake_root) == (
-            fake_root / "outputs/week03_generation_reranked"
+            fake_root / "outputs/W3_generation_reranked"
         )
 
 
@@ -134,13 +148,13 @@ class TestInferRetrievalSource:
     @pytest.mark.parametrize(
         "path, expected",
         [
-            (Path("outputs/week02_bm25/run.tsv"), "bm25"),
+            (Path("outputs/W2_bm25/run.tsv"), "bm25"),
             (Path("outputs/bm25_full/run.tsv"), "bm25"),
-            (Path("outputs/week04_dense/run.tsv"), "dense"),
+            (Path("outputs/W4_dense/run.tsv"), "dense"),
             (Path("outputs/dense_minilm/run.tsv"), "dense"),
-            (Path("outputs/week05_reranker/run.tsv"), "reranked"),
+            (Path("outputs/W5_reranker/run.tsv"), "reranked"),
             (Path("outputs/some_rerank/run.tsv"), "reranked"),
-            (Path("outputs/week06_mystery/run.tsv"), "unknown"),
+            (Path("outputs/W6_mystery/run.tsv"), "unknown"),
         ],
     )
     def test_labels(self, path: Path, expected: str):
@@ -197,19 +211,59 @@ def test_documented_reranked_invocation_parses(fake_cfg, fake_root):
     """
     argv = [
         "--input-run",
-        "outputs/week05_reranker/run.tsv",
+        "outputs/W5_reranker/run.tsv",
         "--output-dir",
-        "outputs/week03_generation_reranked",
+        "outputs/W3_generation_reranked",
         "--retrieval-source",
         "reranked",
     ]
     args = parse_args(argv)
     assert resolve_input_run(args, fake_cfg, fake_root) == (
-        fake_root / "outputs/week05_reranker/run.tsv"
+        fake_root / "outputs/W5_reranker/run.tsv"
     )
     assert resolve_output_dir(args, fake_cfg, fake_root) == (
-        fake_root / "outputs/week03_generation_reranked"
+        fake_root / "outputs/W3_generation_reranked"
     )
     assert args.retrieval_source == "reranked"
     # restrict_to_run not set in this canonical invocation.
     assert args.restrict_to_run is None
+
+
+def test_context_packing_invocation_parses():
+    args = parse_args(
+        [
+            "--context-packing",
+            "--context-max-chars",
+            "900",
+            "--context-max-passage-chars",
+            "320",
+            "--context-sentence-selection",
+            "query_overlap",
+            "--context-ordering",
+            "rank",
+            "--no-context-deduplicate",
+        ]
+    )
+
+    assert args.context_packing is True
+    assert args.context_max_chars == 900
+    assert args.context_max_passage_chars == 320
+    assert args.context_sentence_selection == "query_overlap"
+    assert args.context_ordering == "rank"
+    assert args.no_context_deduplicate is True
+
+
+def test_rag_generator_prompt_normalizes_and_truncates_without_model_load():
+    generator = RAGGenerator.__new__(RAGGenerator)
+    generator.config = RAGGenerationConfig(
+        top_k_passages=2,
+        max_query_chars=16,
+        max_passage_chars=9,
+    )
+
+    prompt = generator.build_prompt(
+        "  what   is dense retrieval exactly? ",
+        [" first passage text ", "", "third passage"],
+    )
+
+    assert prompt == "question: what is dense context: first"

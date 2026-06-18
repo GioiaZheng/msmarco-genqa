@@ -4,7 +4,7 @@
 # Python dependencies are installed (``pip install -r requirements.txt &&
 # pip install -e .``).
 
-.PHONY: help install test test-slow lint check-results pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-baseline
+.PHONY: help install test test-slow lint check-results check-notebooks export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-baseline
 
 PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
@@ -17,6 +17,9 @@ help:
 	@echo "  make test-slow            -- include slow tests (HF metric scripts; skipped if offline)"
 	@echo "  make lint                 -- ruff check on src/, tests/, experiments/, scripts/"
 	@echo "  make check-results        -- verify metadata.json headline metrics against RESULTS.md"
+	@echo "  make check-notebooks      -- verify notebooks stay lightweight demos"
+	@echo "  make export-report-tables -- refresh checked LaTeX table fragments"
+	@echo "  make check-report-tables  -- verify checked LaTeX table fragments are current"
 	@echo "  make pipeline-dry-run     -- print the config-driven experiment plan"
 	@echo "  make rag-eval-dry-run     -- print the research evaluation workflow plan"
 	@echo "  make model-stack-smoke    -- load baseline HF models and run a short smoke"
@@ -62,6 +65,16 @@ lint:
 check-results:
 	$(PYTHON) scripts/check_headline_metrics.py
 
+check-notebooks:
+	$(PYTHON) scripts/check_notebooks.py
+
+export-report-tables:
+	$(PYTHON) scripts/export_report_tables.py
+
+check-report-tables:
+	$(PYTHON) scripts/export_report_tables.py
+	git diff --exit-code reports/generated/tables
+
 pipeline-dry-run:
 	$(PYTHON) scripts/run_pipeline.py --dry-run
 
@@ -103,4 +116,4 @@ clean-pycache:
 # `mgq-retrieve` directly with `--allow-incomplete-manifest`.
 reproduce-baseline: install
 	mgq-retrieve --require-clean-tree
-	$(PYTHON) scripts/verify_reproduction.py outputs/week02_bm25
+	$(PYTHON) scripts/verify_reproduction.py outputs/W2_bm25

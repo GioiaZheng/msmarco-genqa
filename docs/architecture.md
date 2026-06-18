@@ -40,14 +40,23 @@ configuration, code, metrics, and provenance, not the corpus itself.
 
 ### Retrieval
 
+`src/msmarco_genqa/retrieval/query_transform.py` owns optional
+pre-retrieval query normalization, lexical expansion, and de-contextualization
+baselines. The default method is `none`; transformed runs must preserve the
+original query text and record the transformation config hash.
+
 Retrieval modules produce TREC-style `run.tsv` files. A retrieval run is the
 contract between the ranking layer and every downstream experiment.
+Downstream readers use strict validation for six-field TREC rows, positive
+ranks, finite scores, duplicate query-document pairs, duplicate ranks, and
+UTF-8-safe identifiers. Malformed runs should fail before generation or
+analysis starts.
 
 Important outputs:
 
-- `outputs/week02_bm25/run.tsv`
-- `outputs/week04_dense/run.tsv`
-- `outputs/week05_reranker/run.tsv`
+- `outputs/W2_bm25/run.tsv`
+- `outputs/W4_dense/run.tsv`
+- `outputs/W5_reranker/run.tsv`
 
 The dense stage uses a qrels-anchored sample. Absolute dense metrics should
 not be compared against full-corpus BM25; only same-sample comparisons are
@@ -67,10 +76,20 @@ Generation consumes a `run.tsv`, retrieves the top-k passages, writes
 the model. That persisted prompt context is what makes later grounding audits
 possible without re-running generation.
 
+Optional context packing runs between passage lookup and prompt construction.
+Packed runs must preserve source document ids and span metadata so downstream
+grounding, triad, and context-cost reports can still explain what evidence was
+shown to the model.
+
 The current generator is frozen T5-small. Current evidence suggests it mostly
 extracts from the prompt. Future generator work should therefore treat prompt
 format, passage structure, citation behaviour, and model capacity as
 experimental variables.
+
+Prompt construction normalizes whitespace, rejects empty queries, drops empty
+optional passages, and applies deterministic character truncation before model
+tokenization. The serving wrapper maps validation failures to structured 422
+responses; batch runners raise typed errors with file or field context.
 
 ### Evaluation
 
@@ -80,6 +99,8 @@ bootstrap confidence intervals are meaningful.
 
 Evaluation scripts read committed code and gitignored outputs. They should
 write machine-readable summaries first, then console tables as a convenience.
+Context-packing comparisons are evaluated on matched prediction query ids and
+should be interpreted as a cost-quality tradeoff, not as a new retrieval result.
 
 ## Orchestration
 

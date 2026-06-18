@@ -3,8 +3,9 @@
 # `requirements.txt` is the loose, easy-to-install dep list (use for fast
 # development setup). This file pins a security-refreshed reproduction
 # environment for the repository's current code. The historical numbers in
-# `reports/internship_report/report.pdf` remain anchored by the frozen
-# v1.0-internship-final snapshot; use that tag for archival reproduction.
+# Historical experiment numbers in `reports/repo_report/report.pdf`
+# remain anchored by the v1.0-first-report snapshot; use that tag for
+# archival reproduction.
 #
 # Install with:
 #
@@ -23,7 +24,7 @@
 #   separately from the appropriate index before running pip install.
 
 # --- Core scientific stack ---
-numpy==1.26.4
+numpy==2.2.6
 pandas==2.3.3
 matplotlib==3.10.9
 
@@ -31,7 +32,7 @@ matplotlib==3.10.9
 PyYAML==6.0.3
 
 # --- Datasets and IO ---
-datasets==4.5.0
+datasets==5.0.0
 ir_datasets==0.5.11
 lxml==6.1.1
 
@@ -45,7 +46,7 @@ faiss-cpu==1.13.0
 # --- Generation / reranking (transformers stack) ---
 torch==2.12.0
 transformers==5.10.2
-tokenizers==0.22.2
+tokenizers==0.23.1
 sentencepiece==0.2.1
 safetensors==0.7.0
 

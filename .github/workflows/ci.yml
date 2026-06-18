@@ -14,11 +14,10 @@ on:
   pull_request:
     branches: [main]
 
-# Avoid running duplicate workflows on the same ref (push + PR from same
-# branch).
+# Avoid duplicate PR workflows while preserving every main-branch run.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -53,6 +52,14 @@ jobs:
 
       - name: Check headline metric metadata
         run: python scripts/check_headline_metrics.py
+
+      - name: Check demo notebooks
+        run: python scripts/check_notebooks.py
+
+      - name: Check generated report tables
+        run: |
+          python scripts/export_report_tables.py
+          git diff --exit-code reports/generated/tables
 
   lint:
     name: ruff

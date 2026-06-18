@@ -1,13 +1,13 @@
 """RAG generator: a Seq2Seq model conditioned on a question and the top
 retrieved passages.
 
-The format mirrors the prototype in week 3 of the notebooks::
+The format mirrors the prototype in W3 of the notebooks::
 
     question: <query> context: <passage_1> <passage_2> ...
 
 so that the only thing that changes between the prototype and the official
 baseline is the *quality* of the retrieved passages (toy 3-passage corpus
-vs. real top-k from the BM25 index built in week 2).
+vs. real top-k from the BM25 index built in W2).
 """
 
 from __future__ import annotations
@@ -15,6 +15,8 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from typing import Sequence
+
+from msmarco_genqa.util.input_validation import normalize_passage_list, normalize_text
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,8 @@ class RAGGenerationConfig:
     top_k_passages: int = 3
     device: str | None = None
     batch_size: int = 4
+    max_query_chars: int = 2048
+    max_passage_chars: int = 4096
 
 
 class RAGGenerator:
@@ -62,9 +66,17 @@ class RAGGenerator:
         self._torch = torch
 
     def build_prompt(self, query: str, passages: Sequence[str]) -> str:
-        passages = list(passages)[: self.config.top_k_passages]
-        context = " ".join(p.strip() for p in passages if p and p.strip())
-        return f"question: {query} context: {context}"
+        clean_query = normalize_text(
+            query,
+            field="query",
+            max_chars=self.config.max_query_chars,
+        )
+        clean_passages = normalize_passage_list(
+            list(passages)[: self.config.top_k_passages],
+            max_passage_chars=self.config.max_passage_chars,
+        )
+        context = " ".join(clean_passages)
+        return f"question: {clean_query} context: {context}"
 
     def generate(self, query: str, passages: Sequence[str]) -> str:
         return self.generate_batch([query], [list(passages)])[0]

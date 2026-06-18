@@ -6,7 +6,8 @@ verify a recorded run is reproducible.
 
 ## TL;DR
 
-Every run of `mgq-{retrieve, rerank, generate, evaluate}` writes:
+Every manifest-writing experiment runner (`mgq-{retrieve, dense, fuse, rerank,
+generate}` and the matching `experiments/run_*.py` entry points) writes:
 
 - `outputs/<run>/manifest.json` — schema-v2 provenance contract
 - `outputs/<run>/resolved_config.yaml` — config dict actually used (with CLI overrides applied)
@@ -22,7 +23,7 @@ make reproduce-baseline
 To audit a recorded run:
 
 ```bash
-python scripts/verify_reproduction.py outputs/week02_bm25
+python scripts/verify_reproduction.py outputs/W2_bm25
 ```
 
 ## Manifest schema v2
@@ -119,7 +120,7 @@ silent wording drift.
 
 ## Dev-time bypasses
 
-Two CLI flags recognised by every `mgq-*` and `experiments/run_*.py`:
+Two CLI flags recognised by the manifest-writing experiment runners:
 
 - `--require-clean-tree` — refuse to write the manifest if the git
   tree is dirty. Default off. Use for canonical / headline runs.
@@ -152,7 +153,7 @@ queries, full corpus).
 ### 2. Verify
 
 ```bash
-python scripts/verify_reproduction.py outputs/week02_bm25
+python scripts/verify_reproduction.py outputs/W2_bm25
 ```
 
 Five checks (any failure → exit 1):

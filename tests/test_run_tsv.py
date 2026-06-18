@@ -13,6 +13,7 @@ import pytest
 
 from experiments.run_retrieval import _read_done_qids, _read_runs_from_tsv
 from experiments.run_generation_baseline import load_runs
+from msmarco_genqa.reranking.io import RunTsvFormatError
 
 
 SAMPLE = textwrap.dedent(
@@ -60,7 +61,7 @@ def test_read_runs_from_tsv_sorts_by_rank(tmp_path):
     assert scores["q1"] == pytest.approx([3.0, 2.0, 1.0])
 
 
-def test_read_runs_from_tsv_skips_malformed(tmp_path):
+def test_read_runs_from_tsv_rejects_malformed(tmp_path):
     p = tmp_path / "run.tsv"
     p.write_text(
         "q1\tQ0\td1\t1\t1.0\tbm25\n"
@@ -68,8 +69,8 @@ def test_read_runs_from_tsv_skips_malformed(tmp_path):
         "\n"
         "q1\tQ0\td2\tNOT_A_RANK\t1.0\tbm25\n"
     )
-    runs, _ = _read_runs_from_tsv(p)
-    assert runs == {"q1": ["d1"]}
+    with pytest.raises(RunTsvFormatError, match="expected 6 tab-separated fields"):
+        _read_runs_from_tsv(p)
 
 
 # --------------------------------------------------------------------------- #

@@ -1,4 +1,4 @@
-# Build the v1.0 report PDF from report.tex + references.bib.
+# Build the repository report PDF from report.tex + references.bib.
 #
 #   make pdf    — full build (latexmk runs pdflatex + biber as needed)
 #   make clean  — remove all intermediate artefacts (keeps report.pdf)
@@ -14,13 +14,18 @@
 #                 collectbox subfig oberdiek zref
 
 LATEXMK ?= latexmk
+PYTHON  ?= python
 TEX     ?= report.tex
 PDF     := $(TEX:.tex=.pdf)
+PROJECT_ROOT ?= ../..
 
-.PHONY: pdf clean purge
+.PHONY: pdf tables clean purge
 .DEFAULT_GOAL := pdf
 
-pdf:
+tables:
+	cd $(PROJECT_ROOT) && $(PYTHON) scripts/export_report_tables.py
+
+pdf: tables
 	$(LATEXMK) -pdf -interaction=nonstopmode $(TEX)
 
 clean:

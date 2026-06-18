@@ -22,7 +22,7 @@ Sample sizes:
 Encoder: the W4-B winner (highest dense MRR@10) when its summary is
 available, otherwise falls back to the W4 baseline (MiniLM-L6).
 
-Output: ``outputs/week04_density_sweep/`` with::
+Output: ``outputs/W4_density_sweep/`` with::
 
     sample_15k/, sample_30k/    # raw dense runs at the two new densities
     summary.json
@@ -60,13 +60,13 @@ def build_cells(baseline_dir: str) -> list[dict[str, Any]]:
         {
             "label": "sample 15k",
             "sample_size": 15000,
-            "output_dir": "outputs/week04_density_sweep/sample_15k",
+            "output_dir": "outputs/W4_density_sweep/sample_15k",
             "reuse_existing": None,
         },
         {
             "label": "sample 30k",
             "sample_size": 30000,
-            "output_dir": "outputs/week04_density_sweep/sample_30k",
+            "output_dir": "outputs/W4_density_sweep/sample_30k",
             "reuse_existing": None,
         },
         {
@@ -86,7 +86,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=(
             "HF model id for the dense encoder. Defaults to the W4-B "
-            "winner if outputs/week04_encoder_horizontal/summary.json "
+            "winner if outputs/W4_encoder_horizontal/summary.json "
             "exists, otherwise the W4 baseline (MiniLM-L6)."
         ),
     )
@@ -96,7 +96,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=(
             "Output dir of the 50k-sample baseline run for the chosen "
-            "encoder. Defaults to outputs/week04_dense for the baseline "
+            "encoder. Defaults to outputs/W4_dense for the baseline "
             "encoder; for non-baseline encoders point at the matching "
             "W4-B run dir."
         ),
@@ -105,7 +105,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week04_density_sweep",
+        default=PROJECT_ROOT / "outputs/W4_density_sweep",
     )
     p.add_argument(
         "--figures-dir",
@@ -119,29 +119,29 @@ def resolve_encoder_and_baseline(args: argparse.Namespace) -> tuple[str, str]:
     """Return (encoder model_name, baseline output_dir)."""
     if args.encoder and args.baseline_dir:
         return args.encoder, args.baseline_dir
-    w4b_summary = PROJECT_ROOT / "outputs/week04_encoder_horizontal/summary.json"
-    if w4b_summary.exists():
-        with open(w4b_summary) as f:
+    encoder_summary = PROJECT_ROOT / "outputs/W4_encoder_horizontal/summary.json"
+    if encoder_summary.exists():
+        with open(encoder_summary) as f:
             summary = json.load(f)
         winner = summary["best_encoder_by_mrr_at_10"]
         # Find the corresponding output_dir from the encoder list.
         for row in summary["rows"]:
             if row["model_name"] == winner:
-                # If it's the W4 baseline encoder, the dir is outputs/week04_dense;
-                # otherwise the W4-B convention puts it under outputs/week04_dense_<safe>.
+                # If it's the W4 baseline encoder, the dir is outputs/W4_dense;
+                # otherwise the W4-B convention puts it under outputs/W4_dense_<safe>.
                 if winner == "sentence-transformers/all-MiniLM-L6-v2":
-                    baseline_dir = "outputs/week04_dense"
+                    baseline_dir = "outputs/W4_dense"
                 else:
                     safe = winner.replace("/", "_").replace(":", "_")
-                    baseline_dir = f"outputs/week04_dense_{safe}"
+                    baseline_dir = f"outputs/W4_dense_{safe}"
                 logger.info("Using W4-B winner: %s (baseline at %s)", winner, baseline_dir)
                 return winner, baseline_dir
     # Fall back to the W4 baseline.
     logger.info(
         "No W4-B summary found; falling back to the W4 baseline "
-        "(MiniLM-L6, outputs/week04_dense)."
+        "(MiniLM-L6, outputs/W4_dense)."
     )
-    return "sentence-transformers/all-MiniLM-L6-v2", "outputs/week04_dense"
+    return "sentence-transformers/all-MiniLM-L6-v2", "outputs/W4_dense"
 
 
 def run_one_cell(cell: dict[str, Any], encoder: str) -> None:

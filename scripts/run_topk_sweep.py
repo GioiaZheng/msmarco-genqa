@@ -1,4 +1,4 @@
-"""Rerank-depth K-sweep on BM25 and dense first stages.
+"""Rerank-depth top-k sweep on BM25 and dense first stages.
 
 Drives four ``experiments/run_reranker.py`` invocations and aggregates
 the results into a single perf–latency Pareto table + figure.
@@ -15,7 +15,7 @@ Design choices (per the project ddl plan; see the
   the absolute headline numbers live; the K = 50 / 200 cells are only
   there to draw the *shape* of the perf–latency Pareto.
 
-Output: ``outputs/week05_k_sweep/`` (gitignored) with::
+Output: ``outputs/W5_k_sweep/`` (gitignored) with::
 
     bm25_k50/, bm25_k200/, dense_k50/, dense_k200/    # raw rerank runs
     summary.json
@@ -23,8 +23,8 @@ Output: ``outputs/week05_k_sweep/`` (gitignored) with::
     pareto.png                                         # tracked under figures/
 
 The two K=100 cells are read from their existing locations:
-``outputs/week05_reranker_full/metrics.json`` (dense+rerank) and
-``outputs/week05_reranker_bm25_full/metrics.json`` (W5-A BM25+rerank).
+``outputs/W5_reranker_full/metrics.json`` (dense+rerank) and
+``outputs/W5_reranker_bm25_full/metrics.json`` (W5-A BM25+rerank).
 
 If those cells are missing the script fails fast with a clear error;
 this avoids a partial Pareto that could be misread.
@@ -43,19 +43,19 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-logger = logging.getLogger("run_k_sweep")
+logger = logging.getLogger("run_topk_sweep")
 
 
-# (label, first_stage_key_in_metrics, input_run_relpath, input_week, K, output_subdir, num_eval_queries)
+# (label, first_stage_key_in_metrics, input_run_relpath, input_stage, K, output_subdir, num_eval_queries)
 # K=100 cells point at the existing full-dev runs (no new compute).
 CELLS: list[dict[str, Any]] = [
     {
         "label": "BM25 K=50",
         "first_stage": "bm25",
         "K": 50,
-        "input_run": "outputs/week02_bm25/run.tsv",
-        "input_week": "week02_bm25",
-        "output_dir": "outputs/week05_k_sweep/bm25_k50",
+        "input_run": "outputs/W2_bm25/run.tsv",
+        "input_stage": "W2_bm25",
+        "output_dir": "outputs/W5_k_sweep/bm25_k50",
         "num_eval_queries": 1000,
         "reuse_existing": None,
     },
@@ -63,19 +63,19 @@ CELLS: list[dict[str, Any]] = [
         "label": "BM25 K=100",
         "first_stage": "bm25",
         "K": 100,
-        "input_run": "outputs/week02_bm25/run.tsv",
-        "input_week": "week02_bm25",
-        "output_dir": "outputs/week05_reranker_bm25_full",
+        "input_run": "outputs/W2_bm25/run.tsv",
+        "input_stage": "W2_bm25",
+        "output_dir": "outputs/W5_reranker_bm25_full",
         "num_eval_queries": None,
-        "reuse_existing": "outputs/week05_reranker_bm25_full/metrics.json",
+        "reuse_existing": "outputs/W5_reranker_bm25_full/metrics.json",
     },
     {
         "label": "BM25 K=200",
         "first_stage": "bm25",
         "K": 200,
-        "input_run": "outputs/week02_bm25/run.tsv",
-        "input_week": "week02_bm25",
-        "output_dir": "outputs/week05_k_sweep/bm25_k200",
+        "input_run": "outputs/W2_bm25/run.tsv",
+        "input_stage": "W2_bm25",
+        "output_dir": "outputs/W5_k_sweep/bm25_k200",
         "num_eval_queries": 1000,
         "reuse_existing": None,
     },
@@ -83,9 +83,9 @@ CELLS: list[dict[str, Any]] = [
         "label": "Dense K=50",
         "first_stage": "dense",
         "K": 50,
-        "input_run": "outputs/week04_dense/run.tsv",
-        "input_week": "week04_dense",
-        "output_dir": "outputs/week05_k_sweep/dense_k50",
+        "input_run": "outputs/W4_dense/run.tsv",
+        "input_stage": "W4_dense",
+        "output_dir": "outputs/W5_k_sweep/dense_k50",
         "num_eval_queries": 1000,
         "reuse_existing": None,
     },
@@ -93,19 +93,19 @@ CELLS: list[dict[str, Any]] = [
         "label": "Dense K=100",
         "first_stage": "dense",
         "K": 100,
-        "input_run": "outputs/week04_dense/run.tsv",
-        "input_week": "week04_dense",
-        "output_dir": "outputs/week05_reranker_full",
+        "input_run": "outputs/W4_dense/run.tsv",
+        "input_stage": "W4_dense",
+        "output_dir": "outputs/W5_reranker_full",
         "num_eval_queries": None,
-        "reuse_existing": "outputs/week05_reranker_full/metrics.json",
+        "reuse_existing": "outputs/W5_reranker_full/metrics.json",
     },
     {
         "label": "Dense K=200",
         "first_stage": "dense",
         "K": 200,
-        "input_run": "outputs/week04_dense/run.tsv",
-        "input_week": "week04_dense",
-        "output_dir": "outputs/week05_k_sweep/dense_k200",
+        "input_run": "outputs/W4_dense/run.tsv",
+        "input_stage": "W4_dense",
+        "output_dir": "outputs/W5_k_sweep/dense_k200",
         "num_eval_queries": 1000,
         "reuse_existing": None,
     },
@@ -141,7 +141,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/week05_k_sweep",
+        default=PROJECT_ROOT / "outputs/W5_k_sweep",
     )
     p.add_argument(
         "--figures-dir",
@@ -161,7 +161,7 @@ def run_one_cell(cell: dict[str, Any]) -> None:
         sys.executable,
         str(PROJECT_ROOT / "experiments/run_reranker.py"),
         "--input-run", cell["input_run"],
-        "--input-week", cell["input_week"],
+        "--input-stage", cell["input_stage"],
         "--output-dir", cell["output_dir"],
         "--rerank-top-k", str(cell["K"]),
         "--resume",
@@ -248,7 +248,7 @@ def aggregate(cells: list[dict[str, Any]]) -> dict[str, Any]:
 
 def render_markdown(agg: dict[str, Any]) -> str:
     lines: list[str] = []
-    lines.append("# W5-B — rerank depth K-sweep on BM25 vs dense first stages")
+    lines.append("# W5-B — rerank depth top-k sweep on BM25 vs dense first stages")
     lines.append("")
     lines.append(
         "Cross-encoder MS-MARCO-MiniLM-L-6-v2 reranking applied at "
@@ -353,7 +353,7 @@ def main() -> None:
     fig_rel = plot_pareto(agg, args.figures_dir)
 
     summary = {
-        "task": "k_sweep",
+        "task": "topk_sweep",
         "scope": "K in {50, 100, 200}; K=50,200 on 1000-q subsample (seed 42); K=100 reuses W5 / W5-A full-dev runs",
         "cells": agg["cells"],
         "figure": fig_rel,
@@ -371,7 +371,7 @@ def main() -> None:
 
     # ---- console summary ----
     print()
-    print("=== W5-B — rerank K-sweep Pareto ===")
+    print("=== W5-B — rerank top-k Pareto ===")
     print(f"  {'cell':16s}  {'n_q':>5s}  {'rerank MRR@10':>14s}  {'Δ MRR@10':>9s}  {'sec':>6s}")
     for r in agg["cells"]:
         print(

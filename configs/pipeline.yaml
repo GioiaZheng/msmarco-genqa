@@ -9,6 +9,15 @@ tracking:
   output_dir: outputs/pipeline_tracking
 
 stages:
+  - name: query_transformation
+    description: Deterministic query normalization or expansion audit before retrieval.
+    command:
+      - mgq-transform-queries
+      - --config
+      - configs/baseline.yaml
+      - --output-dir
+      - outputs/query_transform/none
+
   - name: bm25_retrieval
     description: Full-corpus BM25 baseline on dev/small.
     command:
@@ -23,6 +32,20 @@ stages:
       - --config
       - configs/baseline.yaml
 
+  - name: hybrid_rrf_fusion
+    description: Weighted RRF fusion over BM25-on-sample and dense first-stage runs.
+    command:
+      - python
+      - experiments/run_hybrid_fusion.py
+      - --input-run
+      - bm25_sample=outputs/W4_dense/run_bm25_sample.tsv
+      - --input-run
+      - dense=outputs/W4_dense/run.tsv
+      - --output-dir
+      - outputs/W4_hybrid_rrf
+      - --top-k
+      - "1000"
+
   - name: cross_encoder_rerank
     description: Cross-encoder reranking over dense top-100; quantifies rerank lift.
     command:
@@ -30,17 +53,62 @@ stages:
       - --config
       - configs/baseline.yaml
 
+  - name: hybrid_rrf_rerank
+    description: Cross-encoder reranking over the fused RRF candidate run.
+    command:
+      - python
+      - experiments/run_reranker.py
+      - --input-run
+      - outputs/W4_hybrid_rrf/run.tsv
+      - --output-dir
+      - outputs/W5_hybrid_rrf_reranker
+      - --resume
+
+  - name: retrieval_quality_report
+    description: Matched-qid retrieval metrics and movement diagnostics for dense vs reranked runs.
+    command:
+      - mgq-retrieval-report
+      - compare
+      - --baseline-run
+      - outputs/W4_dense/run.tsv
+      - --candidate-run
+      - outputs/W5_reranker_full/run.tsv
+      - --baseline-name
+      - dense
+      - --candidate-name
+      - reranked
+      - --output-dir
+      - outputs/retrieval_reports/dense_vs_reranked
+
+  - name: hybrid_matrix_report
+    description: Same-qid BM25, dense, RRF, and RRF-plus-rerank retrieval matrix.
+    command:
+      - mgq-retrieval-report
+      - matrix
+      - --run
+      - bm25_sample=outputs/W4_dense/run_bm25_sample.tsv
+      - --run
+      - dense=outputs/W4_dense/run.tsv
+      - --run
+      - rrf=outputs/W4_hybrid_rrf/run.tsv
+      - --run
+      - rrf_reranked=outputs/W5_hybrid_rrf_reranker/run.tsv
+      - --baseline-name
+      - bm25_sample
+      - --output-dir
+      - outputs/retrieval_reports/hybrid_matrix
+
   - name: retrieval_lift_analysis
     description: Query-level diagnostics for promoted, demoted, new-hit, and lost-hit rerank cases.
     command:
       - python
       - scripts/analyze_retrieval_lift.py
       - --before-run
-      - outputs/week04_dense/run.tsv
+      - outputs/W4_dense/run.tsv
       - --after-run
-      - outputs/week05_reranker_full/run.tsv
+      - outputs/W5_reranker_full/run.tsv
       - --output-dir
-      - outputs/week05_retrieval_lift_analysis
+      - outputs/W5_retrieval_lift_analysis
 
   - name: generation_bm25
     description: T5 generation over BM25 top-3.
@@ -49,11 +117,15 @@ stages:
       - --config
       - configs/baseline.yaml
       - --input-run
-      - outputs/week02_bm25/run.tsv
+      - outputs/W2_bm25/run.tsv
       - --output-dir
-      - outputs/week03_generation_bm25_full
+      - outputs/W3_generation_bm25_full
       - --retrieval-source
       - bm25
+      - --restrict-to-run
+      - outputs/W5_reranker_full/run.tsv
+      - --num-eval-queries
+      - "9999"
 
   - name: generation_reranked
     description: T5 generation over cross-encoder-reranked top-3.
@@ -62,13 +134,56 @@ stages:
       - --config
       - configs/baseline.yaml
       - --input-run
-      - outputs/week05_reranker_full/run.tsv
+      - outputs/W5_reranker_full/run.tsv
       - --output-dir
-      - outputs/week03_generation_reranked_full
+      - outputs/W3_generation_reranked_full
       - --retrieval-source
       - reranked
       - --restrict-to-run
-      - outputs/week05_reranker_full/run.tsv
+      - outputs/W2_bm25/run.tsv
+      - --num-eval-queries
+      - "9999"
+
+  - name: generation_reranked_packed
+    description: T5 generation over reranked passages with deterministic context packing.
+    command:
+      - mgq-generate
+      - --config
+      - configs/baseline.yaml
+      - --input-run
+      - outputs/W5_reranker_full/run.tsv
+      - --output-dir
+      - outputs/W3_generation_reranked_packed
+      - --retrieval-source
+      - reranked_packed
+      - --restrict-to-run
+      - outputs/W2_bm25/run.tsv
+      - --num-eval-queries
+      - "9999"
+      - --context-packing
+      - --context-max-chars
+      - "900"
+      - --context-max-passage-chars
+      - "320"
+      - --context-sentence-selection
+      - query_overlap
+      - --context-ordering
+      - rank
+
+  - name: context_packing_report
+    description: Matched-qid answer-quality and context-cost comparison for packed prompts.
+    command:
+      - mgq-context-packing-report
+      - --baseline-predictions
+      - outputs/W3_generation_reranked_full/predictions.jsonl
+      - --compressed-predictions
+      - outputs/W3_generation_reranked_packed/predictions.jsonl
+      - --baseline-name
+      - reranked
+      - --compressed-name
+      - reranked_packed
+      - --output-dir
+      - outputs/W9_context_packing
 
   - name: paired_bootstrap_ci
     description: Paired-bootstrap confidence intervals for rerank lift.
@@ -76,11 +191,36 @@ stages:
       - python
       - scripts/bootstrap_generation_comparison.py
       - --bm25-dir
-      - outputs/week03_generation_bm25_full
+      - outputs/W3_generation_bm25_full
       - --reranked-dir
-      - outputs/week03_generation_reranked_full
+      - outputs/W3_generation_reranked_full
       - --output-dir
-      - outputs/week03_generation_bootstrap_full
+      - outputs/W3_generation_bootstrap_full
+
+  - name: grounding_audit
+    description: Deterministic grounding metrics over paired generation outputs.
+    command:
+      - python
+      - scripts/grounding_audit.py
+      - --bm25-dir
+      - outputs/W3_generation_bm25_full
+      - --reranked-dir
+      - outputs/W3_generation_reranked_full
+      - --output-dir
+      - outputs/W7_grounding
+
+  - name: rag_triad
+    description: Context relevance, groundedness, and answer relevance report.
+    command:
+      - mgq-rag-triad
+      - --predictions
+      - bm25=outputs/W3_generation_bm25_full/predictions.jsonl
+      - --predictions
+      - reranked=outputs/W3_generation_reranked_full/predictions.jsonl
+      - --output-dir
+      - outputs/W8_rag_triad
+      - --baseline-config
+      - bm25
 
   - name: generator_capacity_sweep
     description: Larger-generator sweep; override --model-name to google/flan-t5-base if desired.

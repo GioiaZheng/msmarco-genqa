@@ -232,6 +232,11 @@ outputs/*
 reports/generated/*
 !reports/generated/.gitkeep
 !reports/generated/*.pdf
+!reports/generated/artifacts/
+!reports/generated/artifacts/*.json
+!reports/generated/tables/
+!reports/generated/tables/*.tex
+!reports/generated/tables/*.sources.json
 
 # ir_datasets local home if it lands inside the repo
 .ir_datasets/
