@@ -192,9 +192,9 @@ Dense MRR@10 = 0.8830, nDCG@10 = 0.9041, Recall@100 = 0.9946 — vs
 BM25-on-sample MRR@10 = 0.6948, Recall@100 = 0.9338 (same 50 k pool).
 Numbers are upper-bounded by the sampling — every dev relevant doc is
 in the pool. Read the comparison as dense-vs-BM25 on the same sample,
-not against the W2 full-corpus number.
+not against the BM25 full-corpus number.
 
-**W4 follow-ups:**
+**Dense-retrieval follow-ups:**
 
 - *Same-tier encoder comparison* on the identical 50 k sample
   ([`scripts/run_encoder_comparison.py`](scripts/run_encoder_comparison.py)):
@@ -214,10 +214,10 @@ not against the W2 full-corpus number.
 ### Stage 5 — Cross-encoder reranking
 
 [`experiments/run_reranker.py`](experiments/run_reranker.py).
-`cross-encoder/ms-marco-MiniLM-L-6-v2` over the W4 dense top-100.
+`cross-encoder/ms-marco-MiniLM-L-6-v2` over the dense top-100.
 Full dev/small (6 980 queries):
 
-| Metric      | Dense (W4) | + CE rerank | Δ          |
+| Metric      | Dense      | + CE rerank | Δ          |
 |-------------|-----------:|------------:|-----------:|
 | MRR@10      | 0.8830     | 0.9304      | **+0.0474** |
 | nDCG@10     | 0.9041     | 0.9434      | +0.0393    |
@@ -320,7 +320,7 @@ passage title).
   budget-cap reading is falsified: T5-small hits EOS naturally, not a
   decode-budget wall. The mid-word output style is intrinsic to the
   model on this prompt format.
-- **W6-A/B/C question-form analyses** (no new generation; offline
+- **Question-form analyses** (no new generation; offline
   analyses over the existing per-query metrics):
   [`scripts/tag_query_forms.py`](scripts/tag_query_forms.py) tags all
   6 980 queries; [`scripts/analyze_rerank_by_query_form.py`](scripts/analyze_rerank_by_query_form.py)
@@ -645,7 +645,7 @@ Requires Stage 4 output `outputs/dense_retrieval/run.tsv`.
 python experiments/run_reranker.py
 ```
 
-Reranks W4 dense top-100 per query. CPU runtime scales linearly with
+Reranks the dense top-100 per query. CPU runtime scales linearly with
 the number of queries — full 6 980 × top-100 is ~6 h on a 6-core
 laptop. Use `--num-eval-queries` for a deterministic subsample.
 
@@ -760,7 +760,7 @@ All knobs live in [`configs/baseline.yaml`](configs/baseline.yaml). Key ones:
 | `retrieval.chunk_size` | Checkpoint cadence in queries (default 200). Smaller = more durable, more I/O. |
 | `retrieval.n_threads` | `0` = sequential (matches the 0.1703 baseline). `-1` = all CPUs. |
 | `data.corpus_limit` | Set to a small int for a smoke test; does **not** reproduce official numbers. Leave `null` for real runs. |
-| `generation.num_eval_queries` | Size of the W3 eval subset |
+| `generation.num_eval_queries` | Size of the generation eval subset |
 
 ## 6.5. Reproducibility status
 
@@ -795,22 +795,22 @@ Limitations to be aware of:
 
 ## 8. Next
 
-- **W5-B — top-k Pareto.** K ∈ {50, 100, 200} perf-latency Pareto on
-  both first stages (1 000-q subsample for K=50/200; K=100 reuses W5
+- **Top-k Pareto.** K ∈ {50, 100, 200} perf-latency Pareto on
+  both first stages (1 000-q subsample for K=50/200; K=100 reuses the reranker
   full-dev). Queued.
-- **W7-B — generator capacity, not decode budget.** The W6 closure
-  (`max_new_tokens=64→128`) plus the W7 grounding ceiling (~99 %
+- **Generator capacity, not decode budget.** The generation-analysis closure
+  (`max_new_tokens=64→128`) plus the grounding ceiling (~99 %
   extractiveness on both arms) together imply generator-side work
   should target richer prompt formats (multi-passage synthesis,
   citation-aware decoding) or a different model — not the decode
   budget. Driver
   [`scripts/run_generator_capacity_sweep.py`](scripts/run_generator_capacity_sweep.py)
   runs T5-base on both BM25 and reranked top-3 and re-scores every
-  W7 metric, so the open question — does the W7-A NLI sign flip
+  grounding metric, so the open question — does the NLI sign flip
   (Δ = −0.145) hold at higher capacity? — is one command away.
 - **Try a MS-MARCO-tuned dense encoder.** Swap
   `sentence-transformers/all-MiniLM-L6-v2` for
-  `sentence-transformers/msmarco-MiniLM-L6-cos-v5` and re-run W4 on
+  `sentence-transformers/msmarco-MiniLM-L6-cos-v5` and re-run dense retrieval on
   the same 50 k sample. Measures how much of the current dense-vs-BM25
   gap is attributable to generic-encoder choice vs the retrieval setup.
 - **Single-query demo CLI.** A thin

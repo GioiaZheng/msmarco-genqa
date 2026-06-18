@@ -1,11 +1,11 @@
-"""W5: cross-encoder reranking on top of the W4 dense retrieval run.
+"""Cross-encoder reranking on top of the dense retrieval run.
 
 Pipeline:
 
-1. Load a first-stage ``run.tsv`` (defaults to the W4 dense run) and
+1. Load a first-stage ``run.tsv`` (defaults to the dense run) and
    truncate to top-K per query (default K = 100).
-2. Load the W4 sample doc_id pool + sample-restricted qrels (so the
-   evaluation is apples-to-apples with the W4 dense numbers).
+2. Load the dense run's sample doc_id pool + sample-restricted qrels (so the
+   evaluation is apples-to-apples with the dense numbers).
 3. Resolve passage texts via ``ir_datasets``' docs_store, one chunk at
    a time so memory stays bounded.
 4. Score (query, passage) pairs with ``cross-encoder/ms-marco-MiniLM-L-6-v2``,
@@ -13,7 +13,7 @@ Pipeline:
    ``flush()`` so a SIGKILL between chunks loses at most one chunk.
 5. ``--resume`` reads the existing ``run.tsv``, identifies qids that
    already have a complete top-K block, prunes any half-written ones,
-   and only scores the remainder. Mirrors the W2 BM25 resume pattern.
+   and only scores the remainder. Mirrors the BM25 resume pattern.
 6. Evaluate dense (input) and dense+CE (reranked) on the SAME qrels and
    the SAME query set, so the delta is purely the reranker effect.
 7. Persist:
@@ -33,15 +33,15 @@ Usage::
         --output-dir outputs/cross_encoder_rerank_full \\
         --resume
 
-The W4 dense run is the source of truth; we never re-encode the corpus
+The dense run is the source of truth; we never re-encode the corpus
 or rebuild FAISS here.
 """
 
 from __future__ import annotations
 
-# Mirror W4: keep faiss/torch libomp from clashing on macOS even though
-# this script doesn't itself touch faiss — the dense W4 outputs may have
-# left state behind, and downstream torch loads inherit the env.
+# Mirror the dense runner: keep faiss/torch libomp from clashing on macOS
+# even though this script doesn't itself touch faiss — the dense outputs may
+# have left state behind, and downstream torch loads inherit the env.
 import os
 
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
@@ -102,7 +102,7 @@ def parse_args() -> argparse.Namespace:
         "--input-run",
         type=Path,
         default=PROJECT_ROOT / "outputs/dense_retrieval/run.tsv",
-        help="First-stage run.tsv to rerank. Defaults to the W4 dense run.",
+        help="First-stage run.tsv to rerank. Defaults to the dense run.",
     )
     parser.add_argument(
         "--input-stage",
@@ -211,11 +211,11 @@ def _resolve_passages(doc_ids: list[str], docs_store) -> dict[str, str]:
 
 
 def _load_sample_qrels(input_stage_dir: Path, all_qrels: dict[str, set[str]]) -> dict[str, set[str]]:
-    """Restrict qrels to the W4 sample (apples-to-apples eval).
+    """Restrict qrels to the dense run's sample (apples-to-apples eval).
 
     If ``sample_doc_ids.json`` exists in the input stage's output dir we
     use it; otherwise we fall back to the full qrels — this lets the
-    runner also work against the W2 full-corpus run.
+    runner also work against the BM25 full-corpus run.
     """
     sample_path = input_stage_dir / "sample_doc_ids.json"
     if not sample_path.exists():
@@ -477,7 +477,7 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     # 7. Qualitative examples (before vs after) — reads reranked from disk
     # ---------------------------------------------------------------- #
-    rng = random.Random(seed + 2)  # different stream than the W4 examples
+    rng = random.Random(seed + 2)  # different stream than the dense examples
     eligible = sorted(eval_qids)
     sample_qids_for_examples = rng.sample(
         eligible, min(n_examples_to_save, len(eligible))
@@ -528,7 +528,7 @@ def main() -> None:
 
     payload = {
         "task": "reranking",
-        "dataset": "msmarco-passage/dev/small (qrels-anchored sample, via W4 dense run)",
+        "dataset": "msmarco-passage/dev/small (qrels-anchored sample, via dense run)",
         "n_examples": n_queries,
         "config": cfg,
         "rerank": {
@@ -624,7 +624,7 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     # 9. Friendly summary
     # ---------------------------------------------------------------- #
-    print("\n=== W5 cross-encoder reranking ===")
+    print("\n=== cross-encoder reranking ===")
     print(f"input run:   {input_run_path}")
     print(f"rerank model: {model_name}")
     print(

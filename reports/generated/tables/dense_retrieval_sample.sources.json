@@ -4,7 +4,7 @@
   "sources": [
     {
       "path": "reports/generated/artifacts/retrieval_dense_rerank.json",
-      "sha256_16": "4e0cc0780780adf5",
+      "sha256_16": "1b60a7eaaf937949",
       "artifact_schema": "msmarco-genqa.table-artifact.v1",
       "artifact_id": "retrieval_dense_rerank",
       "metric_schema": "retrieval.sample_rerank.v1",

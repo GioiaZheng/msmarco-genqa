@@ -1,9 +1,10 @@
-"""Lightweight failure taxonomy on a sample of W3 regression queries.
+"""Lightweight failure taxonomy on a sample of generation regression queries.
 
 A *regression* (per ``scripts/analyze_generation_rerank.py``) is a query
 where the reranker brings the relevant passage into top-3, yet the
 generator produces a *worse* token-F1 answer than under BM25. There are
-233 such queries in the full-dev W3 comparison; this script samples a
+233 such queries in the full-dev RAG-generation comparison; this script
+samples a
 seeded subset, applies a handful of deterministic heuristic rules to
 attach a coarse failure-mode label, and dumps:
 
@@ -214,7 +215,7 @@ def main() -> None:
 
     # ---- markdown report ----
     lines: list[str] = []
-    lines.append("# Regression failure taxonomy — W3 full-dev")
+    lines.append("# Regression failure taxonomy — RAG-generation full-dev")
     lines.append("")
     lines.append(
         f"Sampled **{len(sample)}** of **{len(regressions)}** regression-bucket "

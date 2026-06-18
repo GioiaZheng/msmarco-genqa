@@ -16,8 +16,8 @@ yes_no / other) — and dumps:
 Default input is ``outputs/generation_analysis/per_query_metrics.jsonl``,
 which already carries the native ``query_type`` field. Pass
 ``--queries-only`` to skip the join and tag dev/small queries
-loaded directly via ``ir_datasets`` (useful before W6 analysis exists,
-e.g. for a fresh checkout).
+loaded directly via ``ir_datasets`` (useful before the generation
+analysis exists, e.g. for a fresh checkout).
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=PROJECT_ROOT / "outputs/generation_analysis/per_query_metrics.jsonl",
         help=(
-            "Input jsonl with one row per paired qid (W6 analyse output). "
+            "Input jsonl with one row per paired qid (generation-analysis output). "
             "Each row must have 'query_id', 'query'; 'query_type' is "
             "joined into the output when present."
         ),
@@ -55,8 +55,9 @@ def parse_args() -> argparse.Namespace:
         "--queries-only",
         action="store_true",
         help=(
-            "Skip the W6 per-query file and tag dev/small queries directly "
-            "via ir_datasets. Used when no W6 analysis output exists yet."
+            "Skip the generation-analysis per-query file and tag dev/small "
+            "queries directly via ir_datasets. Used when no generation "
+            "analysis output exists yet."
         ),
     )
     parser.add_argument(
@@ -153,7 +154,7 @@ def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 def render_markdown(rows: list[dict[str, Any]], agg: dict[str, Any]) -> str:
     lines: list[str] = []
-    lines.append("# Query-form tagging — W6 complement")
+    lines.append("# Query-form tagging — generation-analysis complement")
     lines.append("")
     lines.append(
         f"Tagged **{agg['n_total']}** queries with a wh-word / yes-no / "

@@ -315,7 +315,7 @@ def _render_markdown_report(
         "best-of-N reference scoring."
     )
     lines.append(
-        "- **Reranker**: `cross-encoder/ms-marco-MiniLM-L-6-v2` over the W4 "
+        "- **Reranker**: `cross-encoder/ms-marco-MiniLM-L-6-v2` over the "
         "dense top-100."
     )
     lines.append("")

@@ -119,7 +119,7 @@ def build_default_config(args: argparse.Namespace) -> DriverConfig:
 
 def build_dryrun_config(args: argparse.Namespace) -> DriverConfig:
     """Dry-run defaults: tiny sample using whatever reranker output is
-    already on disk (historical W5 1k-qid run by default). Writes to
+    already on disk (historical reranker 1k-qid run by default). Writes to
     outputs/dryrun/... so a real run is never disturbed.
     """
     suf = _suffix(args.out_suffix)

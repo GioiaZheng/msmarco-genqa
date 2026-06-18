@@ -1,7 +1,7 @@
 """Cross-encoder reranker over a first-stage retriever's top-k.
 
 Wraps ``sentence_transformers.CrossEncoder`` with a small, retriever-agnostic
-interface used by the W5 experiment script:
+interface used by the reranking experiment script:
 
     reranker = CrossEncoderReranker(model_name=..., batch_size=64)
     reranked = reranker.rerank_batch(queries, candidates_per_query)

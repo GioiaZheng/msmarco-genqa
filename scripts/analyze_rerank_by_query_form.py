@@ -1,23 +1,23 @@
-"""Break down the W3/W5 rerank delta by question-form (W6-A axis).
+"""Break down the generation/reranking delta by question-form.
 
-For every paired qid in the W6 analysis pool, join the per-query
+For every paired qid in the generation-analysis pool, join the per-query
 metrics with the question-form label from
-``outputs/query_type_analysis/query_forms.jsonl`` (W6-A) and aggregate per
+``outputs/query_type_analysis/query_forms.jsonl`` and aggregate per
 form. Reports BM25 vs reranked deltas on:
 
-- Token-F1, Exact-Match     (already per-query in W6 metrics)
+- Token-F1, Exact-Match     (already per-query in the generation metrics)
 - ROUGE-L                   (computed here via ``per_query_rouge_l``)
-- MRR@10, nDCG@10           (computed here from W2 / W5 run.tsv files
-                             and dev/small qrels)
+- MRR@10, nDCG@10           (computed here from the BM25 / reranker
+                             run.tsv files and dev/small qrels)
 
 Each form's headline ΔToken-F1 is reported with a 95 % paired-bootstrap
 CI. Bucket composition per form (regression, rerank_fixed_*, …) is
 also reported, so the table directly answers "on which query types
 does the reranker help most, and on which does it regress most".
 
-This is the W6-B follow-up to W6-A: no retrieval re-runs, no new
-generation; pure offline join + cheap per-query rescoring + paired
-bootstrap. CPU minutes end-to-end.
+This is the question-form regression follow-up to the per-form tagging:
+no retrieval re-runs, no new generation; pure offline join + cheap
+per-query rescoring + paired bootstrap. CPU minutes end-to-end.
 """
 
 from __future__ import annotations
@@ -200,11 +200,11 @@ def render_markdown(
     agg: dict[str, Any],
 ) -> str:
     lines: list[str] = []
-    lines.append("# Rerank Δ by question-form — W6-B")
+    lines.append("# Rerank Δ by question-form")
     lines.append("")
     lines.append(
-        f"Joined the W6-A question-form tags onto the W3/W5/W6 per-query "
-        f"metrics ({n_total} paired qids) and aggregated per form. "
+        f"Joined the question-form tags onto the generation/reranking "
+        f"per-query metrics ({n_total} paired qids) and aggregated per form. "
         "Headline metric is ΔToken-F1 (rerank − BM25), reported with a "
         "95 % paired-bootstrap CI on the per-form slice."
     )
@@ -333,10 +333,10 @@ def main() -> None:
         str(r["query_id"]): r["question_form"] for r in form_rows
     }
 
-    logger.info("Loading W6 per-query metrics from %s ...", args.per_query_metrics)
+    logger.info("Loading generation per-query metrics from %s ...", args.per_query_metrics)
     per_query = load_jsonl(args.per_query_metrics)
 
-    logger.info("Loading W3 predictions (BM25 + reranked) ...")
+    logger.info("Loading generation predictions (BM25 + reranked) ...")
     bm25_preds = build_predictions_index(load_jsonl(args.bm25_predictions))
     rerank_preds = build_predictions_index(load_jsonl(args.rerank_predictions))
 
@@ -423,12 +423,12 @@ def main() -> None:
         "categories": list(QUESTION_FORM_CATEGORIES),
         "by_form": agg,
         "notes": (
-            "Question-form labels from W6-A (scripts/tag_query_forms.py). "
-            "Per-query Token-F1 / EM / bucket from W6 analyze_generation_"
+            "Question-form labels from scripts/tag_query_forms.py. "
+            "Per-query Token-F1 / EM / bucket from analyze_generation_"
             "rerank.py. Per-query ROUGE-L computed here via rouge_score "
             "(best-of-N references). Per-query MRR@10 / nDCG@10 computed "
-            "from W2 run.tsv and W5 rerank run.tsv against dev/small qrels. "
-            "ΔToken-F1 CI is a paired bootstrap on each form's slice; "
+            "from the BM25 run.tsv and reranker run.tsv against dev/small "
+            "qrels. ΔToken-F1 CI is a paired bootstrap on each form's slice; "
             "small forms (e.g. 'why', n=75) have correspondingly wide CIs."
         ),
     }

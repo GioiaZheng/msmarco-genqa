@@ -4,7 +4,7 @@ Computes a DistilBERT-based BERTScore F1 per query for both the BM25
 generation predictions and the reranked generation predictions, then
 runs the project's existing paired-bootstrap CI on Δ (rerank − BM25).
 This complements the surface-form metric CIs already published in the
-W3 table and guides whether a full ``roberta-large`` BERTScore pass or
+generation table and guides whether a full ``roberta-large`` BERTScore pass or
 T5-small SFT is warranted before further work.
 
 This is *not* a final, citation-grade BERTScore evaluation. It is a
@@ -17,7 +17,7 @@ Inputs (same convention as ``scripts/bootstrap_generation_comparison``):
 - ``<reranked-dir>/predictions.jsonl``
 
 The two prediction files must cover the same qid set in the same order
-(the W3 generation runner guarantees this when both runs use the same
+(the generation runner guarantees this when both runs use the same
 ``--restrict-to-run`` argument and seed).
 
 Usage::

@@ -1,4 +1,4 @@
-"""Cross-encoder reranking utilities (W5)."""
+"""Cross-encoder reranking utilities."""
 
 from .cross_encoder import CrossEncoderReranker
 

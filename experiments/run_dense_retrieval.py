@@ -1,4 +1,4 @@
-"""W4: dense retrieval baseline on a *sampled* MS MARCO sub-corpus.
+"""Dense retrieval baseline on a *sampled* MS MARCO sub-corpus.
 
 Pipeline:
 
@@ -22,7 +22,7 @@ Usage::
     python experiments/run_dense_retrieval.py --sample-size 30000
     python experiments/run_dense_retrieval.py --rebuild-index
 
-The numbers produced here are NOT comparable to the W2 full-corpus
+The numbers produced here are NOT comparable to the BM25 full-corpus
 baseline. The qrels-anchored sample makes the relevant doc always present
 in the pool, which inflates absolute retrieval metrics. The valid
 comparison is BM25-on-sample vs dense-on-sample.
@@ -104,8 +104,8 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         help=(
-            "Override ``dense.model_name`` from the config. Used by the W4-B "
-            "same-tier encoder horizontal (bge-small-en-v1.5, "
+            "Override ``dense.model_name`` from the config. Used by the "
+            "same-tier encoder comparison (bge-small-en-v1.5, "
             "all-MiniLM-L12-v2, …)."
         ),
     )
@@ -115,7 +115,8 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=(
             "Override the output directory. Defaults to ``outputs/dense_retrieval``. "
-            "Pass a fresh path per-encoder so W4-B runs don't collide."
+            "Pass a fresh path per-encoder so same-tier encoder comparison "
+            "runs don't collide."
         ),
     )
     parser.add_argument(
@@ -142,7 +143,7 @@ def parse_args() -> argparse.Namespace:
 def _load_pool_doc_ids(project_root: Path) -> list[str]:
     """Return the universe of doc_ids to sample from.
 
-    We reuse the ``doc_ids.json`` already produced by W2's BM25 index
+    We reuse the ``doc_ids.json`` already produced by the BM25 index
     build (96 MB) so we don't have to iterate the full corpus a second time.
     """
     cached = project_root / "data/processed/bm25_index_msmarco/doc_ids.json"
@@ -152,7 +153,7 @@ def _load_pool_doc_ids(project_root: Path) -> list[str]:
             return json.load(f)
     raise SystemExit(
         f"Pool doc_ids not found at {cached}.\n"
-        "Run experiments/run_retrieval.py first to populate the W2 BM25 index "
+        "Run experiments/run_retrieval.py first to populate the BM25 index "
         "(this script reuses its doc_ids.json instead of re-iterating the "
         "full 8.8M-passage corpus)."
     )
@@ -193,11 +194,11 @@ def main() -> None:
 
     dense_cfg = cfg["dense"]
     sample_size = args.sample_size or int(dense_cfg["sample_size"])
-    # CLI overrides for the W4-B encoder horizontal + W4-A density sweep:
-    # model_name + output dir + auto-keyed FAISS index dir.
+    # CLI overrides for the same-tier encoder comparison + qrel-density
+    # sweep: model_name + output dir + auto-keyed FAISS index dir.
     # The cached index is invalidated by EITHER a different encoder OR a
     # different sample size, so we key the dir on (model_safe, sample_size)
-    # whenever --model-name is overridden. The W4 baseline (50k MiniLM-L6,
+    # whenever --model-name is overridden. The dense baseline (50k MiniLM-L6,
     # written via the unmodified default code path) is left untouched.
     if args.model_name is not None:
         dense_cfg["model_name"] = args.model_name
@@ -207,8 +208,8 @@ def main() -> None:
         )
         # BM25-on-sample is a function of sample_size only (not model_name);
         # auto-key the cache dir on sample_size whenever the dense override
-        # is in play so the W4-A density sweep doesn't collide with the W4
-        # baseline 50k BM25-sample index.
+        # is in play so the qrel-density sweep doesn't collide with the
+        # dense baseline 50k BM25-sample index.
         dense_cfg["bm25_sample_index_dir"] = (
             f"data/processed/bm25_sample_index_n{sample_size}"
         )
@@ -552,7 +553,7 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     # 9. Friendly summary
     # ---------------------------------------------------------------- #
-    print("\n=== W4 dense retrieval (sampled corpus) ===")
+    print("\n=== dense retrieval (sampled corpus) ===")
     print(f"sample size: {len(sample_doc_ids):,}  |  eval queries: {n_examples_total}")
     print(f"  {'metric':14s}  {'dense':>10s}  {'bm25_sample':>12s}  {'Δ':>9s}")
     for key in ("mrr@10", "ndcg@10", "recall@100", "recall@1000"):

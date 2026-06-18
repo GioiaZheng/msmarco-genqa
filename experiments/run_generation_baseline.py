@@ -1,8 +1,8 @@
-"""End-to-end W3 RAG generation baseline.
+"""End-to-end RAG generation baseline.
 
 Pipeline:
 
-1. Load a TREC-format retrieval run (``--input-run``; defaults to the W2
+1. Load a TREC-format retrieval run (``--input-run``; defaults to the
    BM25 run at ``outputs/bm25_baseline/run.tsv``).
 2. Load dev/small queries and the MS MARCO Passage docs_store (random access).
 3. Cross-reference dev/small query ids with MS MARCO QA v2.1 (HuggingFace
@@ -21,11 +21,11 @@ TREC-format ``run.tsv`` (BM25 / dense / reranked) and the rest of the
 pipeline is identical. Use ``--restrict-to-run`` to make different
 retrieval sources eval on the SAME query subsample (apples-to-apples),
 which matters when one source covers fewer queries than another (e.g.
-the W5 reranker covers 1,000 dev queries, not all 6,980).
+the reranker covers 1,000 dev queries, not all 6,980).
 
 Run from the project root::
 
-    # W3 baseline: BM25 → T5-small (defaults preserve the legacy behaviour)
+    # generation baseline: BM25 → T5-small (defaults preserve the legacy behaviour)
     python experiments/run_generation_baseline.py
 
     # Reranked → T5-small, restricted to reranker-covered queries
@@ -90,7 +90,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=Path,
         default=None,
         help=(
-            "TREC-format run.tsv to feed the generator. Defaults to the W2 BM25 "
+            "TREC-format run.tsv to feed the generator. Defaults to the BM25 "
             "run derived from cfg['eval_retrieval']['output_dir']."
         ),
     )
@@ -140,7 +140,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Override cfg['generation']['model_name'] (e.g. ``t5-base``, "
-            "``google/flan-t5-base``). Used by the W7-B generator horizontal."
+            "``google/flan-t5-base``). Used by the generator-capacity sweep."
         ),
     )
     parser.add_argument(
@@ -217,15 +217,15 @@ def resolve_output_dir(args: argparse.Namespace, cfg: dict, project_root: Path) 
 def infer_retrieval_source(input_run: Path) -> str:
     """Best-effort short label derived from the input run path.
 
-    Falls back to 'bm25' for the W2 path and 'unknown' otherwise. The CLI
+    Falls back to 'bm25' for the BM25 path and 'unknown' otherwise. The CLI
     flag ``--retrieval-source`` is preferred whenever the caller knows.
     """
     name = input_run.parent.name.lower()
-    if "W2" in name or "bm25" in name:
+    if "bm25" in name:
         return "bm25"
-    if "W4" in name or "dense" in name:
+    if "dense" in name:
         return "dense"
-    if "W5" in name or "rerank" in name:
+    if "rerank" in name:
         return "reranked"
     return "unknown"
 
@@ -402,7 +402,7 @@ def main() -> None:
     # ---- 4. Generate ----
     gen_model_name = args.model_name or cfg["generation"].get("model_name", "t5-small")
     # If --model-name is used to override the default checkpoint (e.g. the
-    # W7-B generator horizontal swapping t5-small for t5-base), the
+    # generator-capacity sweep swapping t5-small for t5-base), the
     # baked-in revision pin from the config no longer applies — fall back
     # to unpinned to avoid loading the wrong revision under the wrong name.
     revision_from_cfg = cfg["generation"].get("revision")
@@ -483,14 +483,14 @@ def main() -> None:
             )
     logger.info("Wrote %d qualitative examples to %s", min(20, len(predictions)), examples_path)
 
-    # ---- 7. Metrics (unified schema across W2/W3) ----
+    # ---- 7. Metrics (unified schema across retrieval and generation) ----
     metrics = evaluate_generation(predictions, references_per_query)
     logger.info("Metrics: %s", metrics)
 
     n_examples = metrics.pop("n_predictions", len(predictions))
     env_dict = capture_environment()
     # Generation inherits sampling context from its upstream retrieval run.
-    # bm25 (W2 full corpus) → not sampled. dense / reranked → qrels-anchored
+    # bm25 (full corpus) → not sampled. dense / reranked → qrels-anchored
     # sample. Generation's own metrics (Token-F1, ROUGE-L, etc.) are
     # answer-vs-reference, NOT recall-based, so the caveat is contextual
     # rather than directly affecting metric direction — but the provenance

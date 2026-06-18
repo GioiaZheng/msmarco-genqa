@@ -161,8 +161,8 @@ True 1 % / 5 % / 10 % density cells would need 70k–700k samples
 | Config | `configs/baseline.yaml`, `reranker.*` block |
 | Output | `outputs/cross_encoder_rerank_full/{run.tsv, metrics.json, examples.jsonl, manifest.json}` |
 
-Cross-encoder `cross-encoder/ms-marco-MiniLM-L-6-v2` over the **W4
-dense top-100** per query. Reranking is order-only, so Recall@100 is
+Cross-encoder `cross-encoder/ms-marco-MiniLM-L-6-v2` over the **dense
+top-100** per query. Reranking is order-only, so Recall@100 is
 unchanged by construction.
 
 **Reference numbers** (6,980 dev/small queries, full pipeline):
@@ -338,8 +338,8 @@ sufficient to re-identify the run six months later. See
 [`src/msmarco_genqa/util/environment.py`](../src/msmarco_genqa/util/environment.py).
 
 Three canonical runs predate the manifest plumbing and have no runtime
-`manifest.json`: the W2 BM25 full-corpus retrieval, the W4 dense
-baseline (50k sample), and the W5 reranker over the full BM25 run.
+`manifest.json`: the BM25 full-corpus retrieval, the dense
+baseline (50k sample), and the reranker over the full BM25 run.
 Each of those output directories carries a `provenance.backfill.json`
 instead — a separate file with a deliberately distinct schema string
 (`msmarco-genqa.backfilled-provenance.v1`) and an explicit `unknown`
