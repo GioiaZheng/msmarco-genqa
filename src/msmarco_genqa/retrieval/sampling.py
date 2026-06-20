@@ -10,7 +10,7 @@ that the eval set cares about, then top up to ``target_size`` with random
 distractors. The relevant doc is therefore *always* present in the pool,
 so MRR is meaningful and the comparison BM25 ↔ dense on the same pool is
 honest. Absolute numbers are still NOT comparable to a full-corpus run
-(which is the whole point of the caveat banner on the W4 report).
+(which is the whole point of the caveat banner on the dense-retrieval report).
 """
 
 from __future__ import annotations

@@ -238,9 +238,9 @@ def test_schema_constants_are_exported():
     holding the documented values."""
     assert bp.SCHEMA == "msmarco-genqa.backfilled-provenance.v1"
     assert bp.PRODUCED_BY == "scripts/backfill_provenance.py"
-    assert "outputs/W2_bm25" in bp.DEFAULT_TARGETS
-    assert "outputs/W4_dense" in bp.DEFAULT_TARGETS
-    assert "outputs/W5_reranker" in bp.DEFAULT_TARGETS
+    assert "outputs/bm25_baseline" in bp.DEFAULT_TARGETS
+    assert "outputs/dense_retrieval" in bp.DEFAULT_TARGETS
+    assert "outputs/cross_encoder_rerank" in bp.DEFAULT_TARGETS
 
 
 @pytest.mark.parametrize("commit", ["abcdef012345", "5a35de9c18ea"])

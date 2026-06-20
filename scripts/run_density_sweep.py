@@ -16,18 +16,19 @@ Sample sizes:
 - 10 % density: sample_size such that |relevants| / |sample| ≈ 0.10.
   Empirically |relevants| ≈ 1,500 → sample_size = 15,000.
 - 5 % density: sample_size = 30,000.
-- 3 % density (baseline): sample_size = 50,000 (existing W4 run, or
-  the W4-B winner's run at sample_size 50k).
+- 3 % density (baseline): sample_size = 50,000 (existing dense-retrieval
+  run, or the encoder-comparison winner's run at sample_size 50k).
 
-Encoder: the W4-B winner (highest dense MRR@10) when its summary is
-available, otherwise falls back to the W4 baseline (MiniLM-L6).
+Encoder: the encoder-comparison winner (highest dense MRR@10) when its
+summary is available, otherwise falls back to the dense-retrieval
+baseline (MiniLM-L6).
 
-Output: ``outputs/W4_density_sweep/`` with::
+Output: ``outputs/dense_density_sweep/`` with::
 
     sample_15k/, sample_30k/    # raw dense runs at the two new densities
     summary.json
     summary.md
-    figures/w4a_density_curve.png
+    figures/dense_vs_bm25_density_curve.png
 """
 
 from __future__ import annotations
@@ -60,13 +61,13 @@ def build_cells(baseline_dir: str) -> list[dict[str, Any]]:
         {
             "label": "sample 15k",
             "sample_size": 15000,
-            "output_dir": "outputs/W4_density_sweep/sample_15k",
+            "output_dir": "outputs/dense_density_sweep/sample_15k",
             "reuse_existing": None,
         },
         {
             "label": "sample 30k",
             "sample_size": 30000,
-            "output_dir": "outputs/W4_density_sweep/sample_30k",
+            "output_dir": "outputs/dense_density_sweep/sample_30k",
             "reuse_existing": None,
         },
         {
@@ -85,9 +86,10 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         help=(
-            "HF model id for the dense encoder. Defaults to the W4-B "
-            "winner if outputs/W4_encoder_horizontal/summary.json "
-            "exists, otherwise the W4 baseline (MiniLM-L6)."
+            "HF model id for the dense encoder. Defaults to the "
+            "encoder-comparison winner if "
+            "outputs/dense_encoder_horizontal/summary.json "
+            "exists, otherwise the dense-retrieval baseline (MiniLM-L6)."
         ),
     )
     p.add_argument(
@@ -96,16 +98,16 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=(
             "Output dir of the 50k-sample baseline run for the chosen "
-            "encoder. Defaults to outputs/W4_dense for the baseline "
+            "encoder. Defaults to outputs/dense_retrieval for the baseline "
             "encoder; for non-baseline encoders point at the matching "
-            "W4-B run dir."
+            "encoder-comparison run dir."
         ),
     )
     p.add_argument("--skip-runs", action="store_true")
     p.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W4_density_sweep",
+        default=PROJECT_ROOT / "outputs/dense_density_sweep",
     )
     p.add_argument(
         "--figures-dir",
@@ -119,7 +121,7 @@ def resolve_encoder_and_baseline(args: argparse.Namespace) -> tuple[str, str]:
     """Return (encoder model_name, baseline output_dir)."""
     if args.encoder and args.baseline_dir:
         return args.encoder, args.baseline_dir
-    encoder_summary = PROJECT_ROOT / "outputs/W4_encoder_horizontal/summary.json"
+    encoder_summary = PROJECT_ROOT / "outputs/dense_encoder_horizontal/summary.json"
     if encoder_summary.exists():
         with open(encoder_summary) as f:
             summary = json.load(f)
@@ -127,21 +129,21 @@ def resolve_encoder_and_baseline(args: argparse.Namespace) -> tuple[str, str]:
         # Find the corresponding output_dir from the encoder list.
         for row in summary["rows"]:
             if row["model_name"] == winner:
-                # If it's the W4 baseline encoder, the dir is outputs/W4_dense;
-                # otherwise the W4-B convention puts it under outputs/W4_dense_<safe>.
+                # If it's the dense-retrieval baseline encoder, the dir is outputs/dense_retrieval;
+                # otherwise the encoder-comparison convention puts it under outputs/dense_retrieval_<safe>.
                 if winner == "sentence-transformers/all-MiniLM-L6-v2":
-                    baseline_dir = "outputs/W4_dense"
+                    baseline_dir = "outputs/dense_retrieval"
                 else:
                     safe = winner.replace("/", "_").replace(":", "_")
-                    baseline_dir = f"outputs/W4_dense_{safe}"
-                logger.info("Using W4-B winner: %s (baseline at %s)", winner, baseline_dir)
+                    baseline_dir = f"outputs/dense_retrieval_{safe}"
+                logger.info("Using encoder-comparison winner: %s (baseline at %s)", winner, baseline_dir)
                 return winner, baseline_dir
-    # Fall back to the W4 baseline.
+    # Fall back to the dense-retrieval baseline.
     logger.info(
-        "No W4-B summary found; falling back to the W4 baseline "
-        "(MiniLM-L6, outputs/W4_dense)."
+        "No encoder-comparison summary found; falling back to the "
+        "dense-retrieval baseline (MiniLM-L6, outputs/dense_retrieval)."
     )
-    return "sentence-transformers/all-MiniLM-L6-v2", "outputs/W4_dense"
+    return "sentence-transformers/all-MiniLM-L6-v2", "outputs/dense_retrieval"
 
 
 def run_one_cell(cell: dict[str, Any], encoder: str) -> None:
@@ -219,11 +221,11 @@ def plot_density_curve(rows: list[dict[str, Any]], figures_dir: Path) -> str:
     ax.plot(densities, bm25_mrr, marker="s", label="BM25-on-sample MRR@10")
     ax.set_xlabel("Qrel density in sample (%)")
     ax.set_ylabel("MRR@10")
-    ax.set_title("W4-A — MRR@10 vs qrel density")
+    ax.set_title("MRR@10 vs qrel density")
     ax.grid(True, linestyle=":", alpha=0.5)
     ax.legend()
     fig.tight_layout()
-    out_path = figures_dir / "w4a_density_curve.png"
+    out_path = figures_dir / "dense_vs_bm25_density_curve.png"
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     return f"figures/{out_path.name}"
@@ -231,7 +233,7 @@ def plot_density_curve(rows: list[dict[str, Any]], figures_dir: Path) -> str:
 
 def render_markdown(rows: list[dict[str, Any]], encoder: str) -> str:
     lines: list[str] = []
-    lines.append(f"# W4-A — qrel-density sensitivity (encoder: `{encoder}`)")
+    lines.append(f"# Qrel-density sensitivity (encoder: `{encoder}`)")
     lines.append("")
     lines.append(
         "Three sample sizes selected to land the qrel-relevant-density at "
@@ -318,7 +320,7 @@ def main() -> None:
 
     # ---- console summary ----
     print()
-    print(f"=== W4-A — density sweep (encoder: {encoder}) ===")
+    print(f"=== Density sweep (encoder: {encoder}) ===")
     print(f"  {'label':38s}  {'density':>7s}  {'BM25 MRR@10':>11s}  {'Dense MRR@10':>12s}  {'Δ':>7s}")
     for r in sorted(rows, key=lambda x: x["qrel_density"]):
         bm25 = r["bm25_sample_mrr_at_10"]

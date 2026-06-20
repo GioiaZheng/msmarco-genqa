@@ -1,6 +1,6 @@
 {
   "schema": "msmarco-genqa.table-artifact.v1",
-  "artifact_id": "generation_surface_w3",
+  "artifact_id": "generation_surface",
   "metric_schema": "generation.surface_and_bootstrap.v1",
   "query_set": {
     "id": "msmarco-dev-small-paired",
@@ -9,12 +9,12 @@
   "model_revision": {
     "generator": "t5-small",
     "retrieval_depth": 3,
-    "bm25_arm": "W2 top-3",
-    "reranked_arm": "W5 cross-encoder reranked top-3"
+    "bm25_arm": "BM25 top-3",
+    "reranked_arm": "cross-encoder reranked top-3"
   },
   "tables": [
     {
-      "id": "w3_headline_generation",
+      "id": "generation_headline",
       "columns": [
         {
           "heading": "Retrieval $\\to$ T5-small",
@@ -62,7 +62,7 @@
       ]
     },
     {
-      "id": "w3_bootstrap_ci",
+      "id": "generation_bootstrap_ci",
       "columns": [
         {
           "heading": "Metric",

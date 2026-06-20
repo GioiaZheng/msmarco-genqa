@@ -1,12 +1,12 @@
 {
   "schema": "msmarco-genqa.table-sources.v1",
-  "table_id": "w5_dense_rerank",
+  "table_id": "rerank_vs_dense",
   "sources": [
     {
-      "path": "reports/generated/artifacts/retrieval_w4_w5.json",
-      "sha256_16": "46e794cbe0ec1772",
+      "path": "reports/generated/artifacts/retrieval_dense_rerank.json",
+      "sha256_16": "1b60a7eaaf937949",
       "artifact_schema": "msmarco-genqa.table-artifact.v1",
-      "artifact_id": "retrieval_w4_w5",
+      "artifact_id": "retrieval_dense_rerank",
       "metric_schema": "retrieval.sample_rerank.v1",
       "query_set": {
         "id": "msmarco-dev-small-qrels-anchored-50k",

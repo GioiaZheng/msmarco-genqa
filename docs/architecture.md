@@ -54,9 +54,9 @@ analysis starts.
 
 Important outputs:
 
-- `outputs/W2_bm25/run.tsv`
-- `outputs/W4_dense/run.tsv`
-- `outputs/W5_reranker/run.tsv`
+- `outputs/bm25_baseline/run.tsv`
+- `outputs/dense_retrieval/run.tsv`
+- `outputs/cross_encoder_rerank/run.tsv`
 
 The dense stage uses a qrels-anchored sample. Absolute dense metrics should
 not be compared against full-corpus BM25; only same-sample comparisons are

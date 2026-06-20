@@ -9,9 +9,9 @@ End-to-end:
    query 0.
 4. Compute MRR@10, Recall@100, Recall@1000.
 5. Persist:
-   - ``outputs/W2_bm25/metrics.json``
-   - ``outputs/W2_bm25/run.tsv``  (TREC-format run, top-1000 by default)
-   - ``outputs/W2_bm25/examples.jsonl``  (qualitative samples)
+   - ``outputs/bm25_baseline/metrics.json``
+   - ``outputs/bm25_baseline/run.tsv``  (TREC-format run, top-1000 by default)
+   - ``outputs/bm25_baseline/examples.jsonl``  (qualitative samples)
 
 Run from the project root::
 
@@ -398,7 +398,7 @@ def main() -> None:
             f.write(json.dumps(example, ensure_ascii=False) + "\n")
     logger.info("Wrote %d examples to %s", len(sample_qids), examples_path)
 
-    # ---- 7. metrics.json (unified schema across W2/W3) ----
+    # ---- 7. metrics.json (unified schema across retrieval and generation) ----
     n_examples = metrics.pop("n_queries", None)  # promote count to top level
     env_dict = capture_environment()
     # BM25 baseline runs the full 8.8M corpus by default. corpus_limit is
@@ -465,7 +465,7 @@ def main() -> None:
     )
 
     # ---- 8. Friendly summary ----
-    print("\n=== W2 BM25 baseline ===")
+    print("\n=== BM25 baseline ===")
     print(f"queries evaluated: {n_examples}")
     for key in ("mrr@10", "ndcg@10", "recall@100", "recall@1000"):
         if key in metrics:

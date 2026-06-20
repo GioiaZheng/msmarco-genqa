@@ -2,7 +2,7 @@
 
 The forward-pass path is intentionally NOT exercised here — that would
 download a ~140 MB model on every test run. The integration test for
-the model output happens in the W7-A audit run itself. These tests
+the model output happens in the NLI-grounding audit run itself. These tests
 cover the deterministic input-validation / edge-case paths that don't
 touch the model.
 """

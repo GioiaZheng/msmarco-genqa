@@ -1,8 +1,9 @@
 """Deep-dive case study of low-grounding queries on the rerank arm.
 
-W7-C confirmed that on the small low-grounding tail (~3 % lex,
-~3-5 % 3-gram per arm) downstream Token-F1 / BERTScore drops by
-~0.05-0.10 in mean. W7-D zooms in: pulls a seeded 30-case sample from
+The grounding-vs-downstream-metrics analysis confirmed that on the
+small low-grounding tail (~3 % lex, ~3-5 % 3-gram per arm) downstream
+Token-F1 / BERTScore drops by ~0.05-0.10 in mean. This case study
+zooms in: pulls a seeded 30-case sample from
 the 197 rerank-arm queries with ``lex_rerank < 0.9`` OR ``ngram_rerank
 < 0.9``, dumps the full (query, top-3 passages, prediction, gold)
 record per case, and attaches a coarse rule-cascade failure-mode
@@ -34,7 +35,7 @@ low-grounding bucket, not a final classifier. The value is in the
 distribution + the per-case inspection rows, not in any single
 attribution.
 
-Outputs (gitignored under ``outputs/W7_low_grounding_cases/``):
+Outputs (gitignored under ``outputs/low_grounding_cases/``):
 
 - ``cases.jsonl``   — per-case row with all the inspection fields.
 - ``cases.md``      — human-readable inspection report (one block per
@@ -58,7 +59,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 logger = logging.getLogger("low_grounding_case_study")
 
 
-# Match the W7 grounding tokeniser: keep [a-z0-9'] tokens, lowercase.
+# Match the grounding-audit tokeniser: keep [a-z0-9'] tokens, lowercase.
 TOKEN_RE = re.compile(r"[a-z0-9']+")
 HIGH_THRESHOLD = 0.9
 LOW_LEX_PARAMETRIC = 0.5
@@ -78,28 +79,28 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--per-query-grounding",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W7_grounding/per_query_grounding.jsonl",
+        default=PROJECT_ROOT / "outputs/grounding/per_query_grounding.jsonl",
     )
     p.add_argument(
         "--rerank-predictions",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W3_generation_reranked_full/predictions.jsonl",
+        default=PROJECT_ROOT / "outputs/generation_reranked_full/predictions.jsonl",
     )
     p.add_argument(
         "--bm25-predictions",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W3_generation_bm25_full/predictions.jsonl",
+        default=PROJECT_ROOT / "outputs/generation_bm25_full/predictions.jsonl",
         help="Only used to surface the BM25 prediction side-by-side per case.",
     )
     p.add_argument(
         "--per-query-metrics",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W6_analysis/per_query_metrics.jsonl",
+        default=PROJECT_ROOT / "outputs/generation_analysis/per_query_metrics.jsonl",
     )
     p.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W7_low_grounding_cases",
+        default=PROJECT_ROOT / "outputs/low_grounding_cases",
     )
     p.add_argument("--n-cases", type=int, default=30)
     p.add_argument("--seed", type=int, default=42)
@@ -175,7 +176,7 @@ def render_markdown(
     passage_snippet_chars: int,
 ) -> str:
     lines: list[str] = []
-    lines.append("# Low-grounding case study — W7-D")
+    lines.append("# Low-grounding case study")
     lines.append("")
     lines.append(
         f"Sampled **{n_cases}** of the **{pool_size}** rerank-arm queries "
@@ -232,7 +233,7 @@ def main() -> None:
     rerank_idx = predictions_index(load_jsonl(args.rerank_predictions))
     logger.info("Loading BM25 predictions (for side-by-side display) ...")
     bm25_idx = predictions_index(load_jsonl(args.bm25_predictions))
-    logger.info("Loading W6 per-query metrics ...")
+    logger.info("Loading generation-analysis per-query metrics ...")
     metrics = metrics_index(load_jsonl(args.per_query_metrics))
 
     # Pool: rerank-arm queries with either grounding metric < 0.9.

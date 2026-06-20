@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Backfill ``provenance.backfill.json`` for canonical baseline runs.
 
-Three canonical baseline runs — W2 BM25 full-corpus, W4 dense baseline
-(50k sample), W5 reranker over the full BM25 run — predate the manifest
+Three canonical baseline runs — BM25 full-corpus, dense baseline
+(50k sample), reranker over the full BM25 run — predate the manifest
 plumbing added later in this project. The output directories on disk
 therefore lack a runtime ``manifest.json``. This script writes a
 *backfilled* provenance file next to each of those three output
@@ -49,9 +49,9 @@ SCHEMA = "msmarco-genqa.backfilled-provenance.v1"
 PRODUCED_BY = "scripts/backfill_provenance.py"
 
 DEFAULT_TARGETS = [
-    "outputs/W2_bm25",
-    "outputs/W4_dense",
-    "outputs/W5_reranker",
+    "outputs/bm25_baseline",
+    "outputs/dense_retrieval",
+    "outputs/cross_encoder_rerank",
 ]
 CONFIG_PATH = "configs/baseline.yaml"
 

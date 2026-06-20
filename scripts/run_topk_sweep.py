@@ -6,16 +6,17 @@ the results into a single perf–latency Pareto table + figure.
 Design choices (per the project ddl plan; see the
 ``project_ddl_2026_05_22_scope_b`` memory):
 
-- **K ∈ {50, 100, 200}** on both BM25 (W2 full-corpus run.tsv) and
-  dense (W4 sampled run.tsv) first stages.
+- **K ∈ {50, 100, 200}** on both BM25 (first-stage full-corpus run.tsv)
+  and dense (dense-retrieval sampled run.tsv) first stages.
 - **K = 50 and K = 200 are scored on a 1,000-query random
   subsample** (the reranker's ``--num-eval-queries 1000`` flag, seeded
   internally by ``cfg['seed'] = 42``). K = 100 reuses the existing
-  full-dev runs (W5 dense+rerank, W5-A BM25+rerank) — that's where
+  full-dev runs (dense+rerank, BM25+rerank from the first-stage
+  comparison) — that's where
   the absolute headline numbers live; the K = 50 / 200 cells are only
   there to draw the *shape* of the perf–latency Pareto.
 
-Output: ``outputs/W5_k_sweep/`` (gitignored) with::
+Output: ``outputs/rerank_k_sweep/`` (gitignored) with::
 
     bm25_k50/, bm25_k200/, dense_k50/, dense_k200/    # raw rerank runs
     summary.json
@@ -23,8 +24,8 @@ Output: ``outputs/W5_k_sweep/`` (gitignored) with::
     pareto.png                                         # tracked under figures/
 
 The two K=100 cells are read from their existing locations:
-``outputs/W5_reranker_full/metrics.json`` (dense+rerank) and
-``outputs/W5_reranker_bm25_full/metrics.json`` (W5-A BM25+rerank).
+``outputs/cross_encoder_rerank_full/metrics.json`` (dense+rerank) and
+``outputs/cross_encoder_rerank_bm25_full/metrics.json`` (first-stage-comparison BM25+rerank).
 
 If those cells are missing the script fails fast with a clear error;
 this avoids a partial Pareto that could be misread.
@@ -53,9 +54,9 @@ CELLS: list[dict[str, Any]] = [
         "label": "BM25 K=50",
         "first_stage": "bm25",
         "K": 50,
-        "input_run": "outputs/W2_bm25/run.tsv",
-        "input_stage": "W2_bm25",
-        "output_dir": "outputs/W5_k_sweep/bm25_k50",
+        "input_run": "outputs/bm25_baseline/run.tsv",
+        "input_stage": "bm25_baseline",
+        "output_dir": "outputs/rerank_k_sweep/bm25_k50",
         "num_eval_queries": 1000,
         "reuse_existing": None,
     },
@@ -63,19 +64,19 @@ CELLS: list[dict[str, Any]] = [
         "label": "BM25 K=100",
         "first_stage": "bm25",
         "K": 100,
-        "input_run": "outputs/W2_bm25/run.tsv",
-        "input_stage": "W2_bm25",
-        "output_dir": "outputs/W5_reranker_bm25_full",
+        "input_run": "outputs/bm25_baseline/run.tsv",
+        "input_stage": "bm25_baseline",
+        "output_dir": "outputs/cross_encoder_rerank_bm25_full",
         "num_eval_queries": None,
-        "reuse_existing": "outputs/W5_reranker_bm25_full/metrics.json",
+        "reuse_existing": "outputs/cross_encoder_rerank_bm25_full/metrics.json",
     },
     {
         "label": "BM25 K=200",
         "first_stage": "bm25",
         "K": 200,
-        "input_run": "outputs/W2_bm25/run.tsv",
-        "input_stage": "W2_bm25",
-        "output_dir": "outputs/W5_k_sweep/bm25_k200",
+        "input_run": "outputs/bm25_baseline/run.tsv",
+        "input_stage": "bm25_baseline",
+        "output_dir": "outputs/rerank_k_sweep/bm25_k200",
         "num_eval_queries": 1000,
         "reuse_existing": None,
     },
@@ -83,9 +84,9 @@ CELLS: list[dict[str, Any]] = [
         "label": "Dense K=50",
         "first_stage": "dense",
         "K": 50,
-        "input_run": "outputs/W4_dense/run.tsv",
-        "input_stage": "W4_dense",
-        "output_dir": "outputs/W5_k_sweep/dense_k50",
+        "input_run": "outputs/dense_retrieval/run.tsv",
+        "input_stage": "dense_retrieval",
+        "output_dir": "outputs/rerank_k_sweep/dense_k50",
         "num_eval_queries": 1000,
         "reuse_existing": None,
     },
@@ -93,19 +94,19 @@ CELLS: list[dict[str, Any]] = [
         "label": "Dense K=100",
         "first_stage": "dense",
         "K": 100,
-        "input_run": "outputs/W4_dense/run.tsv",
-        "input_stage": "W4_dense",
-        "output_dir": "outputs/W5_reranker_full",
+        "input_run": "outputs/dense_retrieval/run.tsv",
+        "input_stage": "dense_retrieval",
+        "output_dir": "outputs/cross_encoder_rerank_full",
         "num_eval_queries": None,
-        "reuse_existing": "outputs/W5_reranker_full/metrics.json",
+        "reuse_existing": "outputs/cross_encoder_rerank_full/metrics.json",
     },
     {
         "label": "Dense K=200",
         "first_stage": "dense",
         "K": 200,
-        "input_run": "outputs/W4_dense/run.tsv",
-        "input_stage": "W4_dense",
-        "output_dir": "outputs/W5_k_sweep/dense_k200",
+        "input_run": "outputs/dense_retrieval/run.tsv",
+        "input_stage": "dense_retrieval",
+        "output_dir": "outputs/rerank_k_sweep/dense_k200",
         "num_eval_queries": 1000,
         "reuse_existing": None,
     },
@@ -141,7 +142,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W5_k_sweep",
+        default=PROJECT_ROOT / "outputs/rerank_k_sweep",
     )
     p.add_argument(
         "--figures-dir",
@@ -248,12 +249,13 @@ def aggregate(cells: list[dict[str, Any]]) -> dict[str, Any]:
 
 def render_markdown(agg: dict[str, Any]) -> str:
     lines: list[str] = []
-    lines.append("# W5-B — rerank depth top-k sweep on BM25 vs dense first stages")
+    lines.append("# Rerank depth top-k sweep on BM25 vs dense first stages")
     lines.append("")
     lines.append(
         "Cross-encoder MS-MARCO-MiniLM-L-6-v2 reranking applied at "
         "K ∈ {50, 100, 200} on both first stages. K = 100 cells reuse the "
-        "existing full-dev runs (W5 dense+rerank, W5-A BM25+rerank). "
+        "existing full-dev runs (dense+rerank, BM25+rerank from the "
+        "first-stage comparison). "
         "K = 50 / 200 cells were re-scored on a deterministic 1 000-query "
         "subsample of dev/small (seed 42); their absolute level reflects "
         "the subsample, but the *shape* of the perf–latency Pareto curve "
@@ -291,7 +293,7 @@ def render_markdown(agg: dict[str, Any]) -> str:
         "availability) and should be read as an order-of-magnitude cost."
     )
     lines.append(
-        "- W5-B at the full 6,980 dev/small is deferred (project_ddl memory)."
+        "- The top-k sweep at the full 6,980 dev/small is deferred (project_ddl memory)."
     )
     lines.append("")
     return "\n".join(lines)
@@ -318,7 +320,7 @@ def plot_pareto(agg: dict[str, Any], figures_dir: Path) -> str:
             ax.annotate(f"K={k}", (x, y), textcoords="offset points", xytext=(6, 4), fontsize=8)
     ax.set_xlabel("Rerank wall-clock (min)")
     ax.set_ylabel("Rerank MRR@10")
-    ax.set_title("W5-B — perf–latency Pareto by first stage and K")
+    ax.set_title("Perf–latency Pareto by first stage and K")
     ax.grid(True, linestyle=":", alpha=0.5)
     ax.legend()
     fig.tight_layout()
@@ -354,7 +356,7 @@ def main() -> None:
 
     summary = {
         "task": "topk_sweep",
-        "scope": "K in {50, 100, 200}; K=50,200 on 1000-q subsample (seed 42); K=100 reuses W5 / W5-A full-dev runs",
+        "scope": "K in {50, 100, 200}; K=50,200 on 1000-q subsample (seed 42); K=100 reuses dense / first-stage-comparison full-dev runs",
         "cells": agg["cells"],
         "figure": fig_rel,
         "notes": (
@@ -371,7 +373,7 @@ def main() -> None:
 
     # ---- console summary ----
     print()
-    print("=== W5-B — rerank top-k Pareto ===")
+    print("=== Rerank top-k Pareto ===")
     print(f"  {'cell':16s}  {'n_q':>5s}  {'rerank MRR@10':>14s}  {'Δ MRR@10':>9s}  {'sec':>6s}")
     for r in agg["cells"]:
         print(

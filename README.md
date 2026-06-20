@@ -192,9 +192,9 @@ Dense MRR@10 = 0.8830, nDCG@10 = 0.9041, Recall@100 = 0.9946 — vs
 BM25-on-sample MRR@10 = 0.6948, Recall@100 = 0.9338 (same 50 k pool).
 Numbers are upper-bounded by the sampling — every dev relevant doc is
 in the pool. Read the comparison as dense-vs-BM25 on the same sample,
-not against the W2 full-corpus number.
+not against the BM25 full-corpus number.
 
-**W4 follow-ups:**
+**Dense-retrieval follow-ups:**
 
 - *Same-tier encoder comparison* on the identical 50 k sample
   ([`scripts/run_encoder_comparison.py`](scripts/run_encoder_comparison.py)):
@@ -214,10 +214,10 @@ not against the W2 full-corpus number.
 ### Stage 5 — Cross-encoder reranking
 
 [`experiments/run_reranker.py`](experiments/run_reranker.py).
-`cross-encoder/ms-marco-MiniLM-L-6-v2` over the W4 dense top-100.
+`cross-encoder/ms-marco-MiniLM-L-6-v2` over the dense top-100.
 Full dev/small (6 980 queries):
 
-| Metric      | Dense (W4) | + CE rerank | Δ          |
+| Metric      | Dense      | + CE rerank | Δ          |
 |-------------|-----------:|------------:|-----------:|
 | MRR@10      | 0.8830     | 0.9304      | **+0.0474** |
 | nDCG@10     | 0.9041     | 0.9434      | +0.0393    |
@@ -320,7 +320,7 @@ passage title).
   budget-cap reading is falsified: T5-small hits EOS naturally, not a
   decode-budget wall. The mid-word output style is intrinsic to the
   model on this prompt format.
-- **W6-A/B/C question-form analyses** (no new generation; offline
+- **Question-form analyses** (no new generation; offline
   analyses over the existing per-query metrics):
   [`scripts/tag_query_forms.py`](scripts/tag_query_forms.py) tags all
   6 980 queries; [`scripts/analyze_rerank_by_query_form.py`](scripts/analyze_rerank_by_query_form.py)
@@ -526,11 +526,11 @@ python experiments/run_retrieval.py --resume         # picks up at next chunk bo
 python experiments/run_retrieval.py --rebuild-index  # force fresh index
 ```
 
-Outputs: `outputs/W2_bm25/{metrics.json, run.tsv, examples.jsonl, manifest.json}`.
+Outputs: `outputs/bm25_baseline/{metrics.json, run.tsv, examples.jsonl, manifest.json}`.
 
 ### Stage 3 — RAG generation
 
-Requires Stage 2 output `outputs/W2_bm25/run.tsv`.
+Requires Stage 2 output `outputs/bm25_baseline/run.tsv`.
 
 ```bash
 python experiments/run_generation_baseline.py
@@ -547,8 +547,8 @@ The runner is retrieval-source agnostic — feed it any TREC-format
 
 ```bash
 python experiments/run_generation_baseline.py \
-    --input-run outputs/W5_reranker/run.tsv \
-    --output-dir outputs/W3_generation_reranked \
+    --input-run outputs/cross_encoder_rerank/run.tsv \
+    --output-dir outputs/generation_reranked \
     --retrieval-source reranked
 ```
 
@@ -562,10 +562,10 @@ baseline output untouched and write a packed run to a separate directory:
 ```bash
 mgq-generate \
     --config configs/baseline.yaml \
-    --input-run outputs/W5_reranker_full/run.tsv \
-    --output-dir outputs/W3_generation_reranked_packed \
+    --input-run outputs/cross_encoder_rerank_full/run.tsv \
+    --output-dir outputs/generation_reranked_packed \
     --retrieval-source reranked_packed \
-    --restrict-to-run outputs/W2_bm25/run.tsv \
+    --restrict-to-run outputs/bm25_baseline/run.tsv \
     --num-eval-queries 9999 \
     --context-packing \
     --context-max-chars 900 \
@@ -574,11 +574,11 @@ mgq-generate \
     --context-ordering rank
 
 mgq-context-packing-report \
-    --baseline-predictions outputs/W3_generation_reranked_full/predictions.jsonl \
-    --compressed-predictions outputs/W3_generation_reranked_packed/predictions.jsonl \
+    --baseline-predictions outputs/generation_reranked_full/predictions.jsonl \
+    --compressed-predictions outputs/generation_reranked_packed/predictions.jsonl \
     --baseline-name reranked \
     --compressed-name reranked_packed \
-    --output-dir outputs/W9_context_packing
+    --output-dir outputs/context_packing
 ```
 
 The packed `predictions.jsonl` keeps `context_packing` span metadata so each
@@ -609,9 +609,9 @@ candidate pool and qrels caveat.
 
 ```bash
 python experiments/run_hybrid_fusion.py \
-    --input-run bm25_sample=outputs/W4_dense/run_bm25_sample.tsv \
-    --input-run dense=outputs/W4_dense/run.tsv \
-    --output-dir outputs/W4_hybrid_rrf \
+    --input-run bm25_sample=outputs/dense_retrieval/run_bm25_sample.tsv \
+    --input-run dense=outputs/dense_retrieval/run.tsv \
+    --output-dir outputs/hybrid_rrf \
     --top-k 1000
 ```
 
@@ -624,15 +624,15 @@ matrix over BM25-on-sample, dense, RRF, and RRF-plus-rerank:
 
 ```bash
 python experiments/run_reranker.py \
-    --input-run outputs/W4_hybrid_rrf/run.tsv \
-    --output-dir outputs/W5_hybrid_rrf_reranker \
+    --input-run outputs/hybrid_rrf/run.tsv \
+    --output-dir outputs/hybrid_rrf_rerank \
     --resume
 
 mgq-retrieval-report matrix \
-    --run bm25_sample=outputs/W4_dense/run_bm25_sample.tsv \
-    --run dense=outputs/W4_dense/run.tsv \
-    --run rrf=outputs/W4_hybrid_rrf/run.tsv \
-    --run rrf_reranked=outputs/W5_hybrid_rrf_reranker/run.tsv \
+    --run bm25_sample=outputs/dense_retrieval/run_bm25_sample.tsv \
+    --run dense=outputs/dense_retrieval/run.tsv \
+    --run rrf=outputs/hybrid_rrf/run.tsv \
+    --run rrf_reranked=outputs/hybrid_rrf_rerank/run.tsv \
     --baseline-name bm25_sample \
     --output-dir outputs/retrieval_reports/hybrid_matrix
 ```
@@ -642,13 +642,13 @@ The matrix report writes `matrix.json`, `pairwise_deltas.jsonl`, and
 
 ### Stage 5 — Cross-encoder reranking
 
-Requires Stage 4 output `outputs/W4_dense/run.tsv`.
+Requires Stage 4 output `outputs/dense_retrieval/run.tsv`.
 
 ```bash
 python experiments/run_reranker.py
 ```
 
-Reranks W4 dense top-100 per query. CPU runtime scales linearly with
+Reranks the dense top-100 per query. CPU runtime scales linearly with
 the number of queries — full 6 980 × top-100 is ~6 h on a 6-core
 laptop. Use `--num-eval-queries` for a deterministic subsample.
 
@@ -669,39 +669,39 @@ The block reproduced in *Generation × retrieval source*:
 ```bash
 # Generation on full dev/small (~1 h each on a 6-core CPU; mutually restricted):
 python experiments/run_generation_baseline.py \
-    --input-run outputs/W2_bm25/run.tsv \
-    --output-dir outputs/W3_generation_bm25_full \
+    --input-run outputs/bm25_baseline/run.tsv \
+    --output-dir outputs/generation_bm25_full \
     --retrieval-source bm25 \
-    --restrict-to-run outputs/W5_reranker_full/run.tsv \
+    --restrict-to-run outputs/cross_encoder_rerank_full/run.tsv \
     --num-eval-queries 9999
 
 python experiments/run_generation_baseline.py \
-    --input-run outputs/W5_reranker_full/run.tsv \
-    --output-dir outputs/W3_generation_reranked_full \
+    --input-run outputs/cross_encoder_rerank_full/run.tsv \
+    --output-dir outputs/generation_reranked_full \
     --retrieval-source reranked \
-    --restrict-to-run outputs/W2_bm25/run.tsv \
+    --restrict-to-run outputs/bm25_baseline/run.tsv \
     --num-eval-queries 9999
 
 # Paired bootstrap + bucket analysis + grounding + triad:
 python scripts/bootstrap_generation_comparison.py \
-    --bm25-dir outputs/W3_generation_bm25_full \
-    --reranked-dir outputs/W3_generation_reranked_full \
-    --output-dir outputs/W3_generation_bootstrap_full
+    --bm25-dir outputs/generation_bm25_full \
+    --reranked-dir outputs/generation_reranked_full \
+    --output-dir outputs/generation_bootstrap_full
 python scripts/analyze_generation_rerank.py \
-    --bm25-dir outputs/W3_generation_bm25_full \
-    --reranked-dir outputs/W3_generation_reranked_full \
-    --output-dir outputs/W6_analysis
+    --bm25-dir outputs/generation_bm25_full \
+    --reranked-dir outputs/generation_reranked_full \
+    --output-dir outputs/generation_analysis
 python scripts/bertscore_paired_eval.py --n-pairs 3000
 python scripts/regression_failure_taxonomy.py
 python scripts/grounding_audit.py \
-    --bm25-dir outputs/W3_generation_bm25_full \
-    --reranked-dir outputs/W3_generation_reranked_full \
-    --output-dir outputs/W7_grounding
+    --bm25-dir outputs/generation_bm25_full \
+    --reranked-dir outputs/generation_reranked_full \
+    --output-dir outputs/grounding
 mgq-rag-triad \
-    --predictions bm25=outputs/W3_generation_bm25_full/predictions.jsonl \
-    --predictions reranked=outputs/W3_generation_reranked_full/predictions.jsonl \
+    --predictions bm25=outputs/generation_bm25_full/predictions.jsonl \
+    --predictions reranked=outputs/generation_reranked_full/predictions.jsonl \
     --baseline-config bm25 \
-    --output-dir outputs/W8_rag_triad
+    --output-dir outputs/rag_triad
 ```
 
 ## 4.5. Single-query demo
@@ -763,7 +763,7 @@ All knobs live in [`configs/baseline.yaml`](configs/baseline.yaml). Key ones:
 | `retrieval.chunk_size` | Checkpoint cadence in queries (default 200). Smaller = more durable, more I/O. |
 | `retrieval.n_threads` | `0` = sequential (matches the 0.1703 baseline). `-1` = all CPUs. |
 | `data.corpus_limit` | Set to a small int for a smoke test; does **not** reproduce official numbers. Leave `null` for real runs. |
-| `generation.num_eval_queries` | Size of the W3 eval subset |
+| `generation.num_eval_queries` | Size of the generation eval subset |
 
 ## 6.5. Reproducibility status
 
@@ -779,8 +779,8 @@ All knobs live in [`configs/baseline.yaml`](configs/baseline.yaml). Key ones:
 | Historical experiment numbers in `reports/repo_report/report.pdf` | historical | Reflect the dev environment at tag `v1.0-first-report`. Current dependencies are security-refreshed; use the first-report tag for archival reproduction. |
 
 **Historical output-path naming.** Historical snapshot anchors now use
-stage-oriented names such as `outputs/W2_bm25/`, `outputs/W4_dense/`,
-and `outputs/W5_reranker/`. Their committed `provenance.backfill.json`
+stage-oriented names such as `outputs/bm25_baseline/`, `outputs/dense_retrieval/`,
+and `outputs/cross_encoder_rerank/`. Their committed `provenance.backfill.json`
 files remain the archival reproduction anchors for tag
 `v1.0-first-report`.
 
@@ -798,22 +798,22 @@ Limitations to be aware of:
 
 ## 8. Next
 
-- **W5-B — top-k Pareto.** K ∈ {50, 100, 200} perf-latency Pareto on
-  both first stages (1 000-q subsample for K=50/200; K=100 reuses W5
+- **Top-k Pareto.** K ∈ {50, 100, 200} perf-latency Pareto on
+  both first stages (1 000-q subsample for K=50/200; K=100 reuses the reranker
   full-dev). Queued.
-- **W7-B — generator capacity, not decode budget.** The W6 closure
-  (`max_new_tokens=64→128`) plus the W7 grounding ceiling (~99 %
+- **Generator capacity, not decode budget.** The generation-analysis closure
+  (`max_new_tokens=64→128`) plus the grounding ceiling (~99 %
   extractiveness on both arms) together imply generator-side work
   should target richer prompt formats (multi-passage synthesis,
   citation-aware decoding) or a different model — not the decode
   budget. Driver
   [`scripts/run_generator_capacity_sweep.py`](scripts/run_generator_capacity_sweep.py)
   runs T5-base on both BM25 and reranked top-3 and re-scores every
-  W7 metric, so the open question — does the W7-A NLI sign flip
+  grounding metric, so the open question — does the NLI sign flip
   (Δ = −0.145) hold at higher capacity? — is one command away.
 - **Try a MS-MARCO-tuned dense encoder.** Swap
   `sentence-transformers/all-MiniLM-L6-v2` for
-  `sentence-transformers/msmarco-MiniLM-L6-cos-v5` and re-run W4 on
+  `sentence-transformers/msmarco-MiniLM-L6-cos-v5` and re-run dense retrieval on
   the same 50 k sample. Measures how much of the current dense-vs-BM25
   gap is attributable to generic-encoder choice vs the retrieval setup.
 - **Single-query demo CLI.** A thin

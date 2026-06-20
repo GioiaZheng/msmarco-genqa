@@ -1,13 +1,13 @@
 """RAG generator: a Seq2Seq model conditioned on a question and the top
 retrieved passages.
 
-The format mirrors the prototype in W3 of the notebooks::
+The format mirrors the generation prototype in the notebooks::
 
     question: <query> context: <passage_1> <passage_2> ...
 
 so that the only thing that changes between the prototype and the official
 baseline is the *quality* of the retrieved passages (toy 3-passage corpus
-vs. real top-k from the BM25 index built in W2).
+vs. real top-k from the BM25 index).
 """
 
 from __future__ import annotations

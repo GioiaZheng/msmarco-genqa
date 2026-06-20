@@ -1,6 +1,6 @@
 {
   "schema": "msmarco-genqa.table-artifact.v1",
-  "artifact_id": "retrieval_w4_w5",
+  "artifact_id": "retrieval_dense_rerank",
   "metric_schema": "retrieval.sample_rerank.v1",
   "query_set": {
     "id": "msmarco-dev-small-qrels-anchored-50k",
@@ -13,7 +13,7 @@
   },
   "tables": [
     {
-      "id": "w4_dense_sample",
+      "id": "dense_retrieval_sample",
       "columns": [
         {
           "heading": "Metric",
@@ -48,14 +48,14 @@
       ]
     },
     {
-      "id": "w5_dense_rerank",
+      "id": "rerank_vs_dense",
       "columns": [
         {
           "heading": "Metric",
           "align": "l"
         },
         {
-          "heading": "Dense (W4)",
+          "heading": "Dense",
           "align": "r"
         },
         {

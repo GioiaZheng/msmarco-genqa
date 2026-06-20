@@ -7,7 +7,7 @@ different ``--input-run`` upstreams):
 - ``<reranked-dir>/predictions.jsonl``
 
 The two prediction files MUST cover the same set of query_ids in the same
-order (the W3 generation runner guarantees this when both runs share the
+order (the generation runner guarantees this when both runs share the
 same ``--restrict-to-run`` argument and seed). The script enforces this
 and exits with a clear error otherwise.
 
@@ -26,11 +26,11 @@ Outputs:
 Usage::
 
     python scripts/bootstrap_generation_comparison.py \\
-        --bm25-dir outputs/W3_generation_bm25 \\
-        --reranked-dir outputs/W3_generation_reranked \\
-        --output-dir outputs/W3_generation_bootstrap
+        --bm25-dir outputs/generation_bm25 \\
+        --reranked-dir outputs/generation_reranked \\
+        --output-dir outputs/generation_bootstrap
 
-The defaults point at the 200-query W3 comparison directories.
+The defaults point at the 200-query generation comparison directories.
 """
 
 from __future__ import annotations
@@ -58,17 +58,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--bm25-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W3_generation_bm25",
+        default=PROJECT_ROOT / "outputs/generation_bm25",
     )
     parser.add_argument(
         "--reranked-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W3_generation_reranked",
+        default=PROJECT_ROOT / "outputs/generation_reranked",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W3_generation_bootstrap",
+        default=PROJECT_ROOT / "outputs/generation_bootstrap",
     )
     parser.add_argument("--n-resamples", type=int, default=10000)
     parser.add_argument("--ci", type=float, default=0.95)

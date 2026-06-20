@@ -74,7 +74,7 @@ def test_read_runs_from_tsv_rejects_malformed(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
-# load_runs (W3 helper, ranks only)
+# load_runs (generation helper, ranks only)
 # --------------------------------------------------------------------------- #
 
 def test_load_runs_basic(tsv_path):

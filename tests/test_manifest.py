@@ -716,7 +716,7 @@ def _sample_resolved_cfg() -> dict:
         "seed": 42,
         "retrieval": {"backend": "bm25s", "k1": 1.5, "b": 0.75, "top_k": 1000},
         "dense": {"model_name": "all-MiniLM-L6-v2", "sample_size": 50000},
-        "eval_retrieval": {"output_dir": "outputs/W2_bm25"},
+        "eval_retrieval": {"output_dir": "outputs/bm25_baseline"},
     }
 
 
@@ -749,7 +749,7 @@ def test_compute_resolved_config_hash_sensitive_to_value_change():
     h_base = compute_resolved_config_hash(base)
 
     perturbed = _sample_resolved_cfg()
-    perturbed["dense"]["sample_size"] = 30000  # the W4-A density sweep case
+    perturbed["dense"]["sample_size"] = 30000  # the density-sweep case
     assert compute_resolved_config_hash(perturbed) != h_base
 
 

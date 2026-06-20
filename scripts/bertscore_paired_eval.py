@@ -4,7 +4,7 @@ Computes a DistilBERT-based BERTScore F1 per query for both the BM25
 generation predictions and the reranked generation predictions, then
 runs the project's existing paired-bootstrap CI on Δ (rerank − BM25).
 This complements the surface-form metric CIs already published in the
-W3 table and guides whether a full ``roberta-large`` BERTScore pass or
+generation table and guides whether a full ``roberta-large`` BERTScore pass or
 T5-small SFT is warranted before further work.
 
 This is *not* a final, citation-grade BERTScore evaluation. It is a
@@ -17,15 +17,15 @@ Inputs (same convention as ``scripts/bootstrap_generation_comparison``):
 - ``<reranked-dir>/predictions.jsonl``
 
 The two prediction files must cover the same qid set in the same order
-(the W3 generation runner guarantees this when both runs use the same
+(the generation runner guarantees this when both runs use the same
 ``--restrict-to-run`` argument and seed).
 
 Usage::
 
     python scripts/bertscore_paired_eval.py \\
-        --bm25-dir outputs/W3_generation_bm25_full \\
-        --reranked-dir outputs/W3_generation_reranked_full \\
-        --output-dir outputs/W6_bertscore_proxy \\
+        --bm25-dir outputs/generation_bm25_full \\
+        --reranked-dir outputs/generation_reranked_full \\
+        --output-dir outputs/bertscore_proxy \\
         --n-pairs 3000
 
 Outputs:
@@ -59,17 +59,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--bm25-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W3_generation_bm25_full",
+        default=PROJECT_ROOT / "outputs/generation_bm25_full",
     )
     parser.add_argument(
         "--reranked-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W3_generation_reranked_full",
+        default=PROJECT_ROOT / "outputs/generation_reranked_full",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "outputs/W6_bertscore_proxy",
+        default=PROJECT_ROOT / "outputs/bertscore_proxy",
     )
     parser.add_argument(
         "--n-pairs",
