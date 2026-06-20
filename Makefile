@@ -4,7 +4,7 @@
 # Python dependencies are installed (``pip install -r requirements.txt &&
 # pip install -e .``).
 
-.PHONY: help install test test-slow lint check-results check-notebooks export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-baseline
+.PHONY: help install test test-slow lint check-results check-lockfile check-notebooks export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-baseline
 
 PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
@@ -17,6 +17,7 @@ help:
 	@echo "  make test-slow            -- include slow tests (HF metric scripts; skipped if offline)"
 	@echo "  make lint                 -- ruff check on src/, tests/, experiments/, scripts/"
 	@echo "  make check-results        -- verify metadata.json headline metrics against RESULTS.md"
+	@echo "  make check-lockfile       -- dry-run the pinned lockfile resolver"
 	@echo "  make check-notebooks      -- verify notebooks stay lightweight demos"
 	@echo "  make export-report-tables -- refresh checked LaTeX table fragments"
 	@echo "  make check-report-tables  -- verify checked LaTeX table fragments are current"
@@ -64,6 +65,9 @@ lint:
 
 check-results:
 	$(PYTHON) scripts/check_headline_metrics.py
+
+check-lockfile:
+	$(PYTHON) -m pip install --dry-run -r requirements-lock.txt
 
 check-notebooks:
 	$(PYTHON) scripts/check_notebooks.py
