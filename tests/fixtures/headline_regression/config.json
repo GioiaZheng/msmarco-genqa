@@ -1,0 +1,55 @@
+{
+  "schema": "msmarco-genqa.headline-regression-fixture.v1",
+  "seed": 42,
+  "description": "Tiny deterministic fixture for CI headline-metric regression checks.",
+  "resolved_config": {
+    "retrieval": {
+      "queries_path": "tests/fixtures/trec_dl/queries_2019.tsv",
+      "qrels_path": "tests/fixtures/trec_dl/qrels_2019.txt",
+      "run_path": "tests/fixtures/trec_dl/run_2019.tsv",
+      "rel_threshold": 2,
+      "ks_mrr": [
+        10
+      ]
+    },
+    "generation": {
+      "metric": "token_f1",
+      "normalization": "squad_style"
+    },
+    "grounding": {
+      "metric": "lexical_content_token_grounding"
+    }
+  },
+  "generation_examples": [
+    {
+      "qid": "19335",
+      "prediction": "durable medical equipment includes wheelchairs",
+      "references": [
+        "durable medical equipment includes wheelchairs"
+      ],
+      "passages": [
+        "Durable medical equipment includes wheelchairs and hospital beds."
+      ]
+    },
+    {
+      "qid": "1037798",
+      "prediction": "Robert Gray is a British poet",
+      "references": [
+        "Robert Gray is an Australian poet"
+      ],
+      "passages": [
+        "Robert Gray is an Australian poet known for landscapes."
+      ]
+    },
+    {
+      "qid": "104861",
+      "prediction": "Concrete flooring costs five dollars per square foot",
+      "references": [
+        "Concrete flooring costs five dollars per square foot"
+      ],
+      "passages": [
+        "Interior concrete flooring costs five dollars per square foot for basic finishes."
+      ]
+    }
+  ]
+}

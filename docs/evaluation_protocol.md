@@ -128,6 +128,31 @@ Grounding metrics:
 - n-gram grounding
 - optional NLI entailment
 
+## CI Fixture Metric Gate
+
+The default CI suite includes a deterministic numeric regression gate:
+
+```bash
+python scripts/check_fixture_headline_metrics.py
+```
+
+The gate reads `tests/fixtures/headline_regression/config.json`, reuses the
+committed TREC-DL fixture run, and computes three CPU-only headline checks:
+`retrieval.mrr@10`, `generation.mean_token_f1`, and
+`grounding.mean_lexical_content_token_grounding`. Expected values and
+tolerances live in `tests/fixtures/headline_regression/golden.json`.
+
+If a deliberate metric-code change moves these values, inspect the proposed
+numbers with:
+
+```bash
+python scripts/check_fixture_headline_metrics.py --dump-observed
+```
+
+Then edit `golden.json` in the same pull request as the metric-code change.
+The script never overwrites goldens automatically; golden updates must be
+reviewable diffs.
+
 RAG triad:
 
 - context relevance

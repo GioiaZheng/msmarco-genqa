@@ -79,8 +79,8 @@ auditing the experiments:
   short CPU generation, and checks a normalized embedding shape. Use it before
   accepting torch / transformers / sentence-transformers upgrades.
 - **CI and automation.** The GitHub Actions workflow runs unit tests, linting,
-  and manifest/reproduction checks; the local mirror is `make test` and
-  `make lint`.
+  deterministic fixture metric goldens, and manifest/reproduction checks; the
+  local mirror is `make test`, `make lint`, and `make check-fixture-metrics`.
 - **Run metadata.** Major runners write `manifest.json`, `resolved_config.yaml`,
   metrics, output hashes, config hashes, git commit, dependency fingerprints,
   and sampling metadata.
