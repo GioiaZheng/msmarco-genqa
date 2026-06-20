@@ -1,0 +1,19 @@
+{
+  "schema": "msmarco-genqa.headline-regression-golden.v1",
+  "source_config": "tests/fixtures/headline_regression/config.json",
+  "seed": 42,
+  "metrics": {
+    "retrieval.mrr@10": {
+      "expected": 0.5,
+      "tolerance": 1e-12
+    },
+    "generation.mean_token_f1": {
+      "expected": 0.9333333333333332,
+      "tolerance": 1e-12
+    },
+    "grounding.mean_lexical_content_token_grounding": {
+      "expected": 0.9166666666666666,
+      "tolerance": 1e-12
+    }
+  }
+}
