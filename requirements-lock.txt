@@ -60,4 +60,4 @@ nltk==3.9.4
 
 # --- Testing / lint ---
 pytest==9.1.0
-ruff==0.15.17
+ruff==0.15.18
