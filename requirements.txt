@@ -34,4 +34,4 @@ bert_score>=0.3.13            # semantic-proxy generation eval (sanity check)
 #   pip install -e ".[tracking]"
 
 # Testing
-pytest>=9.1.0
+pytest>=9.1.1
