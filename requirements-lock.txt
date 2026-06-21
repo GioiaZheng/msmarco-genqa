@@ -50,7 +50,7 @@ transformers==5.10.2
 # 0.23.0 has no stable release, so keep the latest stable compatible pin.
 tokenizers==0.22.2
 sentencepiece==0.2.1
-safetensors==0.7.0
+safetensors==0.8.0
 
 # --- Evaluation ---
 evaluate==0.4.6
