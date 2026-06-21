@@ -45,7 +45,7 @@ faiss-cpu==1.14.3
 
 # --- Generation / reranking (transformers stack) ---
 torch==2.12.0
-transformers==5.10.2
+transformers==5.12.1
 # transformers 5.10.x requires tokenizers >=0.22.0 and <=0.23.0;
 # 0.23.0 has no stable release, so keep the latest stable compatible pin.
 tokenizers==0.22.2
