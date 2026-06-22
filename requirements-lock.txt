@@ -48,7 +48,7 @@ torch==2.12.0
 transformers==5.12.1
 # Keep tokenizers on the latest stable 0.22.x pin accepted by the
 # transformers stack; 0.23.0 has no stable release.
-tokenizers==0.22.2
+tokenizers==0.23.1
 sentencepiece==0.2.1
 safetensors==0.8.0
 
