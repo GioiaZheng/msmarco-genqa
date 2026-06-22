@@ -2,10 +2,9 @@
 #
 # `requirements.txt` is the loose, easy-to-install dep list (use for fast
 # development setup). This file pins a security-refreshed reproduction
-# environment for the repository's current code. The historical numbers in
-# Historical experiment numbers in `reports/repo_report/report.pdf`
-# remain anchored by the v1.0-first-report snapshot; use that tag for
-# archival reproduction.
+# environment for the repository's current code. Historical experiment
+# numbers in `reports/repo_report/report.pdf` remain anchored by the
+# `v1.0-first-report` snapshot; use that tag for archival reproduction.
 #
 # Install with:
 #
@@ -13,7 +12,7 @@
 #     pip install -e .
 #
 # Caveats:
-# - This is not transitively closed — only the direct deps from
+# - This is not transitively closed; only the direct deps from
 #   `requirements.txt` plus a handful of test/lint tools are pinned.
 #   Sub-dependencies are still resolved at install time. For a fully
 #   reproducible lock with hashes, regenerate via pip-tools / uv.
