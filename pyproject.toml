@@ -29,11 +29,6 @@ license = { file = "LICENSE" }
 authors = [{ name = "Gioia Zheng", email = "gioia.zheng.stud@gmail.com" }]
 keywords = ["rag", "information-retrieval", "msmarco", "reranking", "evaluation"]
 
-[project.urls]
-Repository = "https://github.com/GioiaZheng/msmarco-genqa"
-Results = "https://github.com/GioiaZheng/msmarco-genqa/blob/main/RESULTS.md"
-Reproducibility = "https://github.com/GioiaZheng/msmarco-genqa/blob/main/REPRODUCIBILITY.md"
-
 # Runtime deps. Loose lower bounds mirroring ``requirements.txt``; exact
 # pins live in ``requirements-lock.txt``. Edit all three together.
 dependencies = [
@@ -62,6 +57,11 @@ dependencies = [
     "sacrebleu>=2.3",
     "bert_score>=0.3.13",
 ]
+
+[project.urls]
+Repository = "https://github.com/GioiaZheng/msmarco-genqa"
+Results = "https://github.com/GioiaZheng/msmarco-genqa/blob/main/RESULTS.md"
+Reproducibility = "https://github.com/GioiaZheng/msmarco-genqa/blob/main/REPRODUCIBILITY.md"
 
 [project.optional-dependencies]
 serve = [
