@@ -825,6 +825,13 @@ Limitations to be aware of:
 Setup, the `make test` / `make lint` gates, and the branch, commit, and
 pull-request conventions are documented in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## 10. License
+## 10. Citation
+
+If you use this repository, cite the software metadata in
+[`CITATION.cff`](CITATION.cff). The current citation target is
+`v2.0-reproducibility-protocol`, which anchors the schema-v2 manifest contract
+and reproduction checks.
+
+## 11. License
 
 See [LICENSE](LICENSE).

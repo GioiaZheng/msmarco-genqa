@@ -26,7 +26,13 @@ description = "Retrieval-augmented question answering on MS MARCO."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
-authors = [{ name = "msmarco-genqa contributors" }]
+authors = [{ name = "Gioia Zheng", email = "gioia.zheng.stud@gmail.com" }]
+keywords = ["rag", "information-retrieval", "msmarco", "reranking", "evaluation"]
+
+[project.urls]
+Repository = "https://github.com/GioiaZheng/msmarco-genqa"
+Results = "https://github.com/GioiaZheng/msmarco-genqa/blob/main/RESULTS.md"
+Reproducibility = "https://github.com/GioiaZheng/msmarco-genqa/blob/main/REPRODUCIBILITY.md"
 
 # Runtime deps. Loose lower bounds mirroring ``requirements.txt``; exact
 # pins live in ``requirements-lock.txt``. Edit all three together.
