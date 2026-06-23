@@ -798,6 +798,10 @@ Limitations to be aware of:
 
 ## 8. Next
 
+Longer-horizon research and engineering directions are tracked in
+[`ROADMAP.md`](ROADMAP.md). The list below is the shorter technical queue
+closest to the current experimental surface.
+
 - **Top-k Pareto.** K ∈ {50, 100, 200} perf-latency Pareto on
   both first stages (1 000-q subsample for K=50/200; K=100 reuses the reranker
   full-dev). Queued.
