@@ -57,6 +57,9 @@ Infrastructure work should reduce reproduction friction or review time:
 
 - Separate offline indexing from online retrieval once artifact versioning is
   settled.
+- Extract a shared runner base only after the current entry-point contracts
+  have stabilized enough that a refactor will reduce review burden rather than
+  hide behavioral changes.
 - Publish generated API documentation after the public package interfaces stop
   moving quickly.
 - Extend report generation only where it removes manual copy/paste between
