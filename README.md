@@ -19,7 +19,10 @@ manifests, config-driven runners, query-level diagnostics, CI checks, report
 artifacts, and reproducibility notes alongside the code. Detailed experiment
 notes live in [`docs/experiments.md`](docs/experiments.md); the result summary
 is [`RESULTS.md`](RESULTS.md); reproducibility entry points are documented in
-[`REPRODUCIBILITY.md`](REPRODUCIBILITY.md); the ACL-style write-up is
+[`REPRODUCIBILITY.md`](REPRODUCIBILITY.md); the current repository report is
+[`reports/repo_report/report.pdf`](reports/repo_report/report.pdf), with
+[`report.html`](reports/repo_report/report.html) kept alongside it; the compact
+ACL-style findings write-up is
 [`reports/acl_findings/report.pdf`](reports/acl_findings/report.pdf).
 
 ## Results at a glance
@@ -45,7 +48,8 @@ is [`RESULTS.md`](RESULTS.md); reproducibility entry points are documented in
 
 The repository includes runnable code plus written analysis artifacts:
 
-- [`reports/acl_findings/report.pdf`](reports/acl_findings/report.pdf) — compact ACL-style experimental report.
+- [`reports/repo_report/report.pdf`](reports/repo_report/report.pdf) / [`report.html`](reports/repo_report/report.html) — repository report with the current engineering surface and historical experiment results.
+- [`reports/acl_findings/report.pdf`](reports/acl_findings/report.pdf) — compact ACL-style experimental findings report.
 - [`RESULTS.md`](RESULTS.md) — headline metrics, statistical intervals, and interpretation limits.
 - [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) — setup, checks, run artifacts, and reproduction commands.
 - [`docs/experiments.md`](docs/experiments.md) — stage-by-stage experiment narrative and caveats.
@@ -58,7 +62,6 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md) — context relevance, groundedness, and answer relevance report protocol.
 - [`docs/input_validation.md`](docs/input_validation.md) — run-file, JSONL, prompt, and serving input validation contract.
 - [`notebooks/rag_eval_demo.ipynb`](notebooks/rag_eval_demo.ipynb) — lightweight evaluation workflow demo.
-- [`reports/repo_report/report.pdf`](reports/repo_report/report.pdf) / [`report.html`](reports/repo_report/report.html) — repository report with the current engineering surface and historical experiment results.
 
 ## Engineering surface
 
@@ -141,6 +144,11 @@ auditing the experiments:
   headline metrics, CI, tracking, and serving support.
 
 See [§2 Directory layout](#2-directory-layout) for the full breakdown.
+
+User-facing experiment sections use compact W-stage aliases only as
+chronological report labels. Filesystem artifacts use descriptive directory
+names such as `outputs/bm25_baseline/`, `outputs/dense_retrieval/`, and
+`outputs/cross_encoder_rerank/`.
 
 Refresh report table fragments after metrics artifacts change:
 
@@ -778,11 +786,10 @@ All knobs live in [`configs/baseline.yaml`](configs/baseline.yaml). Key ones:
 | Artifact manifest | wired | `src/msmarco_genqa/util/manifest.py` writes `outputs/<stage>/manifest.json` alongside `metrics.json`. Captures git commit + dirty flag, command, config hash, dependency-file hashes, per-output sha256 (truncated). |
 | Historical experiment numbers in `reports/repo_report/report.pdf` | historical | Reflect the dev environment at tag `v1.0-first-report`. Current dependencies are security-refreshed; use the first-report tag for archival reproduction. |
 
-**Historical output-path naming.** Historical snapshot anchors now use
-stage-oriented names such as `outputs/bm25_baseline/`, `outputs/dense_retrieval/`,
-and `outputs/cross_encoder_rerank/`. Their committed `provenance.backfill.json`
-files remain the archival reproduction anchors for tag
-`v1.0-first-report`.
+**Artifact path naming.** Current snapshot anchors use descriptive stage names
+such as `outputs/bm25_baseline/`, `outputs/dense_retrieval/`, and
+`outputs/cross_encoder_rerank/`. Their committed `provenance.backfill.json`
+files remain the archival reproduction anchors for tag `v1.0-first-report`.
 
 Limitations to be aware of:
 
