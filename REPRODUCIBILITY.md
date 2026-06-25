@@ -122,5 +122,6 @@ Use these comparisons as:
 ## Reported Results
 
 The main result summary is in `RESULTS.md`. Stage-by-stage experiment notes
-are in `docs/experiments.md`, and the compact paper-style write-up is in
-`reports/acl_findings/report.pdf`.
+are in `docs/experiments.md`, the repository report is in
+`reports/repo_report/report.pdf`, and the compact paper-style findings write-up
+is in `reports/acl_findings/report.pdf`.

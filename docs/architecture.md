@@ -58,6 +58,10 @@ Important outputs:
 - `outputs/dense_retrieval/run.tsv`
 - `outputs/cross_encoder_rerank/run.tsv`
 
+Report prose may use compact W-stage aliases for chronological milestones, but
+artifact directories should stay descriptive and stage-oriented. The directory
+name is the reproducibility contract; the W label is only a report shortcut.
+
 The dense stage uses a qrels-anchored sample. Absolute dense metrics should
 not be compared against full-corpus BM25; only same-sample comparisons are
 valid.

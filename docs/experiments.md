@@ -11,6 +11,10 @@ update some downstream numbers is flagged inline as **In flight**.
 Provenance for each number (commit hash, manifest) is recorded under
 *Reproducing the experiment line* at the bottom.
 
+This document uses Stage 1, Stage 2, and so on for runnable pipeline stages.
+The longer repository report may use W-stage aliases for chronological analysis
+milestones, while output directories stay descriptive and reproducibility-first.
+
 ## Pipeline overview
 
 ```
@@ -358,7 +362,7 @@ loose [`requirements.txt`](../requirements.txt). Historical report
 numbers are tied to the frozen tag below; dependency refreshes should be
 accepted only after rerunning the relevant checks or smoke tests.
 
-The frozen reference snapshot is
+The first reference snapshot is
 [`reports/repo_report/report.pdf`](../reports/repo_report/report.pdf)
-at tag `v1.0-first-report`; numbers in this document supersede that
-snapshot only where annotated **In flight**.
+at tag `v1.0-first-report`; numbers in this document supersede that snapshot
+only where annotated **In flight**.
