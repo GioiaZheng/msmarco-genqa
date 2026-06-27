@@ -73,6 +73,23 @@ def test_read_runs_from_tsv_rejects_malformed(tmp_path):
         _read_runs_from_tsv(p)
 
 
+def test_read_runs_from_tsv_rejects_non_contiguous_ranks(tmp_path):
+    p = tmp_path / "run.tsv"
+    p.write_text(
+        "q1\tQ0\td1\t1\t2.0\tfixture\n"
+        "q1\tQ0\td2\t3\t1.0\tfixture\n"
+    )
+    with pytest.raises(RunTsvFormatError, match="must be contiguous from 1"):
+        _read_runs_from_tsv(p)
+
+
+def test_read_runs_from_tsv_rejects_noncanonical_q0(tmp_path):
+    p = tmp_path / "run.tsv"
+    p.write_text("q1\t0\td1\t1\t1.0\tfixture\n")
+    with pytest.raises(RunTsvFormatError, match="second field must be 'Q0'"):
+        _read_runs_from_tsv(p)
+
+
 # --------------------------------------------------------------------------- #
 # load_runs (generation helper, ranks only)
 # --------------------------------------------------------------------------- #

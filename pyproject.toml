@@ -72,6 +72,9 @@ tracking = [
     "mlflow>=2.10",
     "wandb>=0.16",
 ]
+evaluation = [
+    "ir-measures>=0.3.3",
+]
 
 [tool.setuptools.packages.find]
 # Two roots: ``src/`` for the library package and the repo root for the
@@ -99,6 +102,7 @@ mgq-generate = "msmarco_genqa.cli.generate:main"
 mgq-pipeline = "msmarco_genqa.cli.pipeline:main"
 mgq-serve    = "msmarco_genqa.service.app:main"
 rag-eval     = "msmarco_genqa.cli.rag_eval:main"
+mgq-trec-eval = "msmarco_genqa.cli.trec_eval:main"
 
 
 # --------------------------------------------------------------------------- #

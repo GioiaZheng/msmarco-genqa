@@ -45,7 +45,7 @@ jobs:
           # that bloat the install by ~2 GB on Linux.
           pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.12.0"
           pip install -r requirements.txt
-          pip install -e .
+          pip install -e ".[evaluation]"
 
       - name: Run default unit tests
         run: pytest -q
@@ -55,6 +55,13 @@ jobs:
 
       - name: Check fixture headline metric goldens
         run: python scripts/check_fixture_headline_metrics.py
+
+      - name: Cross-check TREC fixture metrics
+        run: |
+          mgq-trec-eval --backend ir-measures --qrels-format trec \
+            --qrels tests/fixtures/trec_eval/qrels.trec \
+            --run tests/fixtures/trec_eval/run.tsv \
+            --output-dir /tmp/msmarco-trec-eval
 
       - name: Check lockfile resolver consistency
         run: python -m pip install --dry-run -r requirements-lock.txt
