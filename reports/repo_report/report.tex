@@ -1,7 +1,7 @@
 % =============================================================================
 % MS MARCO Generative QA — Repository Report
 % Author : GioiaZheng  <gioia.zheng.stud@gmail.com>
-% Date   : 2026-06-12
+% Date   : 2026-06-27
 % Build  : latexmk -pdf report.tex   (or:  see Makefile)
 % =============================================================================
 
@@ -107,7 +107,7 @@
   pdftitle={MS MARCO Generative QA: A Reproducible Retrieve--Rerank--Generate
             Pipeline with Grounding and Triad Audits},
   pdfauthor={GioiaZheng},
-  pdfsubject={Repository report --- updated 2026-06-12;
+  pdfsubject={Repository report --- updated 2026-06-27;
               experiment window 2026-03-06 to 2026-05-21},
   pdfkeywords={MS MARCO; BM25; dense retrieval; cross-encoder reranking;
                retrieval-augmented generation; BERTScore; NLI;
@@ -158,7 +158,7 @@
   {\Large\itshape A Reproducible Retrieve--Rerank--Generate Pipeline\\[0.25em]
    with Grounding and Triad Audits\par}
   \vspace{0.35cm}
-  {\large Repository report --- updated 2026-06-12\par}
+  {\large Repository report --- updated 2026-06-27\par}
   \vspace{1.05cm}
   \rule{\linewidth}{1.2pt}\par
 
@@ -177,7 +177,7 @@
    \begin{tabular}{@{}r@{\hskip 1.4em}l@{}}
      \toprule
      \textbf{Experiment period} & 2026-03-06\,--\,2026-05-21 \quad{\small(11 milestones completed; 12-stage plan)} \\
-     \textbf{Current update}    & 2026-06-12 \\
+     \textbf{Current update}    & 2026-06-27 \\
      \textbf{Scope}             & Batch evaluation, CPU-only; English passage retrieval + QA \\
      \bottomrule
    \end{tabular}\par}
@@ -249,7 +249,7 @@ scaffolding (reproducibility manifests, paired-bootstrap confidence
 intervals, deterministic seeds) that lets every number in this
 document be regenerated from one command per stage.
 
-This 2026-06-12 update keeps the empirical claims anchored to the
+This 2026-06-27 update keeps the empirical claims anchored to the
 original experiment outputs while bringing the repository description
 up to date.  Since the experiment window closed, the project has
 gained an installable CLI surface, the \texttt{rag-eval} workflow
@@ -393,7 +393,7 @@ reproducibility scaffolding (\Cref{sec:reproducibility}), the full
 five-way bucket counts (\Cref{sec:appendix-buckets}), and a
 short glossary of cross-references (\Cref{sec:appendix-glossary}).
 
-\subsection{Repository status as of 2026-06-12}
+\subsection{Repository status as of 2026-06-27}
 
 The project has moved from a report-centred experiment bundle to a
 small research-engineering repository.  The headline metrics in this
@@ -412,6 +412,8 @@ has a clearer operating surface:
         serving experiments.  The current evaluation surface includes
         \texttt{mgq-retrieval-report matrix} for same-qid
         \bmtwofive{} / dense / RRF / reranked comparison tables and
+        \texttt{mgq-trec-eval} for an independent TREC-compatible
+        metric cross-check, plus
         \texttt{mgq-context-packing-report} for packed-vs-plain
         generation prompt comparisons, plus
         \texttt{mgq-rag-triad} for context-relevance, groundedness,
@@ -421,7 +423,10 @@ has a clearer operating surface:
         \texttt{ruff}, headline-metric metadata checks, and a
         high-confidence secret scan.  Heavy model and data checks stay
         opt-in through the model-stack smoke and slow/integration test
-        markers.
+        markers.  A committed two-query TREC fixture validates run and
+        qrels parsing, canonical export, metric scope, and agreement
+        with the optional \texttt{ir-measures} backend without fetching
+        the full corpus.
   \item \textbf{Reproducibility.}  The manifest contract now records
         command lines, dependency-file hashes, config hashes, git
         state, output hashes, and cache/profile metadata.  The
@@ -562,7 +567,7 @@ truncation in the common case.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.78\linewidth]{query_length_distribution.png}
+  \includegraphics[width=0.78\linewidth]{figures/query_length_distribution.png}
   \caption{Query-length distribution on the EDA 5\,000-row \msmarco{}
   Q\&A v2.1 validation sample.  Median $\approx\!6$ tokens; the
   $\geq\!15$-token tail is small.  Sets the sizing target for the
@@ -572,7 +577,7 @@ truncation in the common case.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.78\linewidth]{passage_length_distribution.png}
+  \includegraphics[width=0.78\linewidth]{figures/passage_length_distribution.png}
   \caption{Passage-length distribution on the same EDA sample,
   clipped at 200 tokens.  Median $\approx\!50$ tokens; the floor at
   one sentence is an artefact of \msmarco{}'s snippet extraction.}
@@ -617,7 +622,7 @@ later stages:
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.78\linewidth]{query_type_distribution.png}
+  \includegraphics[width=0.78\linewidth]{figures/query_type_distribution.png}
   \caption{\msmarco{} \texttt{query\_type} label distribution on the
   EDA validation sample.  \texttt{DESCRIPTION} dominates;
   \texttt{LOCATION} and \texttt{PERSON} are smaller buckets.}
@@ -626,7 +631,7 @@ later stages:
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.78\linewidth]{answer_type_by_query_type.png}
+  \includegraphics[width=0.78\linewidth]{figures/answer_type_by_query_type.png}
   \caption{Answer-type composition stratified by \texttt{query\_type}.
   \texttt{DESCRIPTION} queries skew toward long free-form answers;
   \texttt{NUMERIC} queries skew toward short / single-word.}
@@ -743,6 +748,23 @@ definition (reciprocal rank of the first relevant document in the
 top-$10$, zero if none); \recallH{} and \recallK{} are computed at
 $K\!\in\!\{100,1000\}$; \ndcg{} uses binary gain following the
 standard discounted cumulative gain formulation~\cite{jarvelin2002ndcg}.
+
+\paragraph{Independent TREC cross-check.}
+The \texttt{mgq-trec-eval} boundary validates six-column run files and
+binary MS MARCO qrels before exporting deterministic TREC artefacts.  It computes
+\mrr{}, \ndcg{}, and \recallK{} through both the repository metric
+implementation and the optional \texttt{ir-measures}
+backend~\cite{macavaney2022irmeasures}.  The evaluation scope follows
+TREC conventions: every query with at least one positive judgment
+contributes, and a judged query absent from the run receives zero.  A
+committed two-query fixture yields absolute delta 0 for all three
+metrics between the two implementations.  This result validates the
+adapter and metric semantics only; it does not claim that the
+historical full-corpus artefacts were rerun.  Reportable \bmtwofive{},
+dense, reranked, and hybrid results must each run the required external
+backend against their own persisted \texttt{run.tsv}.
+Graded-relevance collections are rejected rather than compared against
+the repository's binary-gain \ndcg{} implementation.
 
 \subsection{RAG generation baseline}
 \label{sec:w3}
@@ -1091,7 +1113,7 @@ baseline at each size.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.78\linewidth]{dense_vs_bm25_density_curve.png}
+  \includegraphics[width=0.78\linewidth]{figures/dense_vs_bm25_density_curve.png}
   \caption{\mrr{} vs.\ qrel-density on the same three
   qrels-anchored samples as \Cref{tab:w4a-density}.  Encoder:
   \texttt{BAAI/bge-small-en-v1.5}.  Density decreases left-to-right
@@ -1567,7 +1589,7 @@ T5-small less material to extract.  See
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.62\linewidth]{grounding_delta_vs_query_length.png}
+  \includegraphics[width=0.62\linewidth]{figures/grounding_delta_vs_query_length.png}
   \caption{Query-length distribution, regression bucket
   (n=233) vs.\ rest (n=6\,747).  Indistinguishable; Mann--Whitney
   $p\!=\!0.96$, effect size $r\!=\!-0.002$.}
@@ -1576,7 +1598,7 @@ T5-small less material to extract.  See
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.62\linewidth]{grounding_delta_vs_n_qrels.png}
+  \includegraphics[width=0.62\linewidth]{figures/grounding_delta_vs_n_qrels.png}
   \caption{Number of relevance judgements per query.  A
   very small downward shift in the regression bucket
   ($p\!=\!0.009$, effect size $r\!=\!-0.040$); not meaningfully
@@ -1586,7 +1608,7 @@ T5-small less material to extract.  See
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.62\linewidth]{grounding_delta_vs_top3_passage_length.png}
+  \includegraphics[width=0.62\linewidth]{figures/grounding_delta_vs_top3_passage_length.png}
   \caption{Average rerank top-3 passage length.  The only
   feature with a detectable effect: regression-arm top-3 passages
   are $\sim\!2.7$ tokens shorter at the median
@@ -2189,8 +2211,12 @@ or to identify exactly which input changed if the outputs differ.
 The repository now distinguishes research-data assumptions from
 production-facing inputs.  TREC \texttt{run.tsv} readers reject
 malformed six-column rows, empty identifiers, invalid or duplicate
-ranks, duplicate documents within a query, non-finite scores, and
-non-UTF-8 bytes before expensive generation or analysis starts.
+ranks, rank gaps, duplicate documents within a query, non-finite
+scores, and non-UTF-8 bytes before expensive generation or analysis
+starts.  The independent evaluation adapter additionally rejects
+duplicate qrels judgments and ambiguous four-column layouts, and
+writes rank-preserving canonical scores before invoking a standard
+evaluator.
 Generation prompt assembly normalises whitespace, rejects empty
 queries, drops empty optional passages, and applies deterministic
 character truncation before tokenizer-level truncation.  Serving

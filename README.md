@@ -496,8 +496,52 @@ Console names: `mgq-transform-queries`, `mgq-query-transform-ablation`,
 `mgq-retrieve`, `mgq-dense`, `mgq-fuse`, `mgq-retrieval-report`,
 `mgq-context-packing-report`,
 `mgq-rag-triad`,
-`mgq-rerank`, `mgq-generate`.
+`mgq-rerank`, `mgq-generate`, `mgq-trec-eval`.
 The examples below use the script form.
+
+### Independent TREC metric cross-check
+
+Install the optional standard evaluator and export the MS MARCO dev/small
+qrels once:
+
+```bash
+pip install -e ".[evaluation]"
+ir_datasets export msmarco-passage/dev/small qrels --format trec \
+    > data/processed/msmarco-dev-small.qrels
+```
+
+Then validate any retrieval artifact and compare the repository's MRR@10,
+nDCG@10, and Recall@1000 calculations with `ir-measures`:
+
+```bash
+mgq-trec-eval --backend ir-measures --qrels-format trec \
+    --qrels data/processed/msmarco-dev-small.qrels \
+    --run outputs/bm25_baseline/run.tsv \
+    --output-dir outputs/trec_eval/bm25
+
+mgq-trec-eval --backend ir-measures --qrels-format trec \
+    --qrels data/processed/msmarco-dev-small.qrels \
+    --run outputs/dense_retrieval/run.tsv \
+    --output-dir outputs/trec_eval/dense
+
+mgq-trec-eval --backend ir-measures --qrels-format trec \
+    --qrels data/processed/msmarco-dev-small.qrels \
+    --run outputs/cross_encoder_rerank_full/run.tsv \
+    --output-dir outputs/trec_eval/reranked
+
+mgq-trec-eval --backend ir-measures --qrels-format trec \
+    --qrels data/processed/msmarco-dev-small.qrels \
+    --run outputs/hybrid_rrf/run.tsv \
+    --output-dir outputs/trec_eval/hybrid_rrf
+```
+
+Each invocation writes validated `run.trec`, canonical `qrels.trec`, and a
+machine-readable `metrics.json`. The canonical run uses rank-derived scores
+to preserve the source rank order even when a retrieval backend emitted tied
+model scores. The current adapter is intentionally limited to binary MS MARCO
+qrels; graded relevance collections require a separate internal nDCG path.
+See [`docs/evaluation_protocol.md`](docs/evaluation_protocol.md) for metric
+scope and sampled-corpus interpretation rules.
 
 ### Optional pre-retrieval query transformation
 

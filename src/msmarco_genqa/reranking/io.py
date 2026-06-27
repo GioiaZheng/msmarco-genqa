@@ -50,9 +50,15 @@ def read_run_tsv(path: Path | str) -> dict[str, list[tuple[str, float]]]:
                         line_number,
                         f"expected 6 tab-separated fields, got {len(parts)}",
                     )
-                qid, _q0, doc_id, rank_text, score_text, system = parts
+                qid, q0, doc_id, rank_text, score_text, system = parts
                 if not qid:
                     raise RunTsvFormatError(p, line_number, "empty query id")
+                if q0 != "Q0":
+                    raise RunTsvFormatError(
+                        p,
+                        line_number,
+                        f"second field must be 'Q0', got {q0!r}",
+                    )
                 if not doc_id:
                     raise RunTsvFormatError(p, line_number, "empty document id")
                 if not system:
@@ -110,6 +116,15 @@ def read_run_tsv(path: Path | str) -> dict[str, list[tuple[str, float]]]:
                 rows_by_qid.setdefault(qid, []).append((rank, doc_id, score))
     except UnicodeDecodeError as exc:
         raise RunTsvFormatError(p, None, f"file is not valid UTF-8: {exc}") from exc
+    for qid, rows in rows_by_qid.items():
+        ranks = sorted(rank for rank, _doc_id, _score in rows)
+        expected = list(range(1, len(rows) + 1))
+        if ranks != expected:
+            raise RunTsvFormatError(
+                p,
+                None,
+                f"ranks for query id {qid!r} must be contiguous from 1; got {ranks}",
+            )
     return {
         qid: [(doc_id, score) for _rank, doc_id, score in sorted(rows)]
         for qid, rows in rows_by_qid.items()

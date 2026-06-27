@@ -99,6 +99,79 @@ Retrieval metrics:
 - nDCG@10
 - Recall@100 / Recall@1000, depending on stage
 
+### TREC-compatible cross-check
+
+Headline retrieval metrics can be checked independently with `ir-measures`.
+Install the optional extra and materialize the official dev/small qrels:
+
+```bash
+pip install -e ".[evaluation]"
+ir_datasets export msmarco-passage/dev/small qrels --format trec \
+  > data/processed/msmarco-dev-small.qrels
+```
+
+Run `mgq-trec-eval` separately for each retrieval arm:
+
+```bash
+mgq-trec-eval --backend ir-measures --qrels-format trec \
+  --qrels data/processed/msmarco-dev-small.qrels \
+  --run outputs/bm25_baseline/run.tsv \
+  --output-dir outputs/trec_eval/bm25
+
+mgq-trec-eval --backend ir-measures --qrels-format trec \
+  --qrels data/processed/msmarco-dev-small.qrels \
+  --run outputs/dense_retrieval/run.tsv \
+  --output-dir outputs/trec_eval/dense
+
+mgq-trec-eval --backend ir-measures --qrels-format trec \
+  --qrels data/processed/msmarco-dev-small.qrels \
+  --run outputs/cross_encoder_rerank_full/run.tsv \
+  --output-dir outputs/trec_eval/reranked
+
+mgq-trec-eval --backend ir-measures --qrels-format trec \
+  --qrels data/processed/msmarco-dev-small.qrels \
+  --run outputs/hybrid_rrf/run.tsv \
+  --output-dir outputs/trec_eval/hybrid_rrf
+```
+
+The adapter validates six-column run structure, duplicate documents and
+ranks, contiguous ranks, finite scores, and qrels uniqueness before any
+metric is computed. Its internal scope follows TREC evaluation semantics:
+every qid with at least one positive judgment contributes, and a missing run
+for a judged qid contributes zero. Queries with no positive judgment do not
+contribute. `metrics.json` records both metric sets and their absolute deltas;
+the command fails if any delta exceeds the configured tolerance.
+
+The internal adapter accepts binary relevance levels 0 and 1 only, matching
+MS MARCO passage dev/small. It rejects graded qrels rather than silently
+comparing binary internal nDCG with graded external nDCG. TREC-DL graded
+evaluation requires a dedicated graded-gain implementation.
+
+The canonical export replaces source scores with `1 / rank`. TREC evaluators
+sort by score, so this preserves the recorded rank deterministically when a
+backend emits tied model scores. The original scores remain unchanged in the
+source `run.tsv`.
+
+Dense, reranked-dense, and sample-matched hybrid runs retain the
+qrels-anchored sampling caveat. Passing an official qrels file to a standard
+evaluator does not make a sampled candidate pool comparable to the full
+8.8M-passage BM25 run.
+
+CI exercises the same parser, canonical export, metric scope, and comparison
+gate on a committed fixture without downloading MS MARCO:
+
+```bash
+mgq-trec-eval --backend auto --qrels-format trec \
+  --qrels tests/fixtures/trec_eval/qrels.trec \
+  --run tests/fixtures/trec_eval/run.tsv \
+  --output-dir outputs/trec_eval/fixture
+```
+
+With `--backend auto`, validation and internal metrics still run when the
+optional evaluator is absent; the JSON records the backend as unavailable.
+Use `--backend ir-measures` for reportable cross-checks so a missing evaluator
+or metric disagreement fails the command.
+
 Use `retrieval_quality_report` for matched-qid retrieval comparisons before
 interpreting deltas. Coverage counts are part of the report and should be
 checked before comparing dense, RRF, or reranked runs. For BM25 vs dense vs
