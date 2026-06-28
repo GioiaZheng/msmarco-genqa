@@ -110,8 +110,10 @@ auditing the experiments:
   runners or serving calls proceed. See
   [`docs/input_validation.md`](docs/input_validation.md).
 - **Experiment tracking.** `msmarco_genqa.util.tracking.ExperimentTracker`
-  writes local JSONL events by default and can use MLflow or Weights & Biases
-  via `pip install -e ".[tracking]"`.
+  writes local JSONL events by default and can mirror runs to MLflow or
+  Weights & Biases via `pip install -e ".[tracking]"`. `mgq-sweep-summary`
+  reconstructs multi-arm comparison tables from those local events without
+  requiring a hosted tracking service.
 - **Model serving.** `mgq-serve` exposes a lightweight FastAPI wrapper around
   the generator (`pip install -e ".[serve]"`), with `/health` and `/generate`
   endpoints for local demos or integration tests. Validation failures are
@@ -539,7 +541,7 @@ Each invocation writes validated `run.trec`, canonical `qrels.trec`, and a
 machine-readable `metrics.json`. The canonical run uses rank-derived scores
 to preserve the source rank order even when a retrieval backend emitted tied
 model scores. The current adapter is intentionally limited to binary MS MARCO
-qrels; graded relevance collections require a separate internal nDCG path.
+qrels; graded relevance collections require a separate graded nDCG path.
 See [`docs/evaluation_protocol.md`](docs/evaluation_protocol.md) for metric
 scope and sampled-corpus interpretation rules.
 
@@ -561,6 +563,16 @@ mgq-query-transform-ablation \
 
 Add `--metrics method=path/to/metrics.json` entries after evaluating matched
 retrieval runs to report metric deltas alongside changed-query coverage.
+The ablation command writes per-method tracking events under
+`outputs/query_transform/ablation/tracking/<method>/events.jsonl` plus
+`outputs/query_transform/ablation/tracking/summary/sweep_summary.{json,csv,md}`.
+To rebuild the comparison table from local tracking events:
+
+```bash
+mgq-sweep-summary outputs/query_transform/ablation/tracking \
+    --name query-transform-ablation \
+    --output-dir outputs/query_transform/ablation/tracking/summary
+```
 
 ### Stage 2 — BM25
 

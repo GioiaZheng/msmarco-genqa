@@ -105,6 +105,28 @@ Major experiment runners write:
 The detailed manifest contract is documented in
 `docs/reproducibility_protocol.md`.
 
+## Tracked Sweeps
+
+Experiment tracking remains local-first. Every tracked run writes
+`events.jsonl` with run metadata, parameters, metrics, and artifact
+references. Optional MLflow or Weights & Biases integrations mirror the same
+run when those packages and credentials are available; the local JSONL file is
+still the reproducibility source of truth.
+
+Use `mgq-sweep-summary` to rebuild comparison tables from local tracking
+directories:
+
+```bash
+mgq-sweep-summary outputs/query_transform/ablation/tracking \
+    --name query-transform-ablation \
+    --output-dir outputs/query_transform/ablation/tracking/summary
+```
+
+The command writes `sweep_summary.json`, `sweep_summary.csv`, and
+`sweep_summary.md`. The JSON output preserves nested tags, parameters,
+metrics, and artifact references; the CSV and Markdown outputs are intended
+for quick review and report-table plumbing.
+
 ## Sampling Boundary
 
 The dense retrieval and reranker numbers are measured on a qrels-anchored

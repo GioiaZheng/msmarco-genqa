@@ -17,7 +17,8 @@
     "context_packing_evaluation",
     "paired_bootstrap_evaluation",
     "semantic_grounding_audit",
-    "rag_triad_evaluation"
+    "rag_triad_evaluation",
+    "sweep_tracking_summaries"
   ],
   "headline_metrics": {
     "bm25_to_reranked_t5_small": {
@@ -41,6 +42,7 @@
     "rag_triad_reporting": true,
     "input_validation": true,
     "experiment_tracking": ["jsonl", "mlflow_optional", "wandb_optional"],
+    "sweep_summaries": ["json", "csv", "markdown"],
     "serving": ["fastapi_optional"]
   }
 }
