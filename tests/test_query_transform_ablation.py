@@ -118,4 +118,13 @@ def test_cli_writes_ablation_artifacts(tmp_path, monkeypatch, capsys):
     report = json.loads((output_dir / "ablation.json").read_text(encoding="utf-8"))
     assert report["metric_deltas_vs_baseline"][0]["delta"] == 0.1
     assert (output_dir / "report.md").exists()
-    assert "query transformation ablation: 2 methods" in capsys.readouterr().out
+    assert (output_dir / "tracking" / "none" / "events.jsonl").exists()
+    assert (output_dir / "tracking" / "normalize" / "events.jsonl").exists()
+    summary = json.loads(
+        (output_dir / "tracking" / "summary" / "sweep_summary.json").read_text(encoding="utf-8")
+    )
+    assert summary["n_runs"] == 2
+    assert summary["columns"]["metrics"] == ["mrr@10"]
+    output = capsys.readouterr().out
+    assert "query transformation ablation: 2 methods" in output
+    assert "tracked sweep: 2 runs" in output

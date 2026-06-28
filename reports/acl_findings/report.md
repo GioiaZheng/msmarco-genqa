@@ -78,7 +78,8 @@ Every major runner writes `manifest.json`, `resolved_config.yaml`, metrics, and
 hashes for output artefacts. `configs/pipeline.yaml` defines the full command
 sequence, and `scripts/run_pipeline.py --dry-run` prints the executable plan.
 Experiment tracking defaults to local JSONL and optionally supports MLflow or
-Weights & Biases.
+Weights & Biases. Sweep summaries rebuild JSON, CSV, and Markdown comparison
+tables from those local events without requiring a hosted tracking service.
 
 ## 7 Limitations
 
