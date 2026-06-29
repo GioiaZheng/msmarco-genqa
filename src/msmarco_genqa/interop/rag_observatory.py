@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -164,9 +164,11 @@ def build_trace_export(
         "format": EXPORT_FORMAT,
         "run": {
             "run_id": run_id or f"msmarco-genqa-{qid}",
-            "timestamp": timestamp or datetime.now(UTC).replace(microsecond=0).isoformat().replace(
-                "+00:00", "Z"
-            ),
+            "timestamp": timestamp
+            or datetime.now(timezone.utc)
+            .replace(microsecond=0)
+            .isoformat()
+            .replace("+00:00", "Z"),
             "dataset": dataset or "msmarco-genqa",
             "config_hash": config_hash,
             "code_version": code_version,
@@ -473,4 +475,3 @@ def _reject_unknown(data: Mapping[str, Any], allowed: set[str], label: str) -> N
         raise RagObservatoryExportError(
             f"{label} contains unknown field(s): {', '.join(unknown)}"
         )
-
