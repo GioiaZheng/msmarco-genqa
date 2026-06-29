@@ -46,6 +46,20 @@ python scripts/run_pipeline.py --dry-run
 The dry run prints the pipeline plan without loading MS MARCO data or model
 weights.
 
+## Small Trace Export
+
+The smallest end-to-end interop check is:
+
+```bash
+make reproduce-small
+```
+
+It uses the synthetic fixture under `tests/fixtures/rag_observatory_export/`
+and writes `outputs/reproduce_small/rag_observatory_export.json`. This target
+does not download MS MARCO data or model weights. It only verifies that the
+repository can produce the `msmarco-genqa.trace-export.v1` shape consumed by
+`rag-observatory`.
+
 When torch, transformers, or sentence-transformers changes, also run:
 
 ```bash

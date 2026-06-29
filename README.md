@@ -99,6 +99,11 @@ auditing the experiments:
   qrels and writes per-query context relevance, groundedness, and answer
   relevance diagnostics. See
   [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md).
+- **Trace export for observability.** `mgq-export-rag-observatory` exports one
+  prediction row into the `msmarco-genqa.trace-export.v1` JSON shape consumed by
+  `rag-observatory`. `make reproduce-small` builds a public-safe fixture export
+  without downloading data or model weights. See
+  [`docs/rag_observatory_exports.md`](docs/rag_observatory_exports.md).
 - **Context packing.** `mgq-generate --context-packing` applies deterministic
   passage trimming, sentence selection, deduplication, and span provenance
   before generation. `mgq-context-packing-report` compares packed and plain
@@ -498,6 +503,7 @@ Console names: `mgq-transform-queries`, `mgq-query-transform-ablation`,
 `mgq-retrieve`, `mgq-dense`, `mgq-fuse`, `mgq-retrieval-report`,
 `mgq-context-packing-report`,
 `mgq-rag-triad`,
+`mgq-export-rag-observatory`,
 `mgq-rerank`, `mgq-generate`, `mgq-trec-eval`.
 The examples below use the script form.
 
