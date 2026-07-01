@@ -107,7 +107,7 @@
   pdftitle={MS MARCO Generative QA: A Reproducible Retrieve--Rerank--Generate
             Pipeline with Grounding and Triad Audits},
   pdfauthor={GioiaZheng},
-  pdfsubject={Repository report --- updated 2026-06-27;
+  pdfsubject={Repository report --- updated 2026-07-01;
               experiment window 2026-03-06 to 2026-05-21},
   pdfkeywords={MS MARCO; BM25; dense retrieval; cross-encoder reranking;
                retrieval-augmented generation; BERTScore; NLI;
@@ -368,9 +368,9 @@ This report contributes the following:
         installable console entry points, the \texttt{rag-eval}
         workflow facade, optional model-stack smoke validation,
         local experiment tracking with sweep-level JSON/CSV/Markdown
-        summaries, a lightweight \texttt{mgq-serve} FastAPI wrapper,
-        CI, secret scanning, and separate reproducibility/security
-        notes.
+        summaries, rag-observatory trace/sweep exports, a lightweight
+        \texttt{mgq-serve} FastAPI wrapper, CI, secret scanning, and
+        separate reproducibility/security notes.
 \end{itemize}
 
 \subsection{Roadmap}
@@ -394,7 +394,7 @@ reproducibility scaffolding (\Cref{sec:reproducibility}), the full
 five-way bucket counts (\Cref{sec:appendix-buckets}), and a
 short glossary of cross-references (\Cref{sec:appendix-glossary}).
 
-\subsection{Repository status as of 2026-06-27}
+\subsection{Repository status as of 2026-07-01}
 
 The project has moved from a report-centred experiment bundle to a
 small research-engineering repository.  The headline metrics in this
@@ -419,7 +419,10 @@ has a clearer operating surface:
         generation prompt comparisons, plus
         \texttt{mgq-rag-triad} for context-relevance, groundedness,
         and answer-relevance diagnostics over existing generation
-        outputs.
+        outputs, plus \texttt{mgq-export-rag-observatory} and
+        \texttt{mgq-export-rag-observatory-sweep} for exporting
+        selected query traces and small configuration-sweep bundles to
+        the observability layer.
   \item \textbf{Validation.}  Default CI runs fast pytest coverage,
         \texttt{ruff}, headline-metric metadata checks, and a
         high-confidence secret scan.  Heavy model and data checks stay

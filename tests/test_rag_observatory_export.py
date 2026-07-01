@@ -6,13 +6,17 @@ from pathlib import Path
 import pytest
 
 from msmarco_genqa.cli import rag_observatory_export as cli
+from msmarco_genqa.cli import rag_observatory_sweep_export as sweep_cli
 from msmarco_genqa.interop.rag_observatory import (
     EXPORT_FORMAT,
     RagObservatoryExportError,
+    SWEEP_EXPORT_FORMAT,
+    build_sweep_manifest,
     build_trace_export,
     load_prediction_rows,
     load_qrels,
     select_prediction_row,
+    validate_sweep_manifest,
     validate_trace_export,
 )
 
@@ -88,6 +92,109 @@ def test_cli_writes_public_safe_fixture_export(tmp_path: Path):
     assert payload["extra"]["source_predictions"].endswith("predictions.jsonl")
 
 
+def test_build_sweep_manifest_links_configured_traces():
+    qrels = load_qrels(FIXTURE_DIR / "qrels.tsv")
+    bm25_row = select_prediction_row(
+        load_prediction_rows(FIXTURE_DIR / "predictions.jsonl"),
+        query_id="msmarco-synthetic-q001",
+    )
+    dense_row = select_prediction_row(
+        load_prediction_rows(FIXTURE_DIR / "predictions_dense_rerank.jsonl"),
+        query_id="msmarco-synthetic-q001",
+    )
+
+    exports = [
+        build_trace_export(
+            bm25_row,
+            run_id="synthetic-sweep-bm25-msmarco-synthetic-q001",
+            timestamp="2026-07-01T00:00:00Z",
+            dataset="synthetic-msmarco-genqa",
+            retriever="synthetic-bm25",
+            generator="synthetic-generator",
+            config_id="bm25",
+            config={"retriever": "synthetic-bm25", "top_k": 2, "reranking": False},
+            qrels=qrels,
+            export_profile="config-sweep",
+        ),
+        build_trace_export(
+            dense_row,
+            run_id="synthetic-sweep-dense-rerank-msmarco-synthetic-q001",
+            timestamp="2026-07-01T00:00:00Z",
+            dataset="synthetic-msmarco-genqa",
+            retriever="synthetic-dense-rerank",
+            reranker="present",
+            generator="synthetic-generator",
+            config_id="dense-rerank",
+            config={"retriever": "synthetic-dense-rerank", "top_k": 2, "reranking": True},
+            qrels=qrels,
+            export_profile="config-sweep",
+        ),
+    ]
+
+    assert exports[1]["reranked_documents"][0]["doc_id"] == "reranked:doc-penicillin"
+    assert exports[1]["reranked_documents"][0]["extra"]["original_doc_id"] == "doc-penicillin"
+    assert exports[1]["reranked_documents"][0]["is_relevant"] is True
+
+    manifest = build_sweep_manifest(
+        exports,
+        trace_paths=[
+            "traces/bm25/msmarco-synthetic-q001.json",
+            "traces/dense-rerank/msmarco-synthetic-q001.json",
+        ],
+        sweep_id="synthetic-trace-sweep-001",
+        timestamp="2026-07-01T00:00:00Z",
+        dataset="synthetic-msmarco-genqa",
+    )
+
+    validate_sweep_manifest(manifest)
+    assert manifest["format"] == SWEEP_EXPORT_FORMAT
+    assert [row["config_id"] for row in manifest["comparison"]["rows"]] == [
+        "bm25",
+        "dense-rerank",
+    ]
+    assert "triad" in manifest["comparison"]["metric_names"]
+    assert manifest["configurations"][1]["config"]["has_reranked_documents"] is True
+
+
+def test_sweep_cli_writes_manifest_and_trace_files(tmp_path: Path):
+    output_dir = tmp_path / "sweep"
+
+    sweep_cli.main(
+        [
+            "--arm",
+            f"bm25={FIXTURE_DIR / 'predictions.jsonl'}",
+            "--arm",
+            f"dense-rerank={FIXTURE_DIR / 'predictions_dense_rerank.jsonl'}",
+            "--qrels",
+            str(FIXTURE_DIR / "qrels.tsv"),
+            "--query-id",
+            "msmarco-synthetic-q001",
+            "--sweep-id",
+            "synthetic-trace-sweep-001",
+            "--timestamp",
+            "2026-07-01T00:00:00Z",
+            "--dataset",
+            "synthetic-msmarco-genqa",
+            "--generator",
+            "synthetic-generator",
+            "--output-dir",
+            str(output_dir),
+        ]
+    )
+
+    manifest = json.loads((output_dir / "rag_observatory_sweep.json").read_text())
+    validate_sweep_manifest(manifest)
+    assert (output_dir / "traces" / "bm25" / "msmarco-synthetic-q001.json").exists()
+    assert (output_dir / "traces" / "dense-rerank" / "msmarco-synthetic-q001.json").exists()
+    assert manifest["sweep"]["supported_dimensions"] == [
+        "config_id",
+        "retriever",
+        "reranker",
+        "generator",
+        "top_k",
+    ]
+
+
 def test_export_rejects_missing_context_text():
     bad_row = {
         "query_id": "q1",
@@ -109,4 +216,3 @@ def test_validator_rejects_unknown_top_level_field():
 
     with pytest.raises(RagObservatoryExportError, match="unknown field"):
         validate_trace_export(export)
-

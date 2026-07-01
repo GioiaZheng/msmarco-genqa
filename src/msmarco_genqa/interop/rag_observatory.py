@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -14,6 +15,7 @@ from msmarco_genqa.evaluation.rag_triad import (
 
 
 EXPORT_FORMAT = "msmarco-genqa.trace-export.v1"
+SWEEP_EXPORT_FORMAT = "msmarco-genqa.trace-sweep.v1"
 
 _TOP_LEVEL_FIELDS = {
     "format",
@@ -29,6 +31,7 @@ _TOP_LEVEL_FIELDS = {
     "diagnostic_notes",
     "extra",
 }
+_SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 
 
 class RagObservatoryExportError(ValueError):
@@ -93,6 +96,8 @@ def build_trace_export(
     generator: str | None = None,
     evaluator: str | None = "deterministic-rag-triad",
     random_seed: int | None = None,
+    config_id: str | None = None,
+    config: Mapping[str, Any] | None = None,
     qrels: Mapping[str, set[str]] | None = None,
     manifest_path: str | None = None,
     source_predictions: str | None = None,
@@ -113,6 +118,8 @@ def build_trace_export(
         raise RagObservatoryExportError("prediction row must include at least one context document")
 
     relevant_doc_ids = qrels.get(qid, set()) if qrels is not None else None
+    if config_id is not None:
+        _validate_safe_id(config_id, "config_id")
     scored = score_prediction_row(
         row,
         config_name=str(row.get("retrieval_source") or retriever or "unknown"),
@@ -189,6 +196,8 @@ def build_trace_export(
                 "source_repository": "msmarco-genqa",
                 "export_profile": export_profile,
                 "manifest_path": manifest_path,
+                "config_id": config_id,
+                "config": dict(config or {}),
             },
         },
         "query": {
@@ -222,6 +231,125 @@ def build_trace_export(
     }
     validate_trace_export(export)
     return export
+
+
+def build_sweep_manifest(
+    trace_exports: Sequence[Mapping[str, Any]],
+    *,
+    trace_paths: Sequence[str],
+    sweep_id: str,
+    timestamp: str,
+    dataset: str,
+    supported_dimensions: Sequence[str] | None = None,
+    deferred_dimensions: Sequence[str] | None = None,
+) -> dict[str, Any]:
+    if not trace_exports:
+        raise RagObservatoryExportError("sweep must contain at least one trace export")
+    if len(trace_exports) != len(trace_paths):
+        raise RagObservatoryExportError("trace_exports and trace_paths must have the same length")
+    _validate_safe_id(sweep_id, "sweep_id")
+
+    configs = []
+    query_ids: set[str] = set()
+    metric_names: set[str] = set()
+    rows = []
+    for export, trace_path in zip(trace_exports, trace_paths):
+        validate_trace_export(export)
+        run = _expect_mapping(export["run"], "export.run")
+        run_extra = _expect_mapping(run.get("extra", {}), "export.run.extra")
+        config_id = str(run_extra.get("config_id") or run.get("run_id"))
+        _validate_safe_id(config_id, "config_id")
+        query = _expect_mapping(export["query"], "export.query")
+        query_id = str(query["query_id"])
+        query_ids.add(query_id)
+        metrics = _metric_map(export)
+        metric_names.update(metrics)
+
+        config = dict(_expect_mapping(run_extra.get("config", {}), "export.run.extra.config"))
+        config.setdefault("retriever", run.get("retriever"))
+        config.setdefault("reranker", run.get("reranker"))
+        config.setdefault("generator", run.get("generator"))
+        config.setdefault("top_k", len(_expect_list(export["selected_context"], "selected_context")))
+        config.setdefault("has_reranked_documents", export.get("reranked_documents") is not None)
+        configs.append(
+            {
+                "config_id": config_id,
+                "run_id": run.get("run_id"),
+                "trace_path": trace_path,
+                "query_id": query_id,
+                "config": config,
+            }
+        )
+        rows.append(
+            {
+                "config_id": config_id,
+                "trace_path": trace_path,
+                "query_id": query_id,
+                "metrics": metrics,
+            }
+        )
+
+    manifest = {
+        "format": SWEEP_EXPORT_FORMAT,
+        "sweep": {
+            "sweep_id": sweep_id,
+            "timestamp": timestamp,
+            "dataset": dataset,
+            "export_contract": EXPORT_FORMAT,
+            "query_ids": sorted(query_ids),
+            "supported_dimensions": list(
+                supported_dimensions
+                or ["config_id", "retriever", "reranker", "generator", "top_k"]
+            ),
+            "deferred_dimensions": list(
+                deferred_dimensions or ["query_rewriting", "context_compression"]
+            ),
+        },
+        "configurations": configs,
+        "comparison": {
+            "metric_names": sorted(metric_names),
+            "rows": rows,
+        },
+    }
+    validate_sweep_manifest(manifest)
+    return manifest
+
+
+def validate_sweep_manifest(manifest: Mapping[str, Any]) -> None:
+    data = _expect_mapping(manifest, "sweep manifest")
+    if data.get("format") != SWEEP_EXPORT_FORMAT:
+        raise RagObservatoryExportError(
+            f"sweep manifest format must be {SWEEP_EXPORT_FORMAT!r}"
+        )
+    sweep = _expect_mapping(data.get("sweep"), "sweep manifest.sweep")
+    _validate_safe_id(_required_text(sweep, "sweep_id", "sweep"), "sweep_id")
+    _required_text(sweep, "timestamp", "sweep")
+    _required_text(sweep, "dataset", "sweep")
+    if sweep.get("export_contract") != EXPORT_FORMAT:
+        raise RagObservatoryExportError("sweep.export_contract must match the trace export format")
+    configurations = _expect_list(data.get("configurations"), "sweep manifest.configurations")
+    if not configurations:
+        raise RagObservatoryExportError("sweep manifest must contain at least one configuration")
+    seen_ids: set[str] = set()
+    for index, item in enumerate(configurations):
+        config = _expect_mapping(item, f"configurations[{index}]")
+        config_id = _required_text(config, "config_id", f"configurations[{index}]")
+        _validate_safe_id(config_id, f"configurations[{index}].config_id")
+        if config_id in seen_ids:
+            raise RagObservatoryExportError(f"duplicate config_id in sweep: {config_id}")
+        seen_ids.add(config_id)
+        _required_text(config, "trace_path", f"configurations[{index}]")
+        _expect_mapping(config.get("config"), f"configurations[{index}].config")
+    comparison = _expect_mapping(data.get("comparison"), "sweep manifest.comparison")
+    _expect_list(comparison.get("rows"), "sweep manifest.comparison.rows")
+
+
+def write_sweep_manifest(path: Path | str, manifest: Mapping[str, Any]) -> Path:
+    validate_sweep_manifest(manifest)
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return output
 
 
 def write_trace_export(path: Path | str, export: Mapping[str, Any]) -> Path:
@@ -261,18 +389,22 @@ def _documents(
     scores: Sequence[float] | None,
     source: str,
     relevant_doc_ids: set[str] | None,
+    id_namespace: str | None = None,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for index, (doc_id, passage) in enumerate(zip(doc_ids, passages), start=1):
+        export_doc_id = f"{id_namespace}:{doc_id}" if id_namespace else doc_id
+        extra = {"original_doc_id": doc_id} if id_namespace else {}
         rows.append(
             {
-                "doc_id": doc_id,
+                "doc_id": export_doc_id,
                 "text": _non_empty_passage(passage, doc_id=doc_id),
                 "title": None,
                 "source": source,
                 "score": None if scores is None or index > len(scores) else scores[index - 1],
                 "rank": index,
                 "is_relevant": None if relevant_doc_ids is None else doc_id in relevant_doc_ids,
+                "extra": extra,
             }
         )
     return rows
@@ -297,6 +429,7 @@ def _reranked_documents(
         scores=_optional_float_list(row.get("reranked_scores")),
         source="reranked",
         relevant_doc_ids=relevant_doc_ids,
+        id_namespace="reranked",
     )
 
 
@@ -372,6 +505,17 @@ def _metrics(scored: Mapping[str, Any], *, low_score_threshold: float) -> list[d
         }
         metrics.append(metric)
     return metrics
+
+
+def _metric_map(export: Mapping[str, Any]) -> dict[str, float]:
+    values: dict[str, float] = {}
+    for index, item in enumerate(_expect_list(export.get("metrics", []), "export.metrics")):
+        metric = _expect_mapping(item, f"metrics[{index}]")
+        name = _required_text(metric, "name", f"metrics[{index}]")
+        value = metric.get("value")
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            values[name] = float(value)
+    return values
 
 
 def _validate_run(data: Mapping[str, Any]) -> None:
@@ -474,4 +618,12 @@ def _reject_unknown(data: Mapping[str, Any], allowed: set[str], label: str) -> N
     if unknown:
         raise RagObservatoryExportError(
             f"{label} contains unknown field(s): {', '.join(unknown)}"
+        )
+
+
+def _validate_safe_id(value: str, label: str) -> None:
+    if not _SAFE_ID.fullmatch(value):
+        raise RagObservatoryExportError(
+            f"{label} must start with an alphanumeric character and contain only "
+            "letters, numbers, dots, underscores, or hyphens"
         )

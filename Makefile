@@ -110,6 +110,7 @@ clean-pycache:
 
 reproduce-small:
 	$(PYTHON) scripts/export_rag_observatory_fixture.py
+	$(PYTHON) scripts/export_rag_observatory_sweep_fixture.py
 
 # Reproduce the BM25 headline baseline end-to-end:
 #   1. Install (editable; `pip install -e .`).
