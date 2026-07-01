@@ -61,6 +61,7 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/context_packing.md`](docs/context_packing.md) — prompt compression, provenance, and packed-vs-plain generation comparison.
 - [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md) — context relevance, groundedness, and answer relevance report protocol.
 - [`docs/input_validation.md`](docs/input_validation.md) — run-file, JSONL, prompt, and serving input validation contract.
+- [`docs/rag_observatory_exports.md`](docs/rag_observatory_exports.md) — trace and sweep exports for external RAG observability analysis.
 - [`notebooks/rag_eval_demo.ipynb`](notebooks/rag_eval_demo.ipynb) — lightweight evaluation workflow demo.
 
 ## Engineering surface
@@ -101,8 +102,10 @@ auditing the experiments:
   [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md).
 - **Trace export for observability.** `mgq-export-rag-observatory` exports one
   prediction row into the `msmarco-genqa.trace-export.v1` JSON shape consumed by
-  `rag-observatory`. `make reproduce-small` builds a public-safe fixture export
-  without downloading data or model weights. See
+  `rag-observatory`. `mgq-export-rag-observatory-sweep` writes a small sweep
+  manifest plus per-configuration trace files so failures can be compared across
+  stable config ids. `make reproduce-small` builds public-safe single-trace and
+  two-arm sweep fixture exports without downloading data or model weights. See
   [`docs/rag_observatory_exports.md`](docs/rag_observatory_exports.md).
 - **Context packing.** `mgq-generate --context-packing` applies deterministic
   passage trimming, sentence selection, deduplication, and span provenance

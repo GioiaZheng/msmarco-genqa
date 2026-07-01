@@ -19,7 +19,8 @@
     "semantic_grounding_audit",
     "rag_triad_evaluation",
     "sweep_tracking_summaries",
-    "rag_observatory_trace_export"
+    "rag_observatory_trace_export",
+    "rag_observatory_sweep_export"
   ],
   "headline_metrics": {
     "bm25_to_reranked_t5_small": {
@@ -44,7 +45,7 @@
     "input_validation": true,
     "experiment_tracking": ["jsonl", "mlflow_optional", "wandb_optional"],
     "sweep_summaries": ["json", "csv", "markdown"],
-    "trace_exports": ["rag_observatory_json"],
+    "trace_exports": ["rag_observatory_json", "rag_observatory_sweep_json"],
     "serving": ["fastapi_optional"]
   }
 }

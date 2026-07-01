@@ -55,10 +55,17 @@ make reproduce-small
 ```
 
 It uses the synthetic fixture under `tests/fixtures/rag_observatory_export/`
-and writes `outputs/reproduce_small/rag_observatory_export.json`. This target
-does not download MS MARCO data or model weights. It only verifies that the
-repository can produce the `msmarco-genqa.trace-export.v1` shape consumed by
-`rag-observatory`.
+and writes a single-trace export plus a two-arm configuration sweep bundle:
+
+| Artifact | Purpose |
+|---|---|
+| `outputs/reproduce_small/rag_observatory_export.json` | one standard trace export |
+| `outputs/reproduce_small/rag_observatory_sweep/rag_observatory_sweep.json` | sweep manifest with stable config ids and comparison rows |
+| `outputs/reproduce_small/rag_observatory_sweep/traces/*/*.json` | per-configuration trace files for `rag-observatory` ingestion |
+
+This target does not download MS MARCO data or model weights. It only verifies
+that the repository can produce the `msmarco-genqa.trace-export.v1` and
+`msmarco-genqa.trace-sweep.v1` shapes used for observability interop.
 
 When torch, transformers, or sentence-transformers changes, also run:
 
