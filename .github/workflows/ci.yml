@@ -69,6 +69,9 @@ jobs:
       - name: Check demo notebooks
         run: python scripts/check_notebooks.py
 
+      - name: Check artifact boundaries
+        run: python scripts/check_artifact_boundaries.py
+
       - name: Check generated report tables
         run: |
           python scripts/export_report_tables.py

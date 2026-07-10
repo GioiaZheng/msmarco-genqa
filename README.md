@@ -61,6 +61,7 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/context_packing.md`](docs/context_packing.md) — prompt compression, provenance, and packed-vs-plain generation comparison.
 - [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md) — context relevance, groundedness, and answer relevance report protocol.
 - [`docs/input_validation.md`](docs/input_validation.md) — run-file, JSONL, prompt, and serving input validation contract.
+- [`docs/artifact_versioning.md`](docs/artifact_versioning.md) — policy for source data, derived indexes, model outputs, and Git-tracked pointers.
 - [`docs/rag_observatory_exports.md`](docs/rag_observatory_exports.md) — trace and sweep exports for external RAG observability analysis.
 - [`notebooks/rag_eval_demo.ipynb`](notebooks/rag_eval_demo.ipynb) — lightweight evaluation workflow demo.
 
