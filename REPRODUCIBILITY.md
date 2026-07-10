@@ -25,6 +25,11 @@ The project uses MS MARCO Passage Ranking / QA data through the local dataset
 cache. Raw corpus files, generated indexes, model weights, and experiment
 outputs are not committed.
 
+The repository policy for source data, derived indexes, model outputs, and
+small pointer files is documented in `docs/artifact_versioning.md`. Use
+`make check-artifacts` to verify that common large artifact formats and
+generated run payloads have not entered Git.
+
 Important scale reference:
 
 | Item | Value |
@@ -40,6 +45,7 @@ These commands are intended for local development and CI:
 ```bash
 make test
 make lint
+make check-artifacts
 python scripts/run_pipeline.py --dry-run
 ```
 
