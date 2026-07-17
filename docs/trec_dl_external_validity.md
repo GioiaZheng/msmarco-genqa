@@ -28,7 +28,34 @@ use the **same schema as the MS MARCO loader**, so the existing
 `evaluate_retrieval` / `mrr@k` / `ndcg@k` / `recall@k` functions in
 `msmarco_genqa.evaluation.retrieval` run on them unchanged. The full graded
 labels are additionally preserved on `graded_qrels`
-(`{qid: {doc_id: label}}`) for future graded-nDCG work.
+(`{qid: {doc_id: label}}`) for the graded evaluation work tracked in #153.
+
+## Full-corpus runner commands
+
+Both tracks are first-class options on the existing BM25 and cross-encoder
+runners. They reuse the same full MS MARCO passage index; only the selected
+queries and qrels change.
+
+```bash
+# TREC-DL 2019
+mgq-retrieve --dataset msmarco-passage/trec-dl-2019/judged --resume
+mgq-rerank --dataset msmarco-passage/trec-dl-2019/judged --resume
+
+# TREC-DL 2020
+mgq-retrieve --dataset msmarco-passage/trec-dl-2020/judged --resume
+mgq-rerank --dataset msmarco-passage/trec-dl-2020/judged --resume
+```
+
+Default outputs are isolated by track:
+
+- `outputs/trec_dl_2019/bm25` and
+  `outputs/trec_dl_2019/cross_encoder_rerank`
+- `outputs/trec_dl_2020/bm25` and
+  `outputs/trec_dl_2020/cross_encoder_rerank`
+
+Each `metrics.json` and manifest records the dataset id, track year, judged
+topic count, corpus scope, and upstream run. The existing dev/small defaults
+remain unchanged when `--dataset` is omitted.
 
 ## Judgment depth and binarization
 
@@ -72,6 +99,9 @@ suite never depends on a multi-gigabyte download.
 
 ## Scope note
 
-This adds the loaders and the metric wiring only. The full multi-encoder
-calibration sweep over these deep qrels (many dense encoders × k-values ×
-sampling strategies) is GPU-bound and stays out of scope here.
+The runner integration deliberately keeps the BM25 tokenizer, full-corpus
+index, cross-encoder weights, candidate depth, and prompt/generation code
+unchanged. At this stage, the runners still report the existing binary metric
+view at `rel_threshold = 2`; reportable graded nDCG and the independent
+evaluator cross-check are tracked separately in #153. Dense retrieval and
+multi-encoder calibration are not part of this benchmark step.

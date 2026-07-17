@@ -1,11 +1,11 @@
-"""Cross-encoder reranking on top of the dense retrieval run.
+"""Cross-encoder reranking for MS MARCO dev/small or TREC-DL judged topics.
 
 Pipeline:
 
-1. Load a first-stage ``run.tsv`` (defaults to the dense run) and
+1. Load a first-stage ``run.tsv`` (dense for dev/small, BM25 for TREC-DL) and
    truncate to top-K per query (default K = 100).
-2. Load the dense run's sample doc_id pool + sample-restricted qrels (so the
-   evaluation is apples-to-apples with the dense numbers).
+2. Load the matching query/qrels set. Sample-restricted qrels remain available
+   for the historical dense dev/small run.
 3. Resolve passage texts via ``ir_datasets``' docs_store, one chunk at
    a time so memory stays bounded.
 4. Score (query, passage) pairs with ``cross-encoder/ms-marco-MiniLM-L-6-v2``,
@@ -14,7 +14,7 @@ Pipeline:
 5. ``--resume`` reads the existing ``run.tsv``, identifies qids that
    already have a complete top-K block, prunes any half-written ones,
    and only scores the remainder. Mirrors the BM25 resume pattern.
-6. Evaluate dense (input) and dense+CE (reranked) on the SAME qrels and
+6. Evaluate the input and reranked orders on the SAME qrels and
    the SAME query set, so the delta is purely the reranker effect.
 7. Persist:
    - ``<output-dir>/metrics.json``   (dense vs rerank deltas)
@@ -52,13 +52,25 @@ import argparse
 import json
 import logging
 import random
-import resource
+try:
+    import resource
+except ImportError:  # pragma: no cover - exercised on Windows hosts.
+    resource = None
 import sys
 import time
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+from msmarco_genqa.data.benchmark import (
+    MSMARCO_DEV_SMALL,
+    SUPPORTED_DATASETS,
+    BenchmarkSpec,
+    default_retrieval_output_dir,
+    default_reranker_output_dir,
+    get_benchmark_spec,
+    load_benchmark_queries,
+)
 from msmarco_genqa.data.msmarco import get_docs_store, load_msmarco_passage
 from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
 from msmarco_genqa.reranking.cross_encoder import CrossEncoderReranker
@@ -91,7 +103,7 @@ def load_config(path: Path) -> dict:
         return yaml.safe_load(f)
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--config",
@@ -99,16 +111,28 @@ def parse_args() -> argparse.Namespace:
         default=PROJECT_ROOT / "configs/baseline.yaml",
     )
     parser.add_argument(
+        "--dataset",
+        choices=SUPPORTED_DATASETS,
+        default=MSMARCO_DEV_SMALL,
+        help="Query/qrels set associated with the first-stage run.",
+    )
+    parser.add_argument(
         "--input-run",
         type=Path,
-        default=PROJECT_ROOT / "outputs/dense_retrieval/run.tsv",
-        help="First-stage run.tsv to rerank. Defaults to the dense run.",
+        default=None,
+        help=(
+            "First-stage run.tsv to rerank. Defaults to the historical dense run for "
+            "dev/small and the matching year-specific BM25 run for TREC-DL."
+        ),
     )
     parser.add_argument(
         "--input-stage",
         type=str,
-        default="dense_retrieval",
-        help="Output dir name of the input retriever (used to find sample_doc_ids.json).",
+        default=None,
+        help=(
+            "Legacy output dir name used to find sample_doc_ids.json. By default the "
+            "input run's parent directory is used."
+        ),
     )
     parser.add_argument(
         "--rerank-top-k",
@@ -181,7 +205,110 @@ def parse_args() -> argparse.Namespace:
             "leave this off so missing reproducibility fields fail loudly."
         ),
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
+
+
+def resolve_input_run(
+    args: argparse.Namespace,
+    cfg: dict,
+    spec: BenchmarkSpec,
+    project_root: Path = PROJECT_ROOT,
+) -> Path:
+    if args.input_run is not None:
+        return args.input_run if args.input_run.is_absolute() else project_root / args.input_run
+    if spec.is_trec_dl:
+        path = default_retrieval_output_dir(spec, cfg["eval_retrieval"]["output_dir"])
+        return project_root / path / "run.tsv"
+    return project_root / "outputs/dense_retrieval/run.tsv"
+
+
+def resolve_input_stage_dir(
+    args: argparse.Namespace,
+    input_run_path: Path,
+    project_root: Path = PROJECT_ROOT,
+) -> Path:
+    if args.input_stage is None:
+        return input_run_path.parent
+    return project_root / "outputs" / args.input_stage
+
+
+def resolve_output_dir(
+    args: argparse.Namespace,
+    cfg: dict,
+    spec: BenchmarkSpec,
+    project_root: Path = PROJECT_ROOT,
+) -> Path:
+    configured = cfg.get("reranker", {}).get(
+        "output_dir", "outputs/cross_encoder_rerank"
+    )
+    path = args.output_dir or default_reranker_output_dir(spec, configured)
+    return path if path.is_absolute() else project_root / path
+
+
+def first_stage_label(spec: BenchmarkSpec, input_run_path: Path) -> str:
+    if spec.is_trec_dl or "bm25" in str(input_run_path).lower():
+        return "bm25"
+    if "dense" in str(input_run_path).lower():
+        return "dense"
+    return "input"
+
+
+def select_eval_qids(
+    runs: dict[str, list[tuple[str, float]]],
+    queries: dict[str, str],
+    qrels: dict[str, set[str]],
+) -> list[str]:
+    """Keep run topics that belong to the selected benchmark.
+
+    Membership, rather than a non-empty positive set, is intentional: TREC-DL
+    judged topics can have no document above the binary relevance threshold and
+    still need a reranked run for the later graded evaluation path.
+    """
+    return [qid for qid in runs if qid in qrels and qid in queries]
+
+
+def load_upstream_benchmark_metadata(input_stage_dir: Path) -> dict[str, object]:
+    metrics_path = input_stage_dir / "metrics.json"
+    if not metrics_path.exists():
+        return {}
+    with open(metrics_path, encoding="utf-8") as f:
+        payload = json.load(f)
+    metadata = payload.get("benchmark", {})
+    return metadata if isinstance(metadata, dict) else {}
+
+
+def validate_trec_input_run(
+    spec: BenchmarkSpec,
+    runs: dict[str, list[tuple[str, float]]],
+    benchmark_queries: dict[str, str],
+    upstream_metadata: dict[str, object],
+) -> None:
+    """Fail before model loading when a TREC run has the wrong topic scope."""
+    if not spec.is_trec_dl:
+        return
+
+    upstream_dataset = upstream_metadata.get("dataset_id")
+    if upstream_dataset is not None and upstream_dataset != spec.dataset_id:
+        raise SystemExit(
+            f"Input run metadata names {upstream_dataset!r}, but --dataset selects "
+            f"{spec.dataset_id!r}. Refusing to mix benchmark tracks."
+        )
+
+    expected = set(benchmark_queries)
+    observed = set(runs)
+    missing = sorted(expected - observed)
+    unexpected = sorted(observed - expected)
+    if missing or unexpected:
+        details = []
+        if missing:
+            details.append(f"missing {len(missing)} topics (for example {missing[:3]})")
+        if unexpected:
+            details.append(
+                f"contains {len(unexpected)} unexpected topics (for example {unexpected[:3]})"
+            )
+        raise SystemExit(
+            f"Input run does not match {spec.dataset_id}: " + "; ".join(details)
+        )
 
 
 def _peak_memory_mb() -> float:
@@ -189,6 +316,8 @@ def _peak_memory_mb() -> float:
 
     ``resource.getrusage`` reports bytes on macOS, kilobytes on Linux.
     """
+    if resource is None:
+        return 0.0
     rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     if sys.platform == "darwin":
         return rss / (1024 * 1024)
@@ -240,6 +369,7 @@ def main() -> None:
     )
     args = parse_args()
     cfg = load_config(args.config)
+    benchmark_spec = get_benchmark_spec(args.dataset)
     seed = cfg.get("seed", 42)
     seed_coverage = set_global_seed(seed)
 
@@ -250,15 +380,7 @@ def main() -> None:
     rerank_top_k = int(args.rerank_top_k or rerank_cfg.get("rerank_top_k", 100))
     batch_size = int(args.batch_size or rerank_cfg.get("batch_size", 64))
     max_length = int(rerank_cfg.get("max_length", 512))
-    cfg_output_dir = rerank_cfg.get("output_dir", "outputs/cross_encoder_rerank")
-    if args.output_dir is not None:
-        output_dir = (
-            args.output_dir
-            if args.output_dir.is_absolute()
-            else PROJECT_ROOT / args.output_dir
-        )
-    else:
-        output_dir = PROJECT_ROOT / cfg_output_dir
+    output_dir = resolve_output_dir(args, cfg, benchmark_spec)
     chunk_size = int(
         args.rerank_chunk_size
         or rerank_cfg.get("chunk_size", 200)
@@ -267,13 +389,14 @@ def main() -> None:
     cache_dir = PROJECT_ROOT / cfg["data"].get("cache_dir", "data/raw")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    input_run_path = args.input_run
+    input_run_path = resolve_input_run(args, cfg, benchmark_spec)
     if not input_run_path.exists():
         raise SystemExit(
             f"Input run not found at {input_run_path}.\n"
-            "Run experiments/run_dense_retrieval.py first (or pass --input-run)."
+            "Run the matching first-stage retriever first (or pass --input-run)."
         )
-    input_stage_dir = PROJECT_ROOT / "outputs" / args.input_stage
+    input_stage_dir = resolve_input_stage_dir(args, input_run_path)
+    input_label = first_stage_label(benchmark_spec, input_run_path)
 
     # ---------------------------------------------------------------- #
     # 1. Load first-stage run + truncate to top-K
@@ -297,17 +420,29 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     # 2. Queries + qrels
     # ---------------------------------------------------------------- #
-    data = load_msmarco_passage(cache_dir=cache_dir, load_corpus=False)
-    docs_store = data.docs_store or get_docs_store(cache_dir=cache_dir)
-    sample_qrels = _load_sample_qrels(input_stage_dir, data.qrels)
+    corpus_data = load_msmarco_passage(cache_dir=cache_dir, load_corpus=False)
+    docs_store = corpus_data.docs_store or get_docs_store(cache_dir=cache_dir)
+    benchmark = load_benchmark_queries(
+        args.dataset,
+        cache_dir=cache_dir,
+        msmarco_data=corpus_data,
+    )
+    upstream_benchmark = load_upstream_benchmark_metadata(input_stage_dir)
+    validate_trec_input_run(
+        benchmark_spec,
+        runs_topk,
+        benchmark.queries,
+        upstream_benchmark,
+    )
+    sample_qrels = (
+        benchmark.qrels
+        if benchmark_spec.is_trec_dl
+        else _load_sample_qrels(input_stage_dir, benchmark.qrels)
+    )
 
-    # Restrict to queries that have at least one positive qrel AND have a
-    # text in the queries map. ``runs_topk`` already only contains queries
-    # the first-stage retrieved for, so the intersection is what matters.
-    eval_qids = [
-        q for q in runs_topk
-        if q in sample_qrels and q in data.queries
-    ]
+    # Restrict to topics in the selected query and qrels maps. TREC-DL keeps
+    # judged topics even when no label reaches the binary threshold.
+    eval_qids = select_eval_qids(runs_topk, benchmark.queries, sample_qrels)
     skipped = len(runs_topk) - len(eval_qids)
     if skipped:
         logger.info(
@@ -392,7 +527,7 @@ def main() -> None:
         text_by_id = _resolve_passages(needed, docs_store)
         resolve_seconds += time.time() - t0
 
-        queries_text_chunk = [data.queries[q] for q in chunk_qids]
+        queries_text_chunk = [benchmark.queries[q] for q in chunk_qids]
         candidates_chunk = [
             [(d, text_by_id[d]) for d, _ in chunk_runs[q]]
             for q in chunk_qids
@@ -410,7 +545,7 @@ def main() -> None:
             chunk_qids,
             [[d for d, _ in row] for row in chunk_reranked],
             [[s for _, s in row] for row in chunk_reranked],
-            system_name="dense+ce_minilm_l6",
+            system_name=f"{input_label}+ce_minilm_l6",
         )
 
         total_pairs_scored += chunk_info["n_pairs"]
@@ -465,14 +600,14 @@ def main() -> None:
         )
 
     # ---------------------------------------------------------------- #
-    # 6. Evaluate dense (input order) AND reranked, on the same query set
+    # 6. Evaluate input order AND reranked order on the same query set
     # ---------------------------------------------------------------- #
-    dense_runs_eval = {q: [d for d, _ in runs_topk[q]] for q in eval_qids}
+    input_runs_eval = {q: [d for d, _ in runs_topk[q]] for q in eval_qids}
 
-    dense_metrics = evaluate_retrieval(dense_runs_eval, sample_qrels)
+    input_metrics = evaluate_retrieval(input_runs_eval, sample_qrels)
     rerank_metrics = evaluate_retrieval(rerank_runs_eval, sample_qrels)
-    logger.info("Dense (input)   metrics: %s", dense_metrics)
-    logger.info("Dense + CE rerank metrics: %s", rerank_metrics)
+    logger.info("%s (input) metrics: %s", input_label, input_metrics)
+    logger.info("%s + CE rerank metrics: %s", input_label, rerank_metrics)
 
     # ---------------------------------------------------------------- #
     # 7. Qualitative examples (before vs after) — reads reranked from disk
@@ -501,16 +636,16 @@ def main() -> None:
     with open(examples_path, "w") as f:
         for qid in sample_qids_for_examples:
             relevant = sample_qrels.get(qid, set())
-            dense_block = _block(runs_topk[qid], relevant)
+            input_block = _block(runs_topk[qid], relevant)
             # final_runs[qid] is the disk-materialised reranked block (doc, score).
             ce_block = _block(final_runs.get(qid, []), relevant)
             entry = {
                 "query_id": qid,
-                "query": data.queries[qid],
+                "query": benchmark.queries[qid],
                 "relevant_doc_ids": sorted(relevant),
-                "dense_top10": dense_block,
+                f"{input_label}_top10": input_block,
                 "rerank_top10": ce_block,
-                "dense_first_rank_in_top10": _first_rank(dense_block),
+                f"{input_label}_first_rank_in_top10": _first_rank(input_block),
                 "rerank_first_rank_in_top10": _first_rank(ce_block),
             }
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -523,26 +658,43 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     # 8. metrics.json (unified schema)
     # ---------------------------------------------------------------- #
-    n_queries = dense_metrics.pop("n_queries", None)
+    n_queries = input_metrics.pop("n_queries", None)
     rerank_metrics.pop("n_queries", None)
+
+    benchmark_metadata = benchmark.metadata()
+    benchmark_metadata.update(
+        {
+            "corpus_id": "msmarco-passage",
+            "corpus_scope": upstream_benchmark.get("corpus_scope", "unknown"),
+            "input_run_topic_count": len(runs_topk),
+            "reranked_topic_count": len(final_runs),
+            "judged_topic_coverage": (
+                len(set(final_runs) & set(benchmark.graded_qrels))
+                / len(benchmark.graded_qrels)
+                if benchmark.graded_qrels
+                else 0.0
+            ),
+        }
+    )
 
     payload = {
         "task": "reranking",
-        "dataset": "msmarco-passage/dev/small (qrels-anchored sample, via dense run)",
+        "dataset": benchmark_spec.dataset_id,
+        "benchmark": benchmark_metadata,
         "n_examples": n_queries,
         "config": cfg,
         "rerank": {
             "input_run": str(input_run_path.relative_to(PROJECT_ROOT))
             if input_run_path.is_relative_to(PROJECT_ROOT)
             else str(input_run_path),
-            "input_stage": args.input_stage,
+            "input_stage": input_label,
             "rerank_top_k": rerank_top_k,
             "model_name": model_name,
             "batch_size": batch_size,
             "max_length": max_length,
         },
         "metrics": {
-            "dense": dense_metrics,
+            input_label: input_metrics,
             "rerank": rerank_metrics,
         },
         "wall_clock_seconds": {
@@ -566,8 +718,8 @@ def main() -> None:
     }
     # Reranker inherits sampling state from its upstream first-stage run:
     # presence of input_stage_dir/sample_doc_ids.json indicates the upstream
-    # eval was qrels-anchored. The eval (dense_metrics + rerank_metrics) is
-    # then over sample_qrels rather than the full qrels.
+    # eval was qrels-anchored. The input and rerank metrics are then over
+    # sample_qrels rather than the full qrels.
     upstream_sample_path = input_stage_dir / "sample_doc_ids.json"
     if upstream_sample_path.exists():
         with open(upstream_sample_path) as f:
@@ -611,6 +763,10 @@ def main() -> None:
             if input_run_path.is_relative_to(PROJECT_ROOT)
             else str(input_run_path),
             "resumed": bool(args.resume) and len(done_qids) > 0,
+            "dataset": benchmark_spec.dataset_id,
+            "track_year": benchmark_spec.track_year,
+            "judged_topic_count": benchmark.judged_topic_count,
+            "input_stage": input_label,
             "seed": seed,
             "seed_coverage": seed_coverage,
             "resolved_config_hash": resolved_config_hash,
@@ -624,7 +780,7 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     # 9. Friendly summary
     # ---------------------------------------------------------------- #
-    print("\n=== cross-encoder reranking ===")
+    print(f"\n=== cross-encoder reranking: {benchmark_spec.dataset_id} ===")
     print(f"input run:   {input_run_path}")
     print(f"rerank model: {model_name}")
     print(
@@ -641,9 +797,9 @@ def main() -> None:
             f"(+ {resolve_seconds:.1f} s text resolve)"
         )
     print(f"peak RSS:    {peak_mem_mb:.0f} MiB")
-    print(f"  {'metric':14s}  {'dense':>10s}  {'+CE':>10s}  {'Δ':>9s}")
+    print(f"  {'metric':14s}  {input_label:>10s}  {'+CE':>10s}  {'Δ':>9s}")
     for key in ("mrr@10", "ndcg@10", "recall@100", "recall@1000"):
-        d = dense_metrics.get(key)
+        d = input_metrics.get(key)
         r = rerank_metrics.get(key)
         delta = (r - d) if (d is not None and r is not None) else None
         d_s = f"{d:.4f}" if d is not None else "  —  "
