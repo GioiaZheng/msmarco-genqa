@@ -38,8 +38,8 @@ ACL-style findings write-up is
 
 | Area | What is included |
 |---|---|
-| Retrieval | BM25, dense SBERT/FAISS, and BM25-on-sample comparisons under controlled qrels-anchored evaluation. |
-| Reranking | Cross-encoder reranking with aggregate lift, first-stage comparison, and query-level promoted/demoted/new-hit/lost-hit diagnostics. |
+| Retrieval | BM25, dense SBERT/FAISS, BM25-on-sample comparisons, and full-corpus BM25 runner support for the judged TREC-DL 2019/2020 passage tracks. |
+| Reranking | Cross-encoder reranking with dataset-selectable TREC-DL runners, aggregate lift, first-stage comparison, and query-level promoted/demoted/new-hit/lost-hit diagnostics. |
 | Generation | Paired BM25-vs-reranked generation runs using the same generator, prompt format, query set, and top-k depth. |
 | Evaluation | Paired-bootstrap confidence intervals, BERTScore proxy checks, grounding audit, RAG triad reporting, query-form slicing, and regression taxonomy. |
 | Reproducibility | Config-driven runners, manifests, output hashes, metadata, CI, report artifacts, and optional experiment tracking. |
@@ -63,6 +63,7 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/input_validation.md`](docs/input_validation.md) — run-file, JSONL, prompt, and serving input validation contract.
 - [`docs/artifact_versioning.md`](docs/artifact_versioning.md) — policy for source data, derived indexes, model outputs, and Git-tracked pointers.
 - [`docs/rag_observatory_exports.md`](docs/rag_observatory_exports.md) — trace and sweep exports for external RAG observability analysis.
+- [`docs/trec_dl_external_validity.md`](docs/trec_dl_external_validity.md) — TREC-DL dataset contract, runner commands, metric boundaries, and benchmark follow-ups.
 - [`notebooks/rag_eval_demo.ipynb`](notebooks/rag_eval_demo.ipynb) — lightweight evaluation workflow demo.
 
 ## Engineering surface
@@ -97,6 +98,13 @@ auditing the experiments:
   two `run.tsv` files per query, bucketizing reranker gains/losses into
   promoted, demoted, new-hit, and lost-hit cases. See
   [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md).
+- **TREC-DL benchmark runners.** The BM25 and cross-encoder runners accept the
+  judged TREC-DL 2019/2020 passage tracks, reuse the shared full-corpus index,
+  isolate outputs by year, and record track and topic-scope provenance. This is
+  the execution surface for the graded evaluation in
+  [#153](https://github.com/GioiaZheng/msmarco-genqa/issues/153) and the
+  benchmark in [#154](https://github.com/GioiaZheng/msmarco-genqa/issues/154);
+  it is not itself a new empirical result.
 - **RAG triad reporting.** `mgq-rag-triad` joins prediction files with optional
   qrels and writes per-query context relevance, groundedness, and answer
   relevance diagnostics. See
@@ -247,6 +255,17 @@ Runtime ~4h37m on a 6-core MacBook (538 000 query-passage pairs at
 reranking only reorders the top-100. A 1 000-query pilot produced
 MRR Δ +0.0435, nDCG Δ +0.0398 — close to the full-dev deltas, so the
 gain is not specific to the subsample.
+
+### TREC-DL benchmark readiness
+
+The full-corpus BM25 and BM25-plus-cross-encoder runners support the judged
+TREC-DL 2019 and 2020 passage tracks. Runner integration, output isolation, and
+benchmark provenance are complete. Graded relevance evaluation and an
+independent evaluator cross-check remain open in
+[#153](https://github.com/GioiaZheng/msmarco-genqa/issues/153); the reportable
+two-year benchmark remains open in
+[#154](https://github.com/GioiaZheng/msmarco-genqa/issues/154). No TREC-DL
+headline result is claimed yet.
 
 ### Generation × retrieval source
 
@@ -509,7 +528,8 @@ Console names: `mgq-transform-queries`, `mgq-query-transform-ablation`,
 `mgq-rag-triad`,
 `mgq-export-rag-observatory`,
 `mgq-rerank`, `mgq-generate`, `mgq-trec-eval`.
-The examples below use the script form.
+The examples below use whichever of the script or console forms makes the
+dataset and stage boundary clearest.
 
 ### TREC-DL 2019/2020 full-corpus retrieval
 
@@ -887,6 +907,10 @@ Limitations to be aware of:
 - **CPU-only retrieve is slow at 8.8 M docs.** ~70 min for 6 980 queries. `n_threads=-1` may help; not yet benchmarked on this corpus.
 - **Generation: pretrained T5-small, no fine-tuning.** Numbers will be low on overlap-based metrics. Fine-tuning is in scope for a later iteration.
 - **NumPy 2.x runtime warning.** Some compiled deps (torch) were built against NumPy 1.x. Cosmetic; downgrade to `numpy<2` if it ever causes a real failure.
+- **TREC-DL metrics are not yet reportable.** The runners preserve graded qrels
+  but currently expose the established binary metric view at relevance
+  threshold 2. Graded nDCG, evaluator agreement, and the full BM25-vs-reranked
+  benchmark are tracked in #153 and #154.
 
 ## 8. Next
 
@@ -894,6 +918,15 @@ Longer-horizon research and engineering directions are tracked in
 [`ROADMAP.md`](ROADMAP.md). The list below is the shorter technical queue
 closest to the current experimental surface.
 
+- **TREC-DL graded evaluation.** Complete
+  [#153](https://github.com/GioiaZheng/msmarco-genqa/issues/153): preserve
+  labels 0–3, report graded nDCG@10 plus explicitly thresholded MRR/recall, and
+  cross-check the metrics with an independent TREC-compatible evaluator.
+- **TREC-DL full-corpus benchmark.** Then complete
+  [#154](https://github.com/GioiaZheng/msmarco-genqa/issues/154): run BM25 and
+  BM25 plus the existing cross-encoder on the 2019 and 2020 judged topics,
+  report the tracks separately, and keep every number traceable to its run and
+  manifest.
 - **Top-k Pareto.** K ∈ {50, 100, 200} perf-latency Pareto on
   both first stages (1 000-q subsample for K=50/200; K=100 reuses the reranker
   full-dev). Queued.
