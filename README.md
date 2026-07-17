@@ -1,6 +1,10 @@
 # MS MARCO GenQA
 
 [![CI status](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/ci.yml?query=branch%3Amain)
+[![Secret scan](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/secret-scan.yml/badge.svg?branch=main)](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/secret-scan.yml?query=branch%3Amain)
+[![Latest release](https://img.shields.io/github/v/release/GioiaZheng/msmarco-genqa?display_name=tag)](https://github.com/GioiaZheng/msmarco-genqa/releases/latest)
+[![Python](https://img.shields.io/badge/python-%E2%89%A53.10-3776AB?logo=python&logoColor=white)](https://github.com/GioiaZheng/msmarco-genqa/blob/main/pyproject.toml)
+[![License](https://img.shields.io/github/license/GioiaZheng/msmarco-genqa)](https://github.com/GioiaZheng/msmarco-genqa/blob/main/LICENSE)
 
 ## TL;DR
 
