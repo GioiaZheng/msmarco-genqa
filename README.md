@@ -1,5 +1,7 @@
 # MS MARCO GenQA
 
+[![CI status](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/ci.yml?query=branch%3Amain)
+
 ## TL;DR
 
 This repository is a reproducible research-engineering implementation of an
