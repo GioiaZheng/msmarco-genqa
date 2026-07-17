@@ -51,6 +51,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=1e-12,
         help="Maximum absolute metric difference accepted per measure.",
     )
+    parser.add_argument(
+        "--rel-threshold",
+        type=int,
+        default=1,
+        help=(
+            "Minimum relevance label counted by MRR and recall. "
+            "Use 2 for TREC-DL passage qrels; graded nDCG keeps all labels."
+        ),
+    )
     return parser
 
 
@@ -66,6 +75,7 @@ def main(argv: list[str] | None = None) -> int:
             qrels_format=args.qrels_format,
             backend=args.backend,
             tolerance=args.tolerance,
+            rel_threshold=args.rel_threshold,
         )
     except (
         MetricCrossCheckError,
