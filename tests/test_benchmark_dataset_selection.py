@@ -57,7 +57,13 @@ def test_trec_tracks_load_through_shared_selector_without_network(year, monkeypa
     assert selected.queries == bundle.queries
     assert selected.qrels == bundle.qrels
     assert selected.graded_qrels == bundle.graded_qrels
-    assert selected.metadata()["topic_scope"] == "judged"
+    metadata = selected.metadata()
+    assert metadata["dataset_id"] == TREC_DL_DATASETS[year]
+    assert metadata["track_year"] == year
+    assert metadata["topic_scope"] == "judged"
+    assert metadata["judged_topic_count"] == len(bundle.graded_qrels)
+    assert metadata["qrels_type"] == "graded"
+    assert metadata["relevance_threshold"] == 2
 
 
 def test_supported_datasets_keep_dev_small_as_default():

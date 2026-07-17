@@ -17,7 +17,7 @@ Pipeline:
 6. Evaluate the input and reranked orders on the SAME qrels and
    the SAME query set, so the delta is purely the reranker effect.
 7. Persist:
-   - ``<output-dir>/metrics.json``   (dense vs rerank deltas)
+   - ``<output-dir>/metrics.json``   (first-stage vs rerank deltas)
    - ``<output-dir>/run.tsv``        (reranked TREC run, append-built)
    - ``<output-dir>/examples.jsonl`` (before/after per query)
    - ``<output-dir>/manifest.json``  (git/config/dep hashes + extras)
@@ -766,6 +766,10 @@ def main() -> None:
             "dataset": benchmark_spec.dataset_id,
             "track_year": benchmark_spec.track_year,
             "judged_topic_count": benchmark.judged_topic_count,
+            "judged_topic_coverage": benchmark_metadata["judged_topic_coverage"],
+            "corpus_scope": benchmark_metadata["corpus_scope"],
+            "input_run_topic_count": benchmark_metadata["input_run_topic_count"],
+            "reranked_topic_count": benchmark_metadata["reranked_topic_count"],
             "input_stage": input_label,
             "seed": seed,
             "seed_coverage": seed_coverage,
