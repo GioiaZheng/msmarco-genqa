@@ -8,14 +8,14 @@ promote any single metric to a complete measure of RAG quality.
 
 For a stage-specific evaluated query set
 
-$$
+```math
 \mathcal Q=\{q_1,\ldots,q_N\},
 \qquad N=|\mathcal Q|,
-$$
+```
 
 let
 
-$$
+```math
 \begin{aligned}
 L_q &= (d_{q,1},d_{q,2},\ldots),
 &R_q&=\{d:\operatorname{rel}_q(d)>0\},\\
@@ -24,94 +24,94 @@ L_q &= (d_{q,1},d_{q,2},\ldots),
 \mathcal C_q&=(c_{q,1},\ldots,c_{q,K}),
 &\mathbf 1[\cdot]&=\text{indicator function}.
 \end{aligned}
-$$
+```
 
 For any per-query metric $m_q$,
 
-$$
+```math
 \overline m
 =
 \frac{1}{N}\sum_{q\in\mathcal Q}m_q.
-$$
+```
 
 ## 2. Retrieval Metrics
 
 The retrieval macro-average includes only queries with at least one positive
 qrel:
 
-$$
+```math
 \mathcal Q_{\mathrm{ret}}^{+}
 =
 \{q\in\mathcal Q:R_q\neq\varnothing\},
 \qquad
 N_{\mathrm{ret}}=|\mathcal Q_{\mathrm{ret}}^{+}|.
-$$
+```
 
 ### 2.1 Reciprocal Rank and MRR@$k$
 
-$$
+```math
 r_q^{(k)}
 =
 \min\{i\le k:d_{q,i}\in R_q\},
-$$
+```
 
-$$
+```math
 \operatorname{RR}_q@k
 =
 \begin{cases}
 \dfrac{1}{r_q^{(k)}}, & r_q^{(k)}\text{ exists},\\[6pt]
 0, & \text{otherwise},
 \end{cases}
-$$
+```
 
-$$
+```math
 \operatorname{MRR}@k
 =
 \frac{1}{N_{\mathrm{ret}}}
 \sum_{q\in\mathcal Q_{\mathrm{ret}}^{+}}\operatorname{RR}_q@k.
-$$
+```
 
 ### 2.2 Recall@$k$
 
-$$
+```math
 \operatorname{Recall}_q@k
 =
 \frac{
 \left|\{d_{q,1},\ldots,d_{q,k}\}\cap R_q\right|
 }{|R_q|},
-$$
+```
 
-$$
+```math
 \operatorname{Recall}@k
 =
 \frac{1}{N_{\mathrm{ret}}}
 \sum_{q\in\mathcal Q_{\mathrm{ret}}^{+}}\operatorname{Recall}_q@k.
-$$
+```
 
 ### 2.3 Binary nDCG@$k$
 
 The current MS MARCO `dev/small` path uses binary gain
 
-$$
+```math
 g_q(d)=\mathbf 1[d\in R_q].
-$$
+```
 
 Hence
 
-$$
+```math
 \operatorname{DCG}_q@k
 =
 \sum_{i=1}^{k}
 \frac{g_q(d_{q,i})}{\log_2(i+1)},
-$$
+```
 
-$$
+```math
 \operatorname{IDCG}_q@k
 =
 \sum_{i=1}^{\min(k,|R_q|)}\frac{1}{\log_2(i+1)},
-$$
+```
 
-$$
+```math
 \operatorname{nDCG}_q@k
 =
 \frac{\operatorname{DCG}_q@k}{\operatorname{IDCG}_q@k},
@@ -120,7 +120,7 @@ $$
 =
 \frac{1}{N_{\mathrm{ret}}}
 \sum_{q\in\mathcal Q_{\mathrm{ret}}^{+}}\operatorname{nDCG}_q@k.
-$$
+```
 
 ## 3. Reference-Based Generation Metrics
 
@@ -130,7 +130,7 @@ token multiset.
 
 ### 3.1 Exact Match
 
-$$
+```math
 \operatorname{EM}_q
 =
 \begin{cases}
@@ -140,19 +140,19 @@ $$
 &\mathcal A_q\neq\varnothing,\\[6pt]
 0,&\mathcal A_q=\varnothing.
 \end{cases}
-$$
+```
 
 ### 3.2 Token-$F_1$
 
 For $a\in\mathcal A_q$, define the multiset overlap
 
-$$
+```math
 o_q(a)
 =
 \left|T_{\nu}(\hat y_q)\cap_{\mathrm{multi}}T_{\nu}(a)\right|.
-$$
+```
 
-$$
+```math
 P_q^{\mathrm{tok}}(a)
 =
 \begin{cases}
@@ -166,9 +166,9 @@ R_q^{\mathrm{tok}}(a)
 \dfrac{o_q(a)}{|T_{\nu}(a)|},&|T_{\nu}(a)|>0,\\[6pt]
 0,&|T_{\nu}(a)|=0,
 \end{cases}
-$$
+```
 
-$$
+```math
 F_{1,q}(a)
 =
 \begin{cases}
@@ -180,9 +180,9 @@ P_q^{\mathrm{tok}}(a)+R_q^{\mathrm{tok}}(a)
 &P_q^{\mathrm{tok}}(a)+R_q^{\mathrm{tok}}(a)>0,\\[6pt]
 0,&\text{otherwise},
 \end{cases}
-$$
+```
 
-$$
+```math
 \operatorname{TokenF1}_q
 =
 \begin{cases}
@@ -190,23 +190,23 @@ $$
 &T_{\nu}(\hat y_q)\neq\varnothing\land\mathcal A_q\neq\varnothing,\\[6pt]
 0,&\text{otherwise}.
 \end{cases}
-$$
+```
 
 ### 3.3 ROUGE-L
 
 For the ROUGE scorer tokenization with stemming,
 
-$$
+```math
 Y_q^{\mathrm R}=\tau_{\mathrm R}(\hat y_q),
 \qquad
 A_q^{\mathrm R}(a)=\tau_{\mathrm R}(a),
-$$
+```
 
-$$
+```math
 \ell_q(a)=\operatorname{LCS}(Y_q^{\mathrm R},A_q^{\mathrm R}(a)),
-$$
+```
 
-$$
+```math
 P_q^{\mathrm{LCS}}(a)
 =
 \begin{cases}
@@ -220,9 +220,9 @@ R_q^{\mathrm{LCS}}(a)
 \dfrac{\ell_q(a)}{|A_q^{\mathrm R}(a)|},&|A_q^{\mathrm R}(a)|>0,\\[6pt]
 0,&|A_q^{\mathrm R}(a)|=0,
 \end{cases}
-$$
+```
 
-$$
+```math
 F_{q}^{\mathrm{ROUGE-L}}(a)
 =
 \begin{cases}
@@ -234,9 +234,9 @@ P_q^{\mathrm{LCS}}(a)+R_q^{\mathrm{LCS}}(a)
 &P_q^{\mathrm{LCS}}(a)+R_q^{\mathrm{LCS}}(a)>0,\\[6pt]
 0,&\text{otherwise},
 \end{cases}
-$$
+```
 
-$$
+```math
 \operatorname{ROUGE-L}_q
 =
 \begin{cases}
@@ -244,22 +244,22 @@ $$
 &\mathcal A_q\neq\varnothing,\\[6pt]
 0,&\mathcal A_q=\varnothing.
 \end{cases}
-$$
+```
 
 ### 3.4 Paired-Comparison Sentence BLEU
 
 For the whitespace-tokenized sequences
 
-$$
+```math
 Y_q^{\mathrm B}=\operatorname{split}(\hat y_q),
 \qquad
 A_q^{\mathrm B}(a)=\operatorname{split}(a),
-$$
+```
 
 let $G_n(Y_q^{\mathrm B})$ be the multiset of prediction $n$-grams for
 $n\in\{1,2,3,4\}$. With clipping against all references,
 
-$$
+```math
 m_{q,n}
 =
 \sum_{g\in\operatorname{supp}(G_n(Y_q^{\mathrm B}))}
@@ -267,9 +267,9 @@ m_{q,n}
 \operatorname{count}_{Y_q^{\mathrm B}}(g),
 \max_{a\in\mathcal A_q}\operatorname{count}_{A_q^{\mathrm B}(a)}(g)
 \right),
-$$
+```
 
-$$
+```math
 z_{q,n}
 =
 \max\left(
@@ -277,23 +277,23 @@ z_{q,n}
 \sum_{g\in\operatorname{supp}(G_n(Y_q^{\mathrm B}))}
 \operatorname{count}_{Y_q^{\mathrm B}}(g)
 \right).
-$$
+```
 
 The paired script uses NLTK smoothing method 1 with $\varepsilon=0.1$:
 
-$$
+```math
 \widetilde p_{q,n}
 =
 \begin{cases}
 \dfrac{m_{q,n}}{z_{q,n}},&m_{q,n}>0,\\[6pt]
 \dfrac{\varepsilon}{z_{q,n}},&m_{q,n}=0.
 \end{cases}
-$$
+```
 
 If $c_q=|Y_q^{\mathrm B}|$ and $r_q^{\mathrm{BLEU}}$ is the closest reference
 length,
 
-$$
+```math
 \operatorname{BP}_q
 =
 \begin{cases}
@@ -302,9 +302,9 @@ $$
 &0<c_q\le r_q^{\mathrm{BLEU}},\\[6pt]
 0,&c_q=0,
 \end{cases}
-$$
+```
 
-$$
+```math
 \operatorname{BLEU}_q
 =
 \begin{cases}
@@ -316,7 +316,7 @@ $$
 &c_q>0\land\mathcal A_q\neq\varnothing,\\[8pt]
 0,&\text{otherwise}.
 \end{cases}
-$$
+```
 
 ## 4. Semantic and Grounding Metrics
 
@@ -326,12 +326,12 @@ For contextual token embeddings
 $H_q=(h_{q,1},\ldots,h_{q,M})$ and
 $E_q(a)=(e_{q,1},\ldots,e_{q,L_a})$,
 
-$$
+```math
 s_{ij}=\frac{h_{q,i}^{\top}e_{q,j}}
 {\|h_{q,i}\|_2\|e_{q,j}\|_2},
-$$
+```
 
-$$
+```math
 P_q^{\mathrm{BERT}}(a)
 =
 \frac{1}{M}\sum_{i=1}^{M}\max_j s_{ij},
@@ -339,9 +339,9 @@ P_q^{\mathrm{BERT}}(a)
 R_q^{\mathrm{BERT}}(a)
 =
 \frac{1}{L_a}\sum_{j=1}^{L_a}\max_i s_{ij},
-$$
+```
 
-$$
+```math
 F_q^{\mathrm{BERT}}(a)
 =
 \frac{
@@ -349,17 +349,17 @@ F_q^{\mathrm{BERT}}(a)
 }{
 P_q^{\mathrm{BERT}}(a)+R_q^{\mathrm{BERT}}(a)
 },
-$$
+```
 
 For the model-specific baseline $b_M$,
 
-$$
+```math
 \operatorname{Rescale}_{M}(x)
 =
 \frac{x-b_M}{1-b_M}.
-$$
+```
 
-$$
+```math
 \operatorname{BERTScore}_q
 =
 \begin{cases}
@@ -369,31 +369,31 @@ $$
 &\hat y_q\neq\varnothing\land\mathcal A_q\neq\varnothing,\\[8pt]
 0,&\text{otherwise}.
 \end{cases}
-$$
+```
 
 ### 4.2 Lexical Content-Token Grounding
 
 Let the grounding tokenizer be
 
-$$
+```math
 \tau_{\mathrm G}(x)
 =
 \operatorname{Regex}_{\mathtt{[a-z0-9']+}}
 \left(\operatorname{lower}(x)\right),
-$$
+```
 
 and let $\tau_{\mathrm G}^{\mathrm{content}}$ remove the fixed grounding
 stopword set. Then
 
-$$
+```math
 U_q=\operatorname{set}
 \left(\tau_{\mathrm G}^{\mathrm{content}}(\hat y_q)\right),
 \qquad
 V_q=\bigcup_{c\in\mathcal C_q}\operatorname{set}
 \left(\tau_{\mathrm G}(c)\right).
-$$
+```
 
-$$
+```math
 G_q^{\mathrm{lex}}
 =
 \begin{cases}
@@ -401,22 +401,22 @@ G_q^{\mathrm{lex}}
 0,&U_q\neq\varnothing\land V_q=\varnothing,\\[4pt]
 \dfrac{|U_q\cap V_q|}{|U_q|},&\text{otherwise}.
 \end{cases}
-$$
+```
 
 ### 4.3 $n$-gram Grounding
 
 Let $U_q^{(n)}$ be the set of unique contiguous prediction $n$-grams, and
 let $V_q^{(n)}$ be the union of within-passage $n$-grams:
 
-$$
+```math
 U_q^{(n)}=\operatorname{set}
 \left(G_n(\tau_{\mathrm G}(\hat y_q))\right),
 \qquad
 V_q^{(n)}=\bigcup_{c\in\mathcal C_q}\operatorname{set}
 \left(G_n(\tau_{\mathrm G}(c))\right).
-$$
+```
 
-$$
+```math
 G_q^{(n)}
 =
 \begin{cases}
@@ -424,34 +424,34 @@ G_q^{(n)}
 0,&U_q^{(n)}\neq\varnothing\land V_q^{(n)}=\varnothing,\\[4pt]
 \dfrac{|U_q^{(n)}\cap V_q^{(n)}|}{|U_q^{(n)}|},&\text{otherwise}.
 \end{cases}
-$$
+```
 
 The canonical audit uses
 
-$$
+```math
 n=3.
-$$
+```
 
 ### 4.4 NLI Entailment Grounding
 
 For
 
-$$
+```math
 x_q^{\mathrm{premise}}=c_{q,1}\oplus\cdots\oplus c_{q,K},
 \qquad
 x_q^{\mathrm{hypothesis}}=\hat y_q,
-$$
+```
 
 let the NLI classifier logits be
 
-$$
+```math
 z_q=f_{\theta}
 \left(x_q^{\mathrm{premise}},x_q^{\mathrm{hypothesis}}\right).
-$$
+```
 
 Then
 
-$$
+```math
 G_q^{\mathrm{NLI}}
 =
 \begin{cases}
@@ -461,7 +461,7 @@ G_q^{\mathrm{NLI}}
 \exp(z_{q,\ell})},
 &\text{otherwise},
 \end{cases}
-$$
+```
 
 where $\mathrm{ent}$, $\mathrm{neu}$, and $\mathrm{con}$ denote entailment,
 neutral, and contradiction.
@@ -470,26 +470,26 @@ neutral, and contradiction.
 
 With qrels available,
 
-$$
+```math
 C_q^{\mathrm{rel}}
 =
 \mathbf 1
 \left[
 \{d_{q,1},\ldots,d_{q,K}\}\cap R_q\neq\varnothing
 \right].
-$$
+```
 
 Without qrels,
 
-$$
+```math
 C_q^{\mathrm{rel}}
 =
 G^{\mathrm{lex}}(\text{query}_q,\mathcal C_q).
-$$
+```
 
 The implemented diagnostic vector is
 
-$$
+```math
 \mathbf t_q
 =
 \left(
@@ -497,11 +497,11 @@ C_q^{\mathrm{rel}},
 G_q^{\mathrm{lex}},
 \operatorname{TokenF1}_q
 \right),
-$$
+```
 
 and its convenience summary is
 
-$$
+```math
 \operatorname{Triad}_q
 =
 \frac{1}{3}
@@ -510,81 +510,81 @@ C_q^{\mathrm{rel}}
 +G_q^{\mathrm{lex}}
 +\operatorname{TokenF1}_q
 \right).
-$$
+```
 
 ## 6. Paired Comparison
 
 For two systems $A$ and $B$ evaluated on the same ordered query set,
 
-$$
+```math
 m_i^{A}=m(\hat y_i^{A}),
 \qquad
 m_i^{B}=m(\hat y_i^{B}),
 \qquad
 d_i=m_i^{B}-m_i^{A}.
-$$
+```
 
 The reported point estimates are
 
-$$
+```math
 \widehat\mu_A=\frac{1}{N}\sum_{i=1}^{N}m_i^{A},
 \qquad
 \widehat\mu_B=\frac{1}{N}\sum_{i=1}^{N}m_i^{B},
-$$
+```
 
-$$
+```math
 \widehat\Delta
 =
 \widehat\mu_B-\widehat\mu_A
 =
 \frac{1}{N}\sum_{i=1}^{N}d_i.
-$$
+```
 
 ## 7. Paired Bootstrap Confidence Interval
 
 For bootstrap replicate $b\in\{1,\ldots,B\}$, draw
 
-$$
+```math
 I_{b,1},\ldots,I_{b,N}
 \overset{\mathrm{iid}}{\sim}
 \operatorname{Uniform}\{1,\ldots,N\},
-$$
+```
 
 and compute
 
-$$
+```math
 \Delta_b^{*}
 =
 \frac{1}{N}\sum_{j=1}^{N}d_{I_{b,j}}.
-$$
+```
 
 For confidence level $1-\alpha$,
 
-$$
+```math
 \operatorname{CI}_{1-\alpha}
 =
 \left[
 Q_{\alpha/2}\left(\{\Delta_b^{*}\}_{b=1}^{B}\right),
 Q_{1-\alpha/2}\left(\{\Delta_b^{*}\}_{b=1}^{B}\right)
 \right].
-$$
+```
 
 The repository defaults are
 
-$$
+```math
 B=10{,}000,
 \qquad
 \alpha=0.05,
 \qquad
 \text{seed}=42.
-$$
+```
 
 ## 8. Reported Two-Sided Bootstrap Tail Probability
 
 The implementation counts both inclusive tails of the empirical paired
 bootstrap distribution:
 
-$$
+```math
 n_{\le 0}
 =
 \sum_{b=1}^{B}\mathbf 1[\Delta_b^{*}\le 0],
@@ -592,11 +592,11 @@ n_{\le 0}
 n_{\ge 0}
 =
 \sum_{b=1}^{B}\mathbf 1[\Delta_b^{*}\ge 0].
-$$
+```
 
 The reported value is
 
-$$
+```math
 \boxed{
 p_{\mathrm{boot-tail}}
 =
@@ -608,15 +608,15 @@ p_{\mathrm{boot-tail}}
 \right)
 \right)
 }.
-$$
+```
 
 Thus
 
-$$
+```math
 p_{\mathrm{reported}}
 \equiv
 p_{\mathrm{boot-tail}},
-$$
+```
 
 not a null-centered paired-permutation $p$-value. The percentile confidence
 interval is the primary inferential quantity in the current experiment
@@ -627,19 +627,19 @@ contract.
 This design diagnostic is not yet emitted by the current runners. Output
 length is a covariate, not a replacement quality metric:
 
-$$
+```math
 \lambda_i^{S}=|T_{\nu}(\hat y_i^{S})|,
 \qquad
 \Delta\lambda_i=\lambda_i^{B}-\lambda_i^{A},
-$$
+```
 
-$$
+```math
 \overline{\Delta\lambda}
 =
 \frac{1}{N}\sum_{i=1}^{N}\Delta\lambda_i,
-$$
+```
 
-$$
+```math
 \rho_{m,\lambda}
 =
 \operatorname{corr}
@@ -647,7 +647,7 @@ $$
 \{d_i\}_{i=1}^{N},
 \{\Delta\lambda_i\}_{i=1}^{N}
 \right).
-$$
+```
 
 The same paired-bootstrap construction applies to
 $\overline{\Delta\lambda}$.
