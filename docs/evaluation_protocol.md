@@ -4,6 +4,9 @@ This protocol defines how to produce, compare, and report the repository's
 main RAG evaluation results. It is written for repeatable research work, not
 for a one-off demo.
 
+The canonical metric and paired-inference equations are defined in
+[`experiment_design.md`](experiment_design.md).
+
 ## Claim Under Test
 
 Primary claim:
