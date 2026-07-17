@@ -1,7 +1,7 @@
 % =============================================================================
 % MS MARCO Generative QA — Repository Report
 % Author : GioiaZheng  <gioia.zheng.stud@gmail.com>
-% Date   : 2026-06-27
+% Date   : 2026-07-17
 % Build  : latexmk -pdf report.tex   (or:  see Makefile)
 % =============================================================================
 
@@ -107,7 +107,7 @@
   pdftitle={MS MARCO Generative QA: A Reproducible Retrieve--Rerank--Generate
             Pipeline with Grounding and Triad Audits},
   pdfauthor={GioiaZheng},
-  pdfsubject={Repository report --- updated 2026-07-01;
+  pdfsubject={Repository report --- updated 2026-07-17;
               experiment window 2026-03-06 to 2026-05-21},
   pdfkeywords={MS MARCO; BM25; dense retrieval; cross-encoder reranking;
                retrieval-augmented generation; BERTScore; NLI;
@@ -158,7 +158,7 @@
   {\Large\itshape A Reproducible Retrieve--Rerank--Generate Pipeline\\[0.25em]
    with Grounding and Triad Audits\par}
   \vspace{0.35cm}
-  {\large Repository report --- updated 2026-06-27\par}
+  {\large Repository report --- updated 2026-07-17\par}
   \vspace{1.05cm}
   \rule{\linewidth}{1.2pt}\par
 
@@ -177,7 +177,7 @@
    \begin{tabular}{@{}r@{\hskip 1.4em}l@{}}
      \toprule
      \textbf{Experiment period} & 2026-03-06\,--\,2026-05-21 \quad{\small(11 milestones completed; 12-stage plan)} \\
-     \textbf{Current update}    & 2026-06-27 \\
+     \textbf{Current update}    & 2026-07-17 \\
      \textbf{Scope}             & Batch evaluation, CPU-only; English passage retrieval + QA \\
      \bottomrule
    \end{tabular}\par}
@@ -249,15 +249,18 @@ scaffolding (reproducibility manifests, paired-bootstrap confidence
 intervals, deterministic seeds) that lets every number in this
 document be regenerated from one command per stage.
 
-This 2026-06-27 update keeps the empirical claims anchored to the
+This 2026-07-17 update keeps the empirical claims anchored to the
 original experiment outputs while bringing the repository description
 up to date.  Since the experiment window closed, the project has
 gained an installable CLI surface, the \texttt{rag-eval} workflow
 facade, optional model-stack smoke validation, local experiment
 tracking, a lightweight serving wrapper, refreshed CI, secret
 scanning, a deterministic RAG triad CLI, stricter input-validation
-boundaries for run files / JSONL / serving calls, and a clearer
-advanced-RAG roadmap.
+boundaries for run files / JSONL / serving calls, full-corpus BM25 and
+cross-encoder runner support for the judged TREC-DL 2019/2020 passage
+tracks, and a clearer advanced-RAG roadmap.  The TREC-DL support is an
+execution and provenance boundary; graded evaluation and reportable
+benchmark results remain follow-up work.
 
 \vspace{2em}
 \noindent\textit{Keywords.}~~MS~MARCO; passage retrieval; \bmtwofive{};
@@ -394,7 +397,7 @@ reproducibility scaffolding (\Cref{sec:reproducibility}), the full
 five-way bucket counts (\Cref{sec:appendix-buckets}), and a
 short glossary of cross-references (\Cref{sec:appendix-glossary}).
 
-\subsection{Repository status as of 2026-07-01}
+\subsection{Repository status as of 2026-07-17}
 
 The project has moved from a report-centred experiment bundle to a
 small research-engineering repository.  The headline metrics in this
@@ -436,6 +439,13 @@ has a clearer operating surface:
         state, output hashes, and cache/profile metadata.  The
         documentation separates quick local checks from heavyweight
         data/model reproduction.
+  \item \textbf{TREC-DL benchmark surface.}  The full-corpus
+        \bmtwofive{} and cross-encoder runners now accept the judged
+        TREC-DL 2019 and 2020 passage tracks, isolate outputs by year,
+        and record dataset, topic-scope, corpus, and upstream-run
+        provenance.  This integration does not add a result row to
+        the report: graded relevance evaluation and the reportable
+        two-year benchmark remain open follow-up work.
   \item \textbf{Research backlog.}  Follow-up issues now separate
         learned sparse retrieval, stronger rerankers, chunking
         protocols, query transformation, offline/online indexing,
@@ -2005,6 +2015,15 @@ sample (dense vs.\ \bmtwofive{} on the same pool), not against the
 full-corpus number.  This caveat is propagated to the dense+
 rerank numbers, which inherit the same sampling.
 
+\paragraph{TREC-DL runner support is not yet TREC-DL evidence.}
+The repository can run full-corpus \bmtwofive{} and cross-encoder
+reranking for the judged 2019 and 2020 passage tracks, but the current
+runner metrics retain the binary relevance view at threshold~2.
+Graded \ndcg{}, independent evaluator agreement, and the two-year
+benchmark runs are not part of the historical result set in this
+report.  They must be completed before making an external-validity
+claim from TREC-DL.
+
 \paragraph{\bmtwofive{} tokenizer mismatch with Anserini.}  The full-corpus
 \mrr{}~$=0.170$ versus reference $\approx 0.184$ is mostly
 attributable to tokenizer differences between \texttt{bm25s} default
@@ -2019,7 +2038,7 @@ grounding metrics (\Cref{sec:w7}) partially close the surface-form
 gap, but the canonical \texttt{roberta-large} \bertscore{} on full
 dev/small is still open.
 
-\paragraph{The NLI sign flip is unresolved.}  Section
+\paragraph{The NLI sign flip is unresolved.}
 \Cref{sec:discussion-nli-flip} identifies three candidate
 mechanisms; existing data cannot fully discriminate among them.
 A T5-base / instruction-tuned-small generator swap is the
@@ -2086,6 +2105,13 @@ window.  The next steps are grouped by what they test rather than by
 stage number:
 
 \begin{itemize}
+  \item \textbf{TREC-DL external-validity sequence.}  First add
+        graded relevance metrics with an independent evaluator
+        cross-check (\href{https://github.com/GioiaZheng/msmarco-genqa/issues/153}{issue~\#153}).
+        Then run separate full-corpus \bmtwofive{} versus
+        \bmtwofive{}+cross-encoder benchmarks for the 2019 and 2020
+        tracks (\href{https://github.com/GioiaZheng/msmarco-genqa/issues/154}{issue~\#154}),
+        keeping every number traceable to its run and manifest.
   \item \textbf{Retrieval fusion and retrieval measurement.}
         Extend the current reciprocal-rank-fusion runner and
         same-qid matrix report with learned sparse retrieval as a
@@ -2110,7 +2136,7 @@ stage number:
         bootstrap protocol and deterministic triad report with
         full-sample \texttt{roberta-large} \bertscore{}, an
         alternative-family faithfulness scorer, multiple-comparison
-        correction, and TREC-DL qrels loaders.
+        correction.
   \item \textbf{Offline/online separation.}  Split batch indexing
         from online query handling: an offline job should read data,
         chunk passages, embed, build FAISS, and persist the index;
@@ -2179,6 +2205,8 @@ records the canonical command family for each layer.
     \midrule
     Workflow facade & rag-eval run \mbox{--config} configs/baseline.yaml \mbox{--dry-run} \\
     Sparse retrieval  & python experiments/run\_retrieval.py \\
+    TREC-DL \bmtwofive{} & mgq-retrieve \mbox{--dataset} \seqsplit{msmarco-passage/trec-dl-2019/judged} \mbox{--resume} {\normalfont (repeat for 2020)} \\
+    TREC-DL reranking & mgq-rerank \mbox{--dataset} \seqsplit{msmarco-passage/trec-dl-2019/judged} \mbox{--resume} {\normalfont (repeat for 2020)} \\
     Generation  & python experiments/run\_generation\_baseline.py \\
     Dense retrieval  & python experiments/run\_dense\_retrieval.py \\
     Reranking  & python experiments/run\_reranker.py \\
