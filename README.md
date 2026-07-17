@@ -511,6 +511,25 @@ Console names: `mgq-transform-queries`, `mgq-query-transform-ablation`,
 `mgq-rerank`, `mgq-generate`, `mgq-trec-eval`.
 The examples below use the script form.
 
+### TREC-DL 2019/2020 full-corpus retrieval
+
+The BM25 and cross-encoder runners accept the judged TREC-DL passage tracks
+without changing the shared MS MARCO corpus index or model configuration:
+
+```bash
+mgq-retrieve --dataset msmarco-passage/trec-dl-2019/judged --resume
+mgq-rerank --dataset msmarco-passage/trec-dl-2019/judged --resume
+
+mgq-retrieve --dataset msmarco-passage/trec-dl-2020/judged --resume
+mgq-rerank --dataset msmarco-passage/trec-dl-2020/judged --resume
+```
+
+The default outputs are separated under `outputs/trec_dl_2019/` and
+`outputs/trec_dl_2020/`. These commands currently preserve the established
+binary metric view at relevance threshold 2; graded nDCG and its independent
+evaluator cross-check are a separate evaluation step. See
+[`docs/trec_dl_external_validity.md`](docs/trec_dl_external_validity.md).
+
 ### Independent TREC metric cross-check
 
 Install the optional standard evaluator and export the MS MARCO dev/small

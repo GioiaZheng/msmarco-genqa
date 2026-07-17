@@ -1,10 +1,10 @@
-"""Build the official BM25 baseline on MS MARCO Passage / dev/small.
+"""Run full-corpus BM25 on MS MARCO dev/small or TREC-DL judged topics.
 
 End-to-end:
 
-1. Load corpus, dev/small queries, and qrels via ``ir_datasets``.
+1. Load the shared MS MARCO passage corpus and the selected query/qrels set.
 2. Build (or load from cache) a ``bm25s`` index over the corpus.
-3. Retrieve top-k for every dev query, in chunks; append each chunk to
+3. Retrieve top-k for every selected query, in chunks; append each chunk to
    ``run.tsv`` so a killed run can be resumed instead of restarting from
    query 0.
 4. Compute MRR@10, Recall@100, Recall@1000.
@@ -33,6 +33,14 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+from msmarco_genqa.data.benchmark import (
+    MSMARCO_DEV_SMALL,
+    SUPPORTED_DATASETS,
+    BenchmarkSpec,
+    default_retrieval_output_dir,
+    get_benchmark_spec,
+    load_benchmark_queries,
+)
 from msmarco_genqa.data.msmarco import load_msmarco_passage
 from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
 from msmarco_genqa.retrieval.bm25 import BM25Retriever
@@ -59,12 +67,27 @@ def load_config(path: Path) -> dict:
         return yaml.safe_load(f)
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--config",
         type=Path,
         default=PROJECT_ROOT / "configs/baseline.yaml",
+    )
+    parser.add_argument(
+        "--dataset",
+        choices=SUPPORTED_DATASETS,
+        default=MSMARCO_DEV_SMALL,
+        help="Query/qrels set to run against the shared MS MARCO passage corpus.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Output directory override. TREC-DL defaults to isolated, year-specific "
+            "directories; dev/small keeps eval_retrieval.output_dir."
+        ),
     )
     parser.add_argument(
         "--rebuild-index",
@@ -98,7 +121,18 @@ def parse_args() -> argparse.Namespace:
             "leave this off so missing reproducibility fields fail loudly."
         ),
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
+
+
+def resolve_output_dir(
+    args: argparse.Namespace,
+    cfg: dict,
+    spec: BenchmarkSpec,
+    project_root: Path = PROJECT_ROOT,
+) -> Path:
+    configured = cfg["eval_retrieval"]["output_dir"]
+    path = args.output_dir or default_retrieval_output_dir(spec, configured)
+    return path if path.is_absolute() else project_root / path
 
 
 def _read_done_qids(run_path: Path, top_k: int) -> set[str]:
@@ -147,10 +181,11 @@ def main() -> None:
     )
     args = parse_args()
     cfg = load_config(args.config)
+    benchmark_spec = get_benchmark_spec(args.dataset)
     seed = cfg.get("seed", 42)
     seed_coverage = set_global_seed(seed)
 
-    output_dir = PROJECT_ROOT / cfg["eval_retrieval"]["output_dir"]
+    output_dir = resolve_output_dir(args, cfg, benchmark_spec)
     index_dir = PROJECT_ROOT / cfg["retrieval"]["index_dir"]
     cache_dir = PROJECT_ROOT / cfg["data"].get("cache_dir", "data/raw")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -167,14 +202,19 @@ def main() -> None:
 
     # ---- 1. Data ----
     have_index = (index_dir / "config.json").exists() and not args.rebuild_index
-    data = load_msmarco_passage(
+    corpus_data = load_msmarco_passage(
         cache_dir=cache_dir,
         load_corpus=not have_index,
         limit=corpus_limit,
     )
+    benchmark = load_benchmark_queries(
+        args.dataset,
+        cache_dir=cache_dir,
+        msmarco_data=corpus_data,
+    )
     query_text_by_qid, query_transform_summary, query_transform_outputs = (
         materialize_query_transform(
-            data.queries,
+            benchmark.queries,
             cfg.get("query_transform"),
             output_dir=output_dir / "query_transform",
         )
@@ -207,8 +247,8 @@ def main() -> None:
         )
     else:
         retriever = BM25Retriever(
-            corpus_texts=data.corpus_texts,
-            doc_ids=data.corpus_doc_ids,
+            corpus_texts=corpus_data.corpus_texts,
+            doc_ids=corpus_data.corpus_doc_ids,
             k1=float(cfg["retrieval"]["k1"]),
             b=float(cfg["retrieval"]["b"]),
             stopwords=cfg["retrieval"].get("stopwords", "en"),
@@ -221,7 +261,7 @@ def main() -> None:
         retriever.save(index_dir)
 
     # ---- 3. Plan retrieval ----
-    qids = list(data.queries.keys())
+    qids = list(benchmark.queries.keys())
     run_path = output_dir / "run.tsv"
 
     if args.resume:
@@ -267,7 +307,7 @@ def main() -> None:
     # resumed mid-run. We capture top-10 doc_ids+scores per sampled qid as we
     # go (cheap; bounded size) but otherwise rely on run.tsv for evaluation.
     rng = random.Random(seed)
-    eligible = [q for q in qids if data.qrels.get(q)]
+    eligible = [q for q in qids if benchmark.qrels.get(q)]
     sample_qids = rng.sample(eligible, min(n_examples, len(eligible)))
 
     # ---- 4. Chunked retrieval ----
@@ -338,7 +378,7 @@ def main() -> None:
 
     metrics = evaluate_retrieval(
         runs=runs,
-        qrels=data.qrels,
+        qrels=benchmark.qrels,
         ks_mrr=ks_mrr,
         ks_recall=ks_recall,
         ks_ndcg=ks_ndcg,
@@ -348,8 +388,8 @@ def main() -> None:
     # ---- 6. Qualitative examples ----
     # Resolve passage text. If we built the index in this run, the corpus is
     # in memory; otherwise we use the docs_store for random access.
-    if data.corpus_texts:
-        id_to_text = dict(zip(data.corpus_doc_ids, data.corpus_texts))
+    if corpus_data.corpus_texts:
+        id_to_text = dict(zip(corpus_data.corpus_doc_ids, corpus_data.corpus_texts))
 
         def get_text(doc_id: str) -> str:
             return id_to_text.get(doc_id, "")
@@ -367,7 +407,7 @@ def main() -> None:
     examples_path = output_dir / "examples.jsonl"
     with open(examples_path, "w") as f:
         for qid in sample_qids:
-            relevant = data.qrels.get(qid, set())
+            relevant = benchmark.qrels.get(qid, set())
             ranked_doc_ids = runs.get(qid, [])
             ranked_scores = scores_by_qid.get(qid, [])
             top_doc_ids = ranked_doc_ids[:10]
@@ -388,7 +428,7 @@ def main() -> None:
             )
             example = {
                 "query_id": qid,
-                "query": data.queries[qid],
+                "query": benchmark.queries[qid],
                 "relevant_doc_ids": sorted(relevant),
                 "first_relevant_rank_in_top10": first_rank,
                 "top_results": top_results,
@@ -409,9 +449,22 @@ def main() -> None:
         method="first-N-truncated" if corpus_limit is not None else None,
         sample_size=corpus_limit,
     )
+    benchmark_metadata = benchmark.metadata()
+    judged_qids = set(benchmark.graded_qrels)
+    benchmark_metadata.update(
+        {
+            "corpus_id": "msmarco-passage",
+            "corpus_scope": "first-N-truncated" if corpus_limit is not None else "full",
+            "run_topic_count": len(set(runs) & set(benchmark.queries)),
+            "judged_topic_coverage": (
+                len(set(runs) & judged_qids) / len(judged_qids) if judged_qids else 0.0
+            ),
+        }
+    )
     payload = {
         "task": "retrieval",
-        "dataset": "msmarco-passage/dev/small",
+        "dataset": benchmark_spec.dataset_id,
+        "benchmark": benchmark_metadata,
         "n_examples": n_examples,
         "config": cfg,
         "metrics": metrics,
@@ -451,7 +504,13 @@ def main() -> None:
             "b": cfg["retrieval"].get("b"),
             "stopwords": cfg["retrieval"].get("stopwords"),
             "top_k": top_k,
-            "n_eval_queries": n_examples,
+            "n_eval_queries": len(qids),
+            "n_metric_queries": n_examples,
+            "dataset": benchmark_spec.dataset_id,
+            "track_year": benchmark_spec.track_year,
+            "judged_topic_count": benchmark.judged_topic_count,
+            "run_topic_count": len(set(runs) & set(benchmark.queries)),
+            "corpus_scope": benchmark_metadata["corpus_scope"],
             "resumed": bool(args.resume and (set(qids) - set(pending_qids))),
             "seed": seed,
             "seed_coverage": seed_coverage,
@@ -465,7 +524,7 @@ def main() -> None:
     )
 
     # ---- 8. Friendly summary ----
-    print("\n=== BM25 baseline ===")
+    print(f"\n=== BM25 baseline: {benchmark_spec.dataset_id} ===")
     print(f"queries evaluated: {n_examples}")
     for key in ("mrr@10", "ndcg@10", "recall@100", "recall@1000"):
         if key in metrics:
