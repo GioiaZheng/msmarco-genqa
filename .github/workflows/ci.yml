@@ -56,12 +56,17 @@ jobs:
       - name: Check fixture headline metric goldens
         run: python scripts/check_fixture_headline_metrics.py
 
-      - name: Cross-check TREC fixture metrics
+      - name: Cross-check binary and graded TREC fixture metrics
         run: |
           mgq-trec-eval --backend ir-measures --qrels-format trec \
             --qrels tests/fixtures/trec_eval/qrels.trec \
             --run tests/fixtures/trec_eval/run.tsv \
             --output-dir /tmp/msmarco-trec-eval
+          mgq-trec-eval --backend ir-measures --qrels-format trec \
+            --rel-threshold 2 \
+            --qrels tests/fixtures/trec_eval/graded_qrels.trec \
+            --run tests/fixtures/trec_eval/graded_run.tsv \
+            --output-dir /tmp/msmarco-trec-eval-graded
 
       - name: Check lockfile resolver consistency
         run: python -m pip install --dry-run -r requirements-lock.txt

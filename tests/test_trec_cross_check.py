@@ -35,6 +35,7 @@ class _FakeMeasure:
 
 
 class _FakeIrMeasures:
+    __version__ = "fixture"
     RR = _FakeMeasure("RR")
     nDCG = _FakeMeasure("nDCG")
     R = _FakeMeasure("R")
@@ -75,6 +76,7 @@ def test_fixture_export_and_cross_check(tmp_path):
     assert report["internal_metrics"]["recall@100"] == pytest.approx(0.75)
     assert report["internal_metrics"]["recall@1000"] == pytest.approx(0.75)
     assert report["external_evaluator"]["status"] == "passed"
+    assert report["external_evaluator"]["version"] == "fixture"
     assert max(report["external_evaluator"]["absolute_deltas"].values()) < 1e-12
 
     assert (tmp_path / "run.trec").read_text().splitlines() == [
@@ -158,6 +160,11 @@ def test_graded_qrels_use_trec_ndcg_and_thresholded_binary_metrics(tmp_path):
     assert report["scope"]["judged_topic_coverage"] == pytest.approx(2.0 / 3)
     assert report["evaluation"]["qrels_type"] == "graded"
     assert report["evaluation"]["binary_metrics"]["relevance_threshold"] == 2
+    assert (tmp_path / "out" / "run.trec").read_text().splitlines()[:3] == [
+        "q1\tQ0\td2\t1\t1\tmsmarco-genqa",
+        "q1\tQ0\td3\t2\t0.5\tmsmarco-genqa",
+        "q1\tQ0\td1\t3\t0.333333333333\tmsmarco-genqa",
+    ]
 
 
 def test_metric_mismatch_fails_gate():
@@ -217,5 +224,24 @@ def test_real_ir_measures_backend_when_installed(tmp_path):
         qrels_format="trec",
         backend="ir-measures",
     )
+    assert report["external_evaluator"]["status"] == "passed"
+    assert max(report["external_evaluator"]["absolute_deltas"].values()) < 1e-12
+
+
+def test_real_ir_measures_graded_backend_when_installed(tmp_path):
+    pytest.importorskip("ir_measures")
+    report = run_trec_cross_check(
+        run_path=FIXTURE_DIR / "graded_run.tsv",
+        qrels_path=FIXTURE_DIR / "graded_qrels.trec",
+        output_dir=tmp_path,
+        qrels_format="trec",
+        backend="ir-measures",
+        rel_threshold=2,
+    )
+    assert report["evaluation"]["graded_metrics"]["ndcg@10"] == {
+        "gain": "identity",
+        "discount": "log2",
+    }
+    assert report["external_evaluator"]["version"] != "unknown"
     assert report["external_evaluator"]["status"] == "passed"
     assert max(report["external_evaluator"]["absolute_deltas"].values()) < 1e-12

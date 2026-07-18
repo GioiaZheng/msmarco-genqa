@@ -140,15 +140,20 @@ mgq-trec-eval --backend ir-measures --qrels-format trec \
 The adapter validates six-column run structure, duplicate documents and
 ranks, contiguous ranks, finite scores, and qrels uniqueness before any
 metric is computed. Its internal scope follows TREC evaluation semantics:
-every qid with at least one positive judgment contributes, and a missing run
-for a judged qid contributes zero. Queries with no positive judgment do not
-contribute. `metrics.json` records both metric sets and their absolute deltas;
-the command fails if any delta exceeds the configured tolerance.
+every qid in the qrels contributes, and a missing run for a judged qid
+contributes zero. Graded nDCG@10 uses the original non-negative relevance
+labels with identity gain and log2 discount. MRR@10, Recall@100, and
+Recall@1000 first binarize judgments using `relevance >= rel_threshold`;
+topics with no label at or above the threshold contribute zero. Use the
+default threshold 1 for binary MS MARCO qrels and `--rel-threshold 2` for
+TREC-DL passage qrels. `metrics.json` records both metric sets, their absolute
+deltas, relevance levels and threshold, gain convention, topic coverage,
+qrels source, evaluator backend/version, and tolerance. The command fails if
+any delta exceeds the configured tolerance.
 
-The internal adapter accepts binary relevance levels 0 and 1 only, matching
-MS MARCO passage dev/small. It rejects graded qrels rather than silently
-comparing binary internal nDCG with graded external nDCG. TREC-DL graded
-evaluation requires a dedicated graded-gain implementation.
+The existing MS MARCO dev/small runner still uses its canonical binary metric
+helper and positive-qrels scope. The graded path is selected only for TREC-DL
+datasets, so this change does not redefine the established dev/small numbers.
 
 The canonical export replaces source scores with `1 / rank`. TREC evaluators
 sort by score, so this preserves the recorded rank deterministically when a
@@ -161,13 +166,19 @@ evaluator does not make a sampled candidate pool comparable to the full
 8.8M-passage BM25 run.
 
 CI exercises the same parser, canonical export, metric scope, and comparison
-gate on a committed fixture without downloading MS MARCO:
+gate on committed binary and graded fixtures without downloading MS MARCO:
 
 ```bash
 mgq-trec-eval --backend auto --qrels-format trec \
   --qrels tests/fixtures/trec_eval/qrels.trec \
   --run tests/fixtures/trec_eval/run.tsv \
   --output-dir outputs/trec_eval/fixture
+
+mgq-trec-eval --backend ir-measures --qrels-format trec \
+  --rel-threshold 2 \
+  --qrels tests/fixtures/trec_eval/graded_qrels.trec \
+  --run tests/fixtures/trec_eval/graded_run.tsv \
+  --output-dir outputs/trec_eval/graded-fixture
 ```
 
 With `--backend auto`, validation and internal metrics still run when the

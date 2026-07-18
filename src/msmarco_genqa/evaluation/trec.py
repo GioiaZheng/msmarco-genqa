@@ -109,8 +109,8 @@ def read_qrels(
     """Read TREC, ir_datasets TSV, or three-column qrels.
 
     Duplicate ``(qid, doc_id)`` judgments fail fast. Relevance values are
-    retained as integers; retrieval metrics treat values greater than zero as
-    relevant, matching the binary MS MARCO dev/small judgments.
+    retained as integers. Graded nDCG consumes the labels directly; MRR and
+    recall use the relevance threshold selected by the caller.
     """
     p = Path(path)
     qrels: dict[str, dict[str, int]] = {}
@@ -456,8 +456,6 @@ def run_trec_cross_check(
         qrels,
         rel_threshold=rel_threshold,
     )
-    if not internal.get("n_queries"):
-        raise ValueError(f"{qrels_source}: qrels contain no positive judgments")
     report: dict[str, Any] = {
         "schema_version": 2,
         "source_run": str(run_source),
