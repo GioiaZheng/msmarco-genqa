@@ -17,6 +17,7 @@ from msmarco_genqa.reporting.latex_tables import (
     validate_compatible,
     validate_sidecar_current,
 )
+from scripts.export_report_tables import resolve_from_project_root
 
 
 def _artifact_payload(table_id: str = "table_one") -> dict:
@@ -46,6 +47,13 @@ def _write_artifact(path: Path, payload: dict | None = None) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload or _artifact_payload(), indent=2) + "\n")
     return path
+
+
+def test_cli_paths_resolve_from_project_root():
+    resolved = resolve_from_project_root(Path("reports/generated/tables"))
+
+    assert resolved.is_absolute()
+    assert resolved.parts[-3:] == ("reports", "generated", "tables")
 
 
 def test_export_tables_writes_fragment_and_repo_relative_sources(

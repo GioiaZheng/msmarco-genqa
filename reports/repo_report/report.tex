@@ -1,7 +1,7 @@
 % =============================================================================
 % MS MARCO Generative QA — Repository Report
 % Author : GioiaZheng  <gioia.zheng.stud@gmail.com>
-% Date   : 2026-07-17
+% Date   : 2026-07-18
 % Build  : latexmk -pdf report.tex   (or:  see Makefile)
 % =============================================================================
 
@@ -107,8 +107,9 @@
   pdftitle={MS MARCO Generative QA: A Reproducible Retrieve--Rerank--Generate
             Pipeline with Grounding and Triad Audits},
   pdfauthor={GioiaZheng},
-  pdfsubject={Repository report --- updated 2026-07-17;
-              experiment window 2026-03-06 to 2026-05-21},
+  pdfsubject={Repository report --- updated 2026-07-18;
+              core experiment window 2026-03-06 to 2026-05-21;
+              TREC-DL external validation 2026-07-18},
   pdfkeywords={MS MARCO; BM25; dense retrieval; cross-encoder reranking;
                retrieval-augmented generation; BERTScore; NLI;
                RAG triad; extractive QA; paired bootstrap}
@@ -158,7 +159,7 @@
   {\Large\itshape A Reproducible Retrieve--Rerank--Generate Pipeline\\[0.25em]
    with Grounding and Triad Audits\par}
   \vspace{0.35cm}
-  {\large Repository report --- updated 2026-07-17\par}
+  {\large Repository report --- updated 2026-07-18\par}
   \vspace{1.05cm}
   \rule{\linewidth}{1.2pt}\par
 
@@ -176,9 +177,10 @@
   {\renewcommand{\arraystretch}{1.30}%
    \begin{tabular}{@{}r@{\hskip 1.4em}l@{}}
      \toprule
-     \textbf{Experiment period} & 2026-03-06\,--\,2026-05-21 \quad{\small(11 milestones completed; 12-stage plan)} \\
-     \textbf{Current update}    & 2026-07-17 \\
-     \textbf{Scope}             & Batch evaluation, CPU-only; English passage retrieval + QA \\
+     \textbf{Core experiment period} & 2026-03-06\,--\,2026-05-21 \quad{\small(11 milestones completed; 12-stage plan)} \\
+     \textbf{External validation}     & 2026-07-18 \quad{\small(TREC-DL 2019/2020)} \\
+     \textbf{Current update}          & 2026-07-18 \\
+     \textbf{Scope}                   & Batch evaluation, CPU-only; English passage retrieval + QA \\
      \bottomrule
    \end{tabular}\par}
 
@@ -249,18 +251,19 @@ scaffolding (reproducibility manifests, paired-bootstrap confidence
 intervals, deterministic seeds) that lets every number in this
 document be regenerated from one command per stage.
 
-This 2026-07-17 update keeps the empirical claims anchored to the
+This 2026-07-18 update keeps the empirical claims anchored to the
 original experiment outputs while bringing the repository description
 up to date.  Since the experiment window closed, the project has
 gained an installable CLI surface, the \texttt{rag-eval} workflow
 facade, optional model-stack smoke validation, local experiment
 tracking, a lightweight serving wrapper, refreshed CI, secret
 scanning, a deterministic RAG triad CLI, stricter input-validation
-boundaries for run files / JSONL / serving calls, full-corpus BM25 and
-cross-encoder runner support for the judged TREC-DL 2019/2020 passage
-tracks, and a clearer advanced-RAG roadmap.  The TREC-DL support is an
-execution and provenance boundary; graded evaluation and reportable
-benchmark results remain follow-up work.
+boundaries for run files / JSONL / serving calls, and a full-corpus
+TREC-DL 2019/2020 passage benchmark.  On the judged topics,
+cross-encoder reranking raises MRR@10 by $+0.332$ in 2019 and
+$+0.198$ in 2020 while preserving Recall@100; graded metrics agree
+with an independent \texttt{ir-measures} evaluation within
+$2.22\!\times\!10^{-16}$.
 
 \vspace{2em}
 \noindent\textit{Keywords.}~~MS~MARCO; passage retrieval; \bmtwofive{};
@@ -397,7 +400,7 @@ reproducibility scaffolding (\Cref{sec:reproducibility}), the full
 five-way bucket counts (\Cref{sec:appendix-buckets}), and a
 short glossary of cross-references (\Cref{sec:appendix-glossary}).
 
-\subsection{Repository status as of 2026-07-17}
+\subsection{Repository status as of 2026-07-18}
 
 The project has moved from a report-centred experiment bundle to a
 small research-engineering repository.  The headline metrics in this
@@ -439,13 +442,13 @@ has a clearer operating surface:
         state, output hashes, and cache/profile metadata.  The
         documentation separates quick local checks from heavyweight
         data/model reproduction.
-  \item \textbf{TREC-DL benchmark surface.}  The full-corpus
-        \bmtwofive{} and cross-encoder runners now accept the judged
-        TREC-DL 2019 and 2020 passage tracks, isolate outputs by year,
-        and record dataset, topic-scope, corpus, and upstream-run
-        provenance.  This integration does not add a result row to
-        the report: graded relevance evaluation and the reportable
-        two-year benchmark remain open follow-up work.
+  \item \textbf{TREC-DL external-validity benchmark.}  The full-corpus
+        \bmtwofive{} and cross-encoder runners cover all 43 judged
+        topics from 2019 and all 54 from 2020, with outputs isolated
+        by year.  Graded \ndcg{} and threshold-2 \mrr{} / recall
+        pass independent evaluation; \Cref{sec:trec-dl-results}
+        reports both tracks separately with query-level lift and
+        failure analysis.
   \item \textbf{Research backlog.}  Follow-up issues now separate
         learned sparse retrieval, stronger rerankers, chunking
         protocols, query transformation, offline/online indexing,
@@ -1177,6 +1180,63 @@ moving the relevant passage from rank 2--3 to rank 1.  Wall-clock
 cost: $\approx 4$~h~$37$~min on the laptop;
 peak RSS $\approx 3.3$~GiB.  The cross-encoder is the slowest stage
 in the pipeline by approximately two orders of magnitude.
+
+\subsection{TREC-DL full-corpus external-validity benchmark}
+\label{sec:trec-dl-results}
+
+The sampled dense results above cannot establish full-corpus external
+validity.  The TREC-DL experiment therefore holds the architecture
+fixed and changes only the independently judged topic set: the same
+8,841,823-passage \bmtwofive{} index retrieves top-1,000 candidates,
+and the same \texttt{cross-encoder/ms-marco-MiniLM-L-6-v2} revision
+reranks the top-100.  \ndcg{} keeps the original 0--3 labels; \mrr{}
+and recall treat labels 2--3 as relevant.
+
+\begin{table}[H]
+  \centering
+  \caption{Full-corpus \bmtwofive{} versus \bmtwofive{} plus
+  cross-encoder reranking on all 43 judged TREC-DL 2019 passage
+  topics.  The reranked run contains top-100 only, so its
+  \recallK{} is not reported.}
+  \label{tab:trec-dl-2019}
+  \input{../generated/tables/trec_dl_2019_bm25_ce.tex}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{The same frozen full-corpus protocol on all 54 judged
+  TREC-DL 2020 passage topics.}
+  \label{tab:trec-dl-2020}
+  \input{../generated/tables/trec_dl_2020_bm25_ce.tex}
+\end{table}
+
+The ordering gain repeats across both tracks: \mrr{} increases by
+$+0.3315$ in 2019 and $+0.1976$ in 2020; graded \ndcg{} increases by
+$+0.2971$ and $+0.2027$, respectively.  Recall@100 is unchanged by
+construction because the reranker does not introduce documents.
+Every run covers its complete judged-topic set.  Independent
+\texttt{ir-measures}~0.4.3 evaluations agree with the internal
+metrics to at most $2.22\!\times\!10^{-16}$, well inside the
+$10^{-12}$ tolerance.
+
+The query-level read is consistent with an order-only mechanism.
+In 2019, 21 topics are promoted, two become new top-10 hits, one is
+demoted, and none loses a top-10 hit; the 2020 counts are 18, three,
+three, and zero.  The unchanged misses (one in 2019, four in 2020)
+remain first-stage failures that reranking cannot repair.  Several
+demotions expose judgment granularity rather than an unambiguous
+semantic error: for the 2020 query ``is caffeine a narcotic'', CE
+ranks an explicit negative answer first, but that passage is labelled
+0 while a passage about a caffeine/codeine combination drug is
+labelled 3.  This is why the report retains both graded metrics and
+thresholded case review.
+
+The cold full-index run took 602.3~s; cached-index search took 18.5~s
+for 2019 and 20.9~s for 2020.  CPU reranking took 98.9~s for 4,300
+pairs (43 pairs/s) and 91.8~s for 5,400 pairs (59 pairs/s).  Exact
+metrics, configuration, artifact hashes, and table provenance are
+recorded in \texttt{reports/generated/artifacts/
+trec\_dl\_bm25\_ce.json}.
 
 \subsection{Headline: Generation $\times$ retrieval source}
 \label{sec:gen-x-retrieval}
@@ -2015,14 +2075,14 @@ sample (dense vs.\ \bmtwofive{} on the same pool), not against the
 full-corpus number.  This caveat is propagated to the dense+
 rerank numbers, which inherit the same sampling.
 
-\paragraph{TREC-DL runner support is not yet TREC-DL evidence.}
-The repository can run full-corpus \bmtwofive{} and cross-encoder
-reranking for the judged 2019 and 2020 passage tracks, but the current
-runner metrics retain the binary relevance view at threshold~2.
-Graded \ndcg{}, independent evaluator agreement, and the two-year
-benchmark runs are not part of the historical result set in this
-report.  They must be completed before making an external-validity
-claim from TREC-DL.
+\paragraph{TREC-DL is retrieval evidence, not generation evidence.}
+The full-corpus 2019/2020 benchmark in
+\Cref{sec:trec-dl-results} establishes that MiniLM reranking improves
+local ordering under deep graded judgments.  It does not evaluate the
+generator, prove cross-domain RAG generalization, or remove the
+candidate-recall ceiling.  The top-100 reranked files also cannot
+support a paired Recall@1000 claim; that value is reported only for
+the top-1,000 \bmtwofive{} first stage.
 
 \paragraph{\bmtwofive{} tokenizer mismatch with Anserini.}  The full-corpus
 \mrr{}~$=0.170$ versus reference $\approx 0.184$ is mostly
@@ -2105,13 +2165,13 @@ window.  The next steps are grouped by what they test rather than by
 stage number:
 
 \begin{itemize}
-  \item \textbf{TREC-DL external-validity sequence.}  First add
-        graded relevance metrics with an independent evaluator
-        cross-check (\href{https://github.com/GioiaZheng/msmarco-genqa/issues/153}{issue~\#153}).
-        Then run separate full-corpus \bmtwofive{} versus
-        \bmtwofive{}+cross-encoder benchmarks for the 2019 and 2020
-        tracks (\href{https://github.com/GioiaZheng/msmarco-genqa/issues/154}{issue~\#154}),
-        keeping every number traceable to its run and manifest.
+  \item \textbf{TREC-DL reference expansion.}  The graded evaluator
+        and full-corpus \bmtwofive{}+MiniLM reference are complete
+        (\Cref{sec:trec-dl-results}).  The next valid comparison is a
+        learned-sparse or late-interaction system under the same
+        per-track qrels, candidate-depth, and independent-evaluator
+        contract --- not an aggregate that hides the 2019/2020
+        difference.
   \item \textbf{Retrieval fusion and retrieval measurement.}
         Extend the current reciprocal-rank-fusion runner and
         same-qid matrix report with learned sparse retrieval as a

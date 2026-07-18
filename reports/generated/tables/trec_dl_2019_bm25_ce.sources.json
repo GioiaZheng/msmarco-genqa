@@ -1,0 +1,23 @@
+{
+  "schema": "msmarco-genqa.table-sources.v1",
+  "table_id": "trec_dl_2019_bm25_ce",
+  "sources": [
+    {
+      "path": "reports/generated/artifacts/trec_dl_bm25_ce.json",
+      "sha256_16": "0f103e4eb0b0bf65",
+      "artifact_schema": "msmarco-genqa.table-artifact.v1",
+      "artifact_id": "trec_dl_bm25_ce",
+      "metric_schema": "retrieval.trec_dl_bm25_ce.v1",
+      "query_set": {
+        "id": "trec-dl-2019-and-2020-judged-topics",
+        "n_queries": 97
+      },
+      "model_revision": {
+        "first_stage": "bm25s-0.3.9",
+        "reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        "reranker_revision": "c5ee24cb16019beea0893ab7796b1df96625c6b8",
+        "candidate_depth": 100
+      }
+    }
+  ]
+}

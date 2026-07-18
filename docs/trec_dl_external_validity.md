@@ -1,4 +1,4 @@
-# TREC-DL 2019 / 2020 external-validity coverage
+# TREC-DL 2019 / 2020 external-validity benchmark
 
 The primary evaluation split for this project is MS MARCO Passage
 `dev/small` (6,980 queries). Its qrels are **sparse and binary**: roughly
@@ -11,6 +11,97 @@ collection but ship **deep, graded** relevance judgments produced by NIST
 assessors over a pooled, small query set. This gives a second,
 independently-judged dataset on which the existing retrieval and grounding
 metrics can be cited.
+
+## Full-corpus results
+
+Both tracks were run on 18 July 2026 from commit
+`0362a48bb4d000a93f5af5c26a4de934db37e74f`. The first stage is `bm25s`
+0.3.9 over all 8,841,823 MS MARCO passages (`k1=1.5`, `b=0.75`, English
+stopwords, top-1,000). The second stage uses
+`cross-encoder/ms-marco-MiniLM-L-6-v2` at revision
+`c5ee24cb16019beea0893ab7796b1df96625c6b8`, reranking the fixed BM25
+top-100 with batch size 64 and maximum length 512.
+
+### TREC-DL 2019 passage
+
+| Metric | BM25 | BM25 + CE | Delta |
+|---|---:|---:|---:|
+| MRR@10, rel >= 2 | 0.5471 | 0.8787 | **+0.3315** |
+| nDCG@10, graded | 0.4239 | 0.7210 | **+0.2971** |
+| Recall@100, rel >= 2 | 0.4469 | 0.4469 | 0.0000 |
+| Recall@1000, rel >= 2 | 0.6983 | n/a (top-100 output) | n/a |
+
+Scope: all 43 judged topics, 9,260 qrels rows, and 43/43 run-topic
+coverage. `ir-measures` 0.4.3 reproduced every metric within
+`2.22e-16`, below the `1e-12` acceptance tolerance.
+
+### TREC-DL 2020 passage
+
+| Metric | BM25 | BM25 + CE | Delta |
+|---|---:|---:|---:|
+| MRR@10, rel >= 2 | 0.6280 | 0.8256 | **+0.1976** |
+| nDCG@10, graded | 0.4773 | 0.6801 | **+0.2027** |
+| Recall@100, rel >= 2 | 0.5105 | 0.5105 | 0.0000 |
+| Recall@1000, rel >= 2 | 0.7521 | n/a (top-100 output) | n/a |
+
+Scope: all 54 judged topics, 11,386 qrels rows, and 54/54 run-topic
+coverage. The independent cross-check again passed with maximum absolute
+delta `2.22e-16`.
+
+The CE run files contain 100 documents per topic. Their computed
+`Recall@1000` therefore equals `Recall@100`; it is an output-depth property,
+not evidence that reranking reduced BM25 top-1,000 recall. Only MRR@10,
+nDCG@10, and Recall@100 are paired BM25-vs-CE comparisons.
+
+## Runtime and resource note
+
+The cold 2019 run loaded and indexed the full collection in 602.3 seconds;
+the index calculation itself reported 302.7 seconds, followed by index
+serialization. Search took 18.5 seconds for 43 topics. Reusing the same index,
+2020 search took 20.9 seconds for 54 topics.
+
+CPU reranking took 98.9 seconds for 4,300 pairs in 2019 (43 pairs/s) and
+91.8 seconds for 5,400 pairs in 2020 (59 pairs/s). The 2019 timing includes
+the first model load and warm-up, so this one-run comparison is not a stable
+throughput benchmark. During the cold index build on the 16 GiB Windows host,
+the observed process peak was about 8.1 GiB working set and 18.3 GiB private
+allocation, so pagefile headroom mattered. Cached-index runs stayed near
+3.1 GiB working set.
+
+## Query-level lift and error review
+
+The review uses the same threshold-2 qrels and deterministic top examples
+from `scripts/analyze_retrieval_lift.py`; seed 42 is recorded in both run
+manifests. No query is sampled out.
+
+| Track | Promoted | New hit@10 | Demoted | Lost hit@10 | Unchanged hit | Unchanged miss |
+|---|---:|---:|---:|---:|---:|---:|
+| 2019 | 21 | 2 | 1 | 0 | 18 | 1 |
+| 2020 | 18 | 3 | 3 | 0 | 26 | 4 |
+
+The improvement is primarily local ordering. In 2019, topic `1115776`
+(`what is an aml surveillance analyst`) moves its first threshold-relevant
+passage from rank 8 to rank 1, and `1063750` (US entry into WWI) becomes a
+new hit at rank 1. In 2020, `1051399` (`who sings monk theme song`) moves
+from rank 9 to rank 1. The unchanged-miss topics show the limit of an
+order-only reranker: if BM25 does not put a threshold-relevant passage in its
+top-100, CE cannot recover it.
+
+The few demotions are not all clean model failures. For 2019 topic `490595`
+(`rsa definition key`), CE puts a broad RSA definition labelled 1 above an
+RSA-algorithm passage labelled 2, moving the first threshold hit from rank 1
+to 3. For 2020 topic `405163` (`is caffeine an narcotic`), CE ranks an
+explicit "No" answer first, but that passage is labelled 0 while a passage
+about a caffeine/codeine combination drug is labelled 3. Topic `1064670`
+similarly puts a fuller shotgun-patterning explanation labelled 1 above a
+short multiple-choice answer labelled 2. These cases justify retaining
+graded scores and inspecting judgment semantics instead of treating every
+threshold demotion as an obvious relevance error.
+
+The checked source for the tables, exact unrounded metrics, runtime fields,
+lift counts, commit/config identifiers, and SHA-256 digests of every local
+run, manifest, cross-check, and lift artifact is
+[`reports/generated/artifacts/trec_dl_bm25_ce.json`](../reports/generated/artifacts/trec_dl_bm25_ce.json).
 
 ## What the loader provides
 
@@ -40,13 +131,25 @@ queries and qrels change.
 
 ```bash
 # TREC-DL 2019
-mgq-retrieve --dataset msmarco-passage/trec-dl-2019/judged --resume
-mgq-rerank --dataset msmarco-passage/trec-dl-2019/judged --resume
+mgq-retrieve --dataset msmarco-passage/trec-dl-2019/judged \
+  --output-dir outputs/trec_dl_2019/bm25 --require-clean-tree
+mgq-rerank --dataset msmarco-passage/trec-dl-2019/judged \
+  --input-run outputs/trec_dl_2019/bm25/run.tsv \
+  --output-dir outputs/trec_dl_2019/cross_encoder_rerank \
+  --rerank-chunk-size 10 --resume --require-clean-tree
 
 # TREC-DL 2020
-mgq-retrieve --dataset msmarco-passage/trec-dl-2020/judged --resume
-mgq-rerank --dataset msmarco-passage/trec-dl-2020/judged --resume
+mgq-retrieve --dataset msmarco-passage/trec-dl-2020/judged \
+  --output-dir outputs/trec_dl_2020/bm25 --require-clean-tree
+mgq-rerank --dataset msmarco-passage/trec-dl-2020/judged \
+  --input-run outputs/trec_dl_2020/bm25/run.tsv \
+  --output-dir outputs/trec_dl_2020/cross_encoder_rerank \
+  --rerank-chunk-size 10 --resume --require-clean-tree
 ```
+
+On Windows, run Python in UTF-8 mode (`PYTHONUTF8=1`) when `ir_datasets`
+reads the collection. POSIX environments already default to UTF-8 in the
+supported setup.
 
 Default outputs are isolated by track:
 

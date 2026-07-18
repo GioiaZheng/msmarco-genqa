@@ -53,11 +53,22 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--k-rank", type=int, default=10)
     p.add_argument("--k-recall", type=int, default=100)
+    p.add_argument(
+        "--rel-threshold",
+        type=int,
+        default=1,
+        help=(
+            "Minimum qrels label treated as relevant. Use 2 for TREC-DL "
+            "passage tracks; the binary MS MARCO default is 1."
+        ),
+    )
     p.add_argument("--examples-per-bucket", type=int, default=8)
     return p.parse_args()
 
 
-def load_qrels_tsv(path: Path) -> dict[str, set[str]]:
+def load_qrels_tsv(path: Path, *, rel_threshold: int = 1) -> dict[str, set[str]]:
+    if rel_threshold < 1:
+        raise ValueError("rel_threshold must be at least 1")
     qrels: dict[str, set[str]] = defaultdict(set)
     with open(path) as f:
         for raw in f:
@@ -75,7 +86,7 @@ def load_qrels_tsv(path: Path) -> dict[str, set[str]]:
             else:
                 continue
             try:
-                is_relevant = float(rel) > 0
+                is_relevant = float(rel) >= rel_threshold
             except ValueError:
                 is_relevant = False
             if is_relevant:
@@ -83,9 +94,13 @@ def load_qrels_tsv(path: Path) -> dict[str, set[str]]:
     return dict(qrels)
 
 
-def load_qrels(path: Path | None) -> dict[str, set[str]]:
+def load_qrels(
+    path: Path | None,
+    *,
+    rel_threshold: int = 1,
+) -> dict[str, set[str]]:
     if path is not None:
-        return load_qrels_tsv(path)
+        return load_qrels_tsv(path, rel_threshold=rel_threshold)
 
     from msmarco_genqa.data.msmarco import load_msmarco_passage
 
@@ -177,6 +192,7 @@ def render_markdown(
     qrels: Path | None,
     k_rank: int,
     k_recall: int,
+    rel_threshold: int,
 ) -> str:
     rr_key = f"rr_delta@{k_rank}"
     recall_key = f"recall_delta@{k_recall}"
@@ -186,6 +202,7 @@ def render_markdown(
         f"- Before run: `{before_run}`",
         f"- After run: `{after_run}`",
         f"- Qrels: `{qrels}`" if qrels else "- Qrels: MS MARCO dev/small via `ir_datasets`",
+        f"- Relevance threshold: **rel >= {rel_threshold}**",
         f"- Evaluable queries: **{summary['n_queries']}**",
         f"- Mean RR delta @{k_rank}: **{summary[f'mean_rr_delta@{k_rank}']:+.4f}**",
         f"- Mean recall delta @{k_recall}: **{summary[f'mean_recall_delta@{k_recall}']:+.4f}**",
@@ -234,7 +251,7 @@ def main() -> None:
     args = parse_args()
     before = doc_ids_only(read_run_tsv(args.before_run))
     after = doc_ids_only(read_run_tsv(args.after_run))
-    qrels = load_qrels(args.qrels)
+    qrels = load_qrels(args.qrels, rel_threshold=args.rel_threshold)
 
     rows = compare_retrieval_runs_per_query(
         before,
@@ -244,6 +261,14 @@ def main() -> None:
         k_recall=args.k_recall,
     )
     summary = summarise(rows, k_rank=args.k_rank, k_recall=args.k_recall)
+    summary.update(
+        {
+            "qrels_source": str(args.qrels) if args.qrels else "msmarco-passage/dev/small",
+            "relevance_threshold": args.rel_threshold,
+            "k_rank": args.k_rank,
+            "k_recall": args.k_recall,
+        }
+    )
     examples = top_examples(
         rows,
         k_rank=args.k_rank,
@@ -265,6 +290,7 @@ def main() -> None:
             qrels=args.qrels,
             k_rank=args.k_rank,
             k_recall=args.k_recall,
+            rel_threshold=args.rel_threshold,
         )
     )
 

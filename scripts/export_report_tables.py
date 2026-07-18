@@ -18,6 +18,11 @@ def _default_artifacts() -> list[Path]:
     return sorted(DEFAULT_ARTIFACT_DIR.glob("*.json"))
 
 
+def resolve_from_project_root(path: Path) -> Path:
+    """Resolve a CLI path consistently, independent of the caller's CWD."""
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -35,18 +40,23 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    artifacts = args.artifacts if args.artifacts else _default_artifacts()
+    artifacts = (
+        [resolve_from_project_root(path) for path in args.artifacts]
+        if args.artifacts
+        else _default_artifacts()
+    )
+    output_dir = resolve_from_project_root(args.output_dir)
     if not artifacts:
         print(f"No artifacts found under {DEFAULT_ARTIFACT_DIR}", file=sys.stderr)
         return 1
 
     if args.check_sources:
-        for sidecar in sorted(args.output_dir.glob("*.sources.json")):
+        for sidecar in sorted(output_dir.glob("*.sources.json")):
             validate_sidecar_current(sidecar)
         print("Table source sidecars are current")
         return 0
 
-    written = export_tables(artifact_paths=artifacts, output_dir=args.output_dir)
+    written = export_tables(artifact_paths=artifacts, output_dir=output_dir)
     for path in written:
         print(path.relative_to(PROJECT_ROOT).as_posix())
     return 0

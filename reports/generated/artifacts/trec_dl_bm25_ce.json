@@ -1,0 +1,187 @@
+{
+  "schema": "msmarco-genqa.table-artifact.v1",
+  "artifact_id": "trec_dl_bm25_ce",
+  "metric_schema": "retrieval.trec_dl_bm25_ce.v1",
+  "query_set": {
+    "id": "trec-dl-2019-and-2020-judged-topics",
+    "n_queries": 97
+  },
+  "model_revision": {
+    "first_stage": "bm25s-0.3.9",
+    "reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "reranker_revision": "c5ee24cb16019beea0893ab7796b1df96625c6b8",
+    "candidate_depth": 100
+  },
+  "experiment": {
+    "git_commit": "0362a48bb4d000a93f5af5c26a4de934db37e74f",
+    "corpus": "msmarco-passage",
+    "corpus_size": 8841823,
+    "corpus_scope": "full",
+    "bm25": {
+      "k1": 1.5,
+      "b": 0.75,
+      "stopwords": "en",
+      "retrieval_depth": 1000
+    },
+    "reranker": {
+      "depth": 100,
+      "batch_size": 64,
+      "max_length": 512,
+      "device": "cpu"
+    },
+    "evaluation": {
+      "qrels_type": "graded",
+      "binary_relevance_threshold": 2,
+      "independent_backend": "ir-measures 0.4.3",
+      "tolerance": 1e-12
+    },
+    "resolved_config_sha256": "d65f5719d5999fb339de97f5f06115d9c08324042ed7b508c701659dfbf4e23d"
+  },
+  "results": {
+    "2019": {
+      "dataset_id": "msmarco-passage/trec-dl-2019/judged",
+      "judged_topics": 43,
+      "qrels_rows": 9260,
+      "bm25": {
+        "mrr@10": 0.5471483942414175,
+        "ndcg@10": 0.4238737144636028,
+        "recall@100": 0.4469086221120452,
+        "recall@1000": 0.6983122414843294,
+        "search_seconds": 18.46120595932007
+      },
+      "bm25_ce": {
+        "mrr@10": 0.8786821705426356,
+        "ndcg@10": 0.7210235158468563,
+        "recall@100": 0.4469086221120452,
+        "rerank_seconds": 98.88659453392029,
+        "pairs_per_second": 43.484154958182984,
+        "n_pairs": 4300
+      },
+      "delta": {
+        "mrr@10": 0.33153377630121816,
+        "ndcg@10": 0.2971498013832535,
+        "recall@100": 0.0
+      },
+      "lift_buckets": {
+        "promoted": 21,
+        "new_hit": 2,
+        "demoted": 1,
+        "lost_hit": 0,
+        "unchanged_hit": 18,
+        "unchanged_miss": 1
+      },
+      "cross_check_max_abs_delta": 2.220446049250313e-16,
+      "artifact_sha256": {
+        "bm25_run": "19f1befb601bafebe363fc97ab770ff8debd34288a41c0b526a584735a1b093c",
+        "bm25_manifest": "f162552c306f990ef34a0f97ead707c7c30b8e6c2360611e38fd0bcf181279c5",
+        "rerank_run": "abaa3cb5f5bf13fab6ddd5425cbe0788568f7e62931d3e79381413bae184ac68",
+        "rerank_manifest": "458c0dc2b6f8ffc62d3f79d9dd73f35f5a4556ba51ec9bcb8e161b419c3b414e",
+        "bm25_cross_check": "e7c729c72d7eb300c041087dd3ab237624710d4d45c15237cf927d254c3efc2e",
+        "rerank_cross_check": "2ee29b2a2496102c25182d32c63f1aaa80301e0f396e98e5d63efb9faa5947e2",
+        "lift_analysis": "729fae4f93d54356b9af1e40c63994c83a8cb890f2d5025bd5632d799092fe1d"
+      },
+      "artifact_paths": {
+        "bm25_run": "outputs/trec_dl_2019/bm25/run.tsv",
+        "bm25_manifest": "outputs/trec_dl_2019/bm25/manifest.json",
+        "rerank_run": "outputs/trec_dl_2019/cross_encoder_rerank/run.tsv",
+        "rerank_manifest": "outputs/trec_dl_2019/cross_encoder_rerank/manifest.json",
+        "bm25_cross_check": "outputs/trec_dl_2019/bm25/trec_crosscheck/metrics.json",
+        "rerank_cross_check": "outputs/trec_dl_2019/cross_encoder_rerank/trec_crosscheck/metrics.json",
+        "lift_analysis": "outputs/trec_dl_2019/retrieval_lift/retrieval_lift.json"
+      }
+    },
+    "2020": {
+      "dataset_id": "msmarco-passage/trec-dl-2020/judged",
+      "judged_topics": 54,
+      "qrels_rows": 11386,
+      "bm25": {
+        "mrr@10": 0.6280055849500293,
+        "ndcg@10": 0.47731604252660464,
+        "recall@100": 0.5105049847846952,
+        "recall@1000": 0.7521078725512331,
+        "search_seconds": 20.901782035827637
+      },
+      "bm25_ce": {
+        "mrr@10": 0.8256172839506173,
+        "ndcg@10": 0.6800565227602772,
+        "recall@100": 0.5105049847846952,
+        "rerank_seconds": 91.7832248210907,
+        "pairs_per_second": 58.834280561900066,
+        "n_pairs": 5400
+      },
+      "delta": {
+        "mrr@10": 0.1976116990005879,
+        "ndcg@10": 0.20274048023367256,
+        "recall@100": 0.0
+      },
+      "lift_buckets": {
+        "promoted": 18,
+        "new_hit": 3,
+        "demoted": 3,
+        "lost_hit": 0,
+        "unchanged_hit": 26,
+        "unchanged_miss": 4
+      },
+      "cross_check_max_abs_delta": 2.220446049250313e-16,
+      "artifact_sha256": {
+        "bm25_run": "67ad11dd8672c011dd8c1f8d68d95fbad6c08d67c4deeb5008cf176d66032a8f",
+        "bm25_manifest": "d62a6eed327530051f98ea767834cc296744ad741afce909c6035fbf16fa323d",
+        "rerank_run": "68ea162d07cff4fd35144f83ce868823cef66d77bd84db437108e6b62b4b7680",
+        "rerank_manifest": "0274458621e333016383bfe22b274d5bcc1dda9db8a2c0c2fde2109804cc317a",
+        "bm25_cross_check": "e1d402c1ca86002fbb8be0ed7ee84a5152ddb07007a13c4c8ae76ce3752c4da5",
+        "rerank_cross_check": "22e7b21ef349e9055fba5b3e2302ffcb5eac8014a43d2d3e7e34cd38556dbeb4",
+        "lift_analysis": "033c7b2ac8f19fac7711a8e41e89fc2784f14ed471d6dd52e7156597a863018b"
+      },
+      "artifact_paths": {
+        "bm25_run": "outputs/trec_dl_2020/bm25/run.tsv",
+        "bm25_manifest": "outputs/trec_dl_2020/bm25/manifest.json",
+        "rerank_run": "outputs/trec_dl_2020/cross_encoder_rerank/run.tsv",
+        "rerank_manifest": "outputs/trec_dl_2020/cross_encoder_rerank/manifest.json",
+        "bm25_cross_check": "outputs/trec_dl_2020/bm25/trec_crosscheck/metrics.json",
+        "rerank_cross_check": "outputs/trec_dl_2020/cross_encoder_rerank/trec_crosscheck/metrics.json",
+        "lift_analysis": "outputs/trec_dl_2020/retrieval_lift/retrieval_lift.json"
+      }
+    }
+  },
+  "runtime": {
+    "python": "3.12.13",
+    "platform": "win32",
+    "torch": "2.13.0+cpu",
+    "full_index_cold_build_seconds": 602.3259375095367,
+    "observed_peak_working_set_gib": 8.1,
+    "observed_peak_private_allocation_gib": 18.3,
+    "note": "The peak memory values were observed from the Windows process during the cold build; the runner did not expose a portable Windows peak-RSS value."
+  },
+  "tables": [
+    {
+      "id": "trec_dl_2019_bm25_ce",
+      "columns": [
+        {"heading": "Metric", "align": "l"},
+        {"heading": "\\bmtwofive{}", "align": "r"},
+        {"heading": "\\bmtwofive{} $+$ CE", "align": "r"},
+        {"heading": "$\\Delta$", "align": "r"}
+      ],
+      "rows": [
+        {"cells": ["\\mrr{}", "0.5471", "0.8787", "$\\mathbf{+0.3315}$"]},
+        {"cells": ["\\ndcg{}", "0.4239", "0.7210", "$\\mathbf{+0.2971}$"]},
+        {"cells": ["\\recallH{}", "0.4469", "0.4469", "$\\phantom{+}0.0000$"]},
+        {"cells": ["\\recallK{}", "0.6983", "n/a (top-100)", "n/a"]}
+      ]
+    },
+    {
+      "id": "trec_dl_2020_bm25_ce",
+      "columns": [
+        {"heading": "Metric", "align": "l"},
+        {"heading": "\\bmtwofive{}", "align": "r"},
+        {"heading": "\\bmtwofive{} $+$ CE", "align": "r"},
+        {"heading": "$\\Delta$", "align": "r"}
+      ],
+      "rows": [
+        {"cells": ["\\mrr{}", "0.6280", "0.8256", "$\\mathbf{+0.1976}$"]},
+        {"cells": ["\\ndcg{}", "0.4773", "0.6801", "$\\mathbf{+0.2027}$"]},
+        {"cells": ["\\recallH{}", "0.5105", "0.5105", "$\\phantom{+}0.0000$"]},
+        {"cells": ["\\recallK{}", "0.7521", "n/a (top-100)", "n/a"]}
+      ]
+    }
+  ]
+}

@@ -18,6 +18,17 @@ python scripts/analyze_retrieval_lift.py \
 If `--qrels` is omitted, the script loads MS MARCO passage dev/small qrels
 through `ir_datasets`. A local qrels file can also be supplied in standard
 4-column TREC format or compact 3-column `qid docid relevance` format.
+For graded collections, pass the same binary relevance threshold used by the
+headline MRR/recall evaluation. TREC-DL passage tracks use:
+
+```bash
+python scripts/analyze_retrieval_lift.py \
+  --before-run outputs/trec_dl_2019/bm25/run.tsv \
+  --after-run outputs/trec_dl_2019/cross_encoder_rerank/run.tsv \
+  --qrels data/processed/trec-dl-2019-passage.qrels \
+  --rel-threshold 2 \
+  --output-dir outputs/trec_dl_2019/retrieval_lift_analysis
+```
 
 ## Outputs
 
