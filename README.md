@@ -68,6 +68,8 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md) — context relevance, groundedness, and answer relevance report protocol.
 - [`docs/input_validation.md`](docs/input_validation.md) — run-file, JSONL, prompt, and serving input validation contract.
 - [`docs/artifact_versioning.md`](docs/artifact_versioning.md) — policy for source data, derived indexes, model outputs, and Git-tracked pointers.
+- [`docs/artifact_registry.md`](docs/artifact_registry.md) — canonical result-to-commit, config, lockfile, and manifest evidence contract.
+- [`docs/lockfile_reproduction.md`](docs/lockfile_reproduction.md) — dependency snapshot update and reproduction policy.
 - [`docs/rag_observatory_exports.md`](docs/rag_observatory_exports.md) — trace and sweep exports for external RAG observability analysis.
 - [`docs/trec_dl_external_validity.md`](docs/trec_dl_external_validity.md) — TREC-DL dataset contract, runner commands, metric boundaries, and benchmark follow-ups.
 - [`notebooks/rag_eval_demo.ipynb`](notebooks/rag_eval_demo.ipynb) — lightweight evaluation workflow demo.
