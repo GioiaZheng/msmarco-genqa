@@ -1,0 +1,25 @@
+{
+  "schema": "msmarco-genqa.table-sources.v1",
+  "table_id": "bm25_full_corpus",
+  "hash_convention": "sha256_lf",
+  "sources": [
+    {
+      "path": "reports/generated/artifacts/bm25_full_corpus.json",
+      "sha256_16": "d9fad7666d70b48a",
+      "artifact_schema": "msmarco-genqa.table-artifact.v1",
+      "artifact_id": "bm25_full_corpus",
+      "metric_schema": "retrieval.full_corpus_bm25.v1",
+      "query_set": {
+        "id": "msmarco-passage-dev-small",
+        "n_queries": 6980
+      },
+      "model_revision": {
+        "backend": "bm25s",
+        "corpus": "msmarco-passage",
+        "corpus_scope": "full",
+        "corpus_size": 8841823,
+        "retrieval_depth": 1000
+      }
+    }
+  ]
+}

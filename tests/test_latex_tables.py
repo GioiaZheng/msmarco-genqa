@@ -13,6 +13,7 @@ from msmarco_genqa.reporting.latex_tables import (
     SchemaValidationError,
     StaleSourceError,
     export_tables,
+    file_sha256_16,
     load_artifact,
     validate_compatible,
     validate_sidecar_current,
@@ -74,9 +75,19 @@ def test_export_tables_writes_fragment_and_repo_relative_sources(
 
     sidecar = written[0].with_suffix(".sources.json")
     payload = json.loads(sidecar.read_text())
+    assert payload["hash_convention"] == "sha256_lf"
     source_path = payload["sources"][0]["path"]
     assert source_path == "reports/generated/artifacts/a.json"
     assert str(tmp_path) not in source_path
+
+
+def test_source_hash_normalizes_text_newlines(tmp_path: Path):
+    lf_path = tmp_path / "lf.json"
+    crlf_path = tmp_path / "crlf.json"
+    lf_path.write_bytes(b'{\n  "value": 1\n}\n')
+    crlf_path.write_bytes(b'{\r\n  "value": 1\r\n}\r\n')
+
+    assert file_sha256_16(lf_path) == file_sha256_16(crlf_path)
 
 
 def test_load_artifact_missing_path_raises(tmp_path: Path):

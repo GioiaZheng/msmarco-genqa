@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -50,12 +50,9 @@ class TableArtifact:
 
 
 def file_sha256_16(path: Path) -> str:
-    """Return the first 16 hex chars of a file sha256 digest."""
-    digest = hashlib.sha256()
-    with open(path, "rb") as handle:
-        for chunk in iter(lambda: handle.read(1 << 20), b""):
-            digest.update(chunk)
-    return digest.hexdigest()[:16]
+    """Return an LF-normalized, 16-character SHA-256 for a text artifact."""
+    data = path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return hashlib.sha256(data).hexdigest()[:16]
 
 
 def load_artifact(path: Path) -> TableArtifact:
@@ -191,6 +188,7 @@ def source_sidecar(table_id: str, artifact: TableArtifact) -> dict[str, Any]:
     return {
         "schema": SOURCE_SCHEMA,
         "table_id": table_id,
+        "hash_convention": "sha256_lf",
         "sources": [
             {
                 "path": artifact.relative_path,
@@ -252,6 +250,10 @@ def validate_sidecar_current(sidecar_path: Path) -> None:
     if payload.get("schema") != SOURCE_SCHEMA:
         raise SchemaValidationError(
             f"{sidecar_path}: schema must be {SOURCE_SCHEMA!r}, got {payload.get('schema')!r}"
+        )
+    if payload.get("hash_convention") != "sha256_lf":
+        raise SchemaValidationError(
+            f"{sidecar_path}: hash_convention must be 'sha256_lf'"
         )
     for source in payload.get("sources", []):
         source_path = Path(source["path"])

@@ -1,6 +1,7 @@
 {
   "schema": "msmarco-genqa.table-sources.v1",
   "table_id": "trec_dl_2019_bm25_ce",
+  "hash_convention": "sha256_lf",
   "sources": [
     {
       "path": "reports/generated/artifacts/trec_dl_bm25_ce.json",
