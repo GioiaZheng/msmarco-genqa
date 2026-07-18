@@ -1,0 +1,32 @@
+{
+  "schema": "msmarco-genqa.external-artifact-pointer.v1",
+  "artifact_id": "trec-dl-bm25-ce-2019-2020-v1",
+  "kind": "trec_run_bundle",
+  "release": {
+    "repository": "GioiaZheng/msmarco-genqa",
+    "tag": "v2.1-trec-dl-baselines",
+    "asset": "trec-dl-baselines-v1.zip"
+  },
+  "download": {
+    "url": "https://github.com/GioiaZheng/msmarco-genqa/releases/download/v2.1-trec-dl-baselines/trec-dl-baselines-v1.zip",
+    "bytes": 1041738,
+    "sha256": "e7001a943beb1b1a220ef4a58fae445569725682dc0dbbcb0d9300473a360aa3"
+  },
+  "source": {
+    "experiment_commit": "0362a48bb4d000a93f5af5c26a4de934db37e74f",
+    "record": "reports/generated/artifacts/trec_dl_bm25_ce.json",
+    "record_sha256": "d9487673dd69c7e4b5cf6a8ef5c06aae0d6da2004748904b259ead31d4c44eab"
+  },
+  "contents": {
+    "tracks": [2019, 2020],
+    "systems": ["bm25", "bm25_ce"],
+    "run_files": 4,
+    "contains_msmarco_text": false,
+    "contains_model_weights": false
+  },
+  "reproduce": {
+    "command": "make reproduce-trec-eval",
+    "requires_private_credentials": false,
+    "rebuilds_full_index": false
+  }
+}

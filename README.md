@@ -281,6 +281,22 @@ top-100 candidate set. All four runs cover every judged topic, and independent
 documents per topic, so CE Recall@1000 is intentionally not reported. See the
 [full protocol, runtime, provenance, and error review](docs/trec_dl_external_validity.md).
 
+The four text-only ranked runs are also published as a checksummed
+[GitHub Release bundle](https://github.com/GioiaZheng/msmarco-genqa/releases/tag/v2.1-trec-dl-baselines).
+Recompute the table without rebuilding the 8.8M-passage index or rerunning the
+cross-encoder:
+
+```bash
+make reproduce-trec-eval
+```
+
+The command follows the pinned
+[`artifacts/trec_dl_baselines_v1.json`](artifacts/trec_dl_baselines_v1.json)
+pointer, verifies the archive and every member, obtains public qrels through
+`ir_datasets`, and fails if any reproduced metric differs by more than
+`1e-12`. The release excludes passage/query text, qrels mirrors, model caches,
+and machine-local manifests.
+
 ### Generation × retrieval source
 
 Cross-stage comparison on **full dev/small (6 980 queries)**: same
@@ -541,7 +557,7 @@ Console names: `mgq-transform-queries`, `mgq-query-transform-ablation`,
 `mgq-context-packing-report`,
 `mgq-rag-triad`,
 `mgq-export-rag-observatory`,
-`mgq-rerank`, `mgq-generate`, `mgq-trec-eval`.
+`mgq-rerank`, `mgq-generate`, `mgq-trec-eval`, `mgq-trec-release`.
 The examples below use whichever of the script or console forms makes the
 dataset and stage boundary clearest.
 

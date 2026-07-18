@@ -103,6 +103,30 @@ lift counts, commit/config identifiers, and SHA-256 digests of every local
 run, manifest, cross-check, and lift artifact is
 [`reports/generated/artifacts/trec_dl_bm25_ce.json`](../reports/generated/artifacts/trec_dl_bm25_ce.json).
 
+## Published run bundle
+
+The exact four ranked runs behind the tables are published in the
+[`v2.1-trec-dl-baselines`](https://github.com/GioiaZheng/msmarco-genqa/releases/tag/v2.1-trec-dl-baselines)
+GitHub Release. The checked pointer is
+[`artifacts/trec_dl_baselines_v1.json`](../artifacts/trec_dl_baselines_v1.json).
+
+From a configured clone:
+
+```bash
+make reproduce-trec-eval
+```
+
+This fast path downloads about 1 MiB, verifies the archive and all member
+digests, recovers the public judged qrels through `ir_datasets`, and recomputes
+all four result rows at tolerance `1e-12`. It does not rebuild the passage
+index or rerun either retrieval system. The release contains ranked document
+identifiers and scores only; passage/query text, qrels mirrors, model weights,
+and machine-local manifests are excluded.
+
+For a full computational reproduction, use the runner commands below. That
+path recreates the rankings from the 8,841,823-passage corpus and is therefore
+substantially more expensive than verifying the published evidence.
+
 ## What the loader provides
 
 `msmarco_genqa.data.trec_dl` exposes:

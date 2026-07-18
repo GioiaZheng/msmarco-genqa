@@ -44,6 +44,27 @@ The current default is manifest-first and local-first:
 This is sufficient for small public fixtures and report evidence. It is not a
 complete long-term artifact backend for large indexes or model outputs.
 
+## Public release backend
+
+GitHub Releases is the current no-credential backend for compact, public,
+text-only experiment outputs. The first published bundle contains four
+TREC-DL ranked runs (BM25 and BM25-plus-cross-encoder for 2019 and 2020).
+Git tracks only `artifacts/trec_dl_baselines_v1.json`, which pins the release
+tag, asset name, byte size, archive SHA-256 digest, source experiment commit,
+and compact report record.
+
+`make reproduce-trec-eval` resolves that pointer, verifies the outer archive
+and all inner files, recovers public qrels with `ir_datasets`, and recomputes
+the reported metrics without rebuilding the full index. The bundle excludes
+passage/query text, qrels mirrors, model caches, and machine-local manifests.
+This keeps the public evidence useful while respecting the repository's data
+boundary.
+
+Use a new immutable tag and pointer for every changed payload; never replace a
+published asset in place. Hugging Face Datasets remains a reasonable future
+backend if the project accumulates many tabular prediction splits that need
+streaming or dataset-card discovery. It is not needed for this 1 MiB release.
+
 ## When DVC is worth adding
 
 DVC or a similar pointer-file workflow becomes worthwhile when the project
