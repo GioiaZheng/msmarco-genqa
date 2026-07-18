@@ -266,9 +266,10 @@ gain is not specific to the subsample.
 
 The full-corpus BM25 and BM25-plus-cross-encoder runners support the judged
 TREC-DL 2019 and 2020 passage tracks. Runner integration, output isolation, and
-benchmark provenance are complete. Graded relevance evaluation and an
-independent evaluator cross-check remain open in
-[#153](https://github.com/GioiaZheng/msmarco-genqa/issues/153); the reportable
+benchmark provenance are complete. The graded relevance path now reports
+nDCG@10 from the original labels, thresholded MRR/recall, topic coverage, and
+an `ir-measures` cross-check under
+[#153](https://github.com/GioiaZheng/msmarco-genqa/issues/153). The reportable
 two-year benchmark remains open in
 [#154](https://github.com/GioiaZheng/msmarco-genqa/issues/154). No TREC-DL
 headline result is claimed yet.
@@ -551,9 +552,10 @@ mgq-rerank --dataset msmarco-passage/trec-dl-2020/judged --resume
 ```
 
 The default outputs are separated under `outputs/trec_dl_2019/` and
-`outputs/trec_dl_2020/`. These commands currently preserve the established
-binary metric view at relevance threshold 2; graded nDCG and its independent
-evaluator cross-check are a separate evaluation step. See
+`outputs/trec_dl_2020/`. For these datasets, runner `metrics.json` files use
+the original graded labels for nDCG@10 and relevance threshold 2 for MRR@10,
+Recall@100, and Recall@1000. Reportable runs still pass through the independent
+cross-check below. See
 [`docs/trec_dl_external_validity.md`](docs/trec_dl_external_validity.md).
 
 ### Independent TREC metric cross-check
@@ -568,7 +570,7 @@ ir_datasets export msmarco-passage/dev/small qrels --format trec \
 ```
 
 Then validate any retrieval artifact and compare the repository's MRR@10,
-nDCG@10, and Recall@1000 calculations with `ir-measures`:
+nDCG@10, Recall@100, and Recall@1000 calculations with `ir-measures`:
 
 ```bash
 mgq-trec-eval --backend ir-measures --qrels-format trec \
@@ -595,8 +597,10 @@ mgq-trec-eval --backend ir-measures --qrels-format trec \
 Each invocation writes validated `run.trec`, canonical `qrels.trec`, and a
 machine-readable `metrics.json`. The canonical run uses rank-derived scores
 to preserve the source rank order even when a retrieval backend emitted tied
-model scores. The current adapter is intentionally limited to binary MS MARCO
-qrels; graded relevance collections require a separate graded nDCG path.
+model scores. Graded collections use raw relevance labels for nDCG and the
+explicit `--rel-threshold` for MRR and recall. For TREC-DL passage tracks, use
+`--rel-threshold 2`; every qrels topic remains in the evaluation denominator,
+including topics absent from the run.
 See [`docs/evaluation_protocol.md`](docs/evaluation_protocol.md) for metric
 scope and sampled-corpus interpretation rules.
 
@@ -913,10 +917,9 @@ Limitations to be aware of:
 - **CPU-only retrieve is slow at 8.8 M docs.** ~70 min for 6 980 queries. `n_threads=-1` may help; not yet benchmarked on this corpus.
 - **Generation: pretrained T5-small, no fine-tuning.** Numbers will be low on overlap-based metrics. Fine-tuning is in scope for a later iteration.
 - **NumPy 2.x runtime warning.** Some compiled deps (torch) were built against NumPy 1.x. Cosmetic; downgrade to `numpy<2` if it ever causes a real failure.
-- **TREC-DL metrics are not yet reportable.** The runners preserve graded qrels
-  but currently expose the established binary metric view at relevance
-  threshold 2. Graded nDCG, evaluator agreement, and the full BM25-vs-reranked
-  benchmark are tracked in #153 and #154.
+- **TREC-DL headline results are not yet reportable.** The graded evaluator and
+  independent cross-check are available, but the full BM25-vs-reranked runs
+  for both tracks still need to be produced and audited under #154.
 
 ## 8. Next
 
@@ -924,11 +927,7 @@ Longer-horizon research and engineering directions are tracked in
 [`ROADMAP.md`](ROADMAP.md). The list below is the shorter technical queue
 closest to the current experimental surface.
 
-- **TREC-DL graded evaluation.** Complete
-  [#153](https://github.com/GioiaZheng/msmarco-genqa/issues/153): preserve
-  labels 0–3, report graded nDCG@10 plus explicitly thresholded MRR/recall, and
-  cross-check the metrics with an independent TREC-compatible evaluator.
-- **TREC-DL full-corpus benchmark.** Then complete
+- **TREC-DL full-corpus benchmark.** Complete
   [#154](https://github.com/GioiaZheng/msmarco-genqa/issues/154): run BM25 and
   BM25 plus the existing cross-encoder on the 2019 and 2020 judged topics,
   report the tracks separately, and keep every number traceable to its run and

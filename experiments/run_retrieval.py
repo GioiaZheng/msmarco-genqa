@@ -43,6 +43,7 @@ from msmarco_genqa.data.benchmark import (
 )
 from msmarco_genqa.data.msmarco import load_msmarco_passage
 from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
+from msmarco_genqa.evaluation.trec import evaluate_trec_retrieval, trec_metric_contract
 from msmarco_genqa.retrieval.bm25 import BM25Retriever
 from msmarco_genqa.retrieval.query_transform import materialize_query_transform
 from msmarco_genqa.reranking.io import read_run_tsv
@@ -376,13 +377,23 @@ def main() -> None:
     logger.info("Reading %s for evaluation...", run_path)
     runs, scores_by_qid = _read_runs_from_tsv(run_path)
 
-    metrics = evaluate_retrieval(
-        runs=runs,
-        qrels=benchmark.qrels,
-        ks_mrr=ks_mrr,
-        ks_recall=ks_recall,
-        ks_ndcg=ks_ndcg,
-    )
+    if benchmark_spec.is_trec_dl:
+        metrics = evaluate_trec_retrieval(
+            runs=runs,
+            qrels=benchmark.graded_qrels,
+            rel_threshold=benchmark_spec.rel_threshold or 2,
+            ks_mrr=tuple(ks_mrr),
+            ks_recall=tuple(ks_recall),
+            ks_ndcg=tuple(ks_ndcg),
+        )
+    else:
+        metrics = evaluate_retrieval(
+            runs=runs,
+            qrels=benchmark.qrels,
+            ks_mrr=ks_mrr,
+            ks_recall=ks_recall,
+            ks_ndcg=ks_ndcg,
+        )
     logger.info("Metrics: %s", metrics)
 
     # ---- 6. Qualitative examples ----
@@ -479,6 +490,14 @@ def main() -> None:
         "query_transform": query_transform_summary,
         "resumed": args.resume and bool(set(qids) - set(pending_qids)),
     }
+    if benchmark_spec.is_trec_dl:
+        payload["evaluation"] = {
+            **trec_metric_contract(
+                rel_threshold=benchmark_spec.rel_threshold or 2,
+            ),
+            "qrels_source": benchmark_spec.dataset_id,
+            "internal_backend": "msmarco_genqa.evaluation.trec",
+        }
     with open(output_dir / "metrics.json", "w") as f:
         json.dump(payload, f, indent=2, default=str)
     logger.info("Wrote metrics to %s", output_dir / "metrics.json")

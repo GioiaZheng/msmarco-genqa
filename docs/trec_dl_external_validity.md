@@ -28,7 +28,9 @@ use the **same schema as the MS MARCO loader**, so the existing
 `evaluate_retrieval` / `mrr@k` / `ndcg@k` / `recall@k` functions in
 `msmarco_genqa.evaluation.retrieval` run on them unchanged. The full graded
 labels are additionally preserved on `graded_qrels`
-(`{qid: {doc_id: label}}`) for the graded evaluation work tracked in #153.
+(`{qid: {doc_id: label}}`). TREC-DL runners pass that mapping to
+`evaluate_trec_retrieval`, which keeps graded nDCG separate from thresholded
+MRR and recall.
 
 ## Full-corpus runner commands
 
@@ -57,6 +59,32 @@ Each `metrics.json` and manifest records the dataset id, track year, judged
 topic count, corpus scope, and upstream run. The existing dev/small defaults
 remain unchanged when `--dataset` is omitted.
 
+## Independent metric cross-check
+
+Materialize each track's official qrels and cross-check its run separately.
+The threshold affects MRR and recall only; nDCG retains the original labels.
+
+```bash
+ir_datasets export msmarco-passage/trec-dl-2019/judged qrels --format trec \
+  > data/processed/trec-dl-2019-passage.qrels
+ir_datasets export msmarco-passage/trec-dl-2020/judged qrels --format trec \
+  > data/processed/trec-dl-2020-passage.qrels
+
+mgq-trec-eval --backend ir-measures --qrels-format trec --rel-threshold 2 \
+  --qrels data/processed/trec-dl-2019-passage.qrels \
+  --run outputs/trec_dl_2019/bm25/run.tsv \
+  --output-dir outputs/trec_dl_2019/bm25/trec_eval
+
+mgq-trec-eval --backend ir-measures --qrels-format trec --rel-threshold 2 \
+  --qrels data/processed/trec-dl-2020-passage.qrels \
+  --run outputs/trec_dl_2020/bm25/run.tsv \
+  --output-dir outputs/trec_dl_2020/bm25/trec_eval
+```
+
+Repeat the same command with each track's
+`cross_encoder_rerank/run.tsv`. Keep the 2019 and 2020 reports separate; do
+not average them into one headline without also reporting both track values.
+
 ## Judgment depth and binarization
 
 | Dataset | Judgments | Label scale | Judged queries |
@@ -72,9 +100,10 @@ This is the standard convention for the MS MARCO TREC-DL passage tracks. The
 threshold is a parameter; lower it to 1 to include the "related" tier.
 
 A judged query whose passages are all below threshold is kept with an empty
-positive set, so coverage diagnostics can tell "no relevant passage above
-threshold" apart from "query never judged" — mirroring how the MS MARCO
-evaluation path skips empty-qrels queries.
+positive set. It contributes zero to thresholded MRR and recall, while its
+original labels still contribute to graded nDCG. All qrels topics remain in
+the TREC-DL denominator, so coverage diagnostics distinguish "no relevant
+passage above threshold", "missing from the run", and "never judged".
 
 ## Determinism and seeds
 
@@ -94,6 +123,10 @@ fixtures under `tests/fixtures/trec_dl/` (a handful of queries with graded
 - the bundle schema matches what the metric code consumes, and
 - `evaluate_retrieval` computes end-to-end on the binarized qrels.
 
+`tests/test_trec_cross_check.py` adds a hand-verifiable graded ranking with a
+missing topic, tied source scores, and below-threshold judgments. CI compares
+nDCG@10, MRR@10, Recall@100, and Recall@1000 against `ir-measures`.
+
 The fixtures are intentionally small and not the real NIST topics, so the
 suite never depends on a multi-gigabyte download.
 
@@ -101,7 +134,7 @@ suite never depends on a multi-gigabyte download.
 
 The runner integration deliberately keeps the BM25 tokenizer, full-corpus
 index, cross-encoder weights, candidate depth, and prompt/generation code
-unchanged. At this stage, the runners still report the existing binary metric
-view at `rel_threshold = 2`; reportable graded nDCG and the independent
-evaluator cross-check are tracked separately in #153. Dense retrieval and
-multi-encoder calibration are not part of this benchmark step.
+unchanged. Runner metrics use graded nDCG plus the documented threshold-2
+binary view; reportable artifacts are independently cross-checked with
+`mgq-trec-eval`. Dense retrieval and multi-encoder calibration are not part of
+this benchmark step.

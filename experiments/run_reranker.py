@@ -73,6 +73,7 @@ from msmarco_genqa.data.benchmark import (
 )
 from msmarco_genqa.data.msmarco import get_docs_store, load_msmarco_passage
 from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
+from msmarco_genqa.evaluation.trec import evaluate_trec_retrieval, trec_metric_contract
 from msmarco_genqa.reranking.cross_encoder import CrossEncoderReranker
 from msmarco_genqa.reranking.io import (
     append_run_tsv,
@@ -604,8 +605,21 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     input_runs_eval = {q: [d for d, _ in runs_topk[q]] for q in eval_qids}
 
-    input_metrics = evaluate_retrieval(input_runs_eval, sample_qrels)
-    rerank_metrics = evaluate_retrieval(rerank_runs_eval, sample_qrels)
+    if benchmark_spec.is_trec_dl:
+        rel_threshold = benchmark_spec.rel_threshold or 2
+        input_metrics = evaluate_trec_retrieval(
+            input_runs_eval,
+            benchmark.graded_qrels,
+            rel_threshold=rel_threshold,
+        )
+        rerank_metrics = evaluate_trec_retrieval(
+            rerank_runs_eval,
+            benchmark.graded_qrels,
+            rel_threshold=rel_threshold,
+        )
+    else:
+        input_metrics = evaluate_retrieval(input_runs_eval, sample_qrels)
+        rerank_metrics = evaluate_retrieval(rerank_runs_eval, sample_qrels)
     logger.info("%s (input) metrics: %s", input_label, input_metrics)
     logger.info("%s + CE rerank metrics: %s", input_label, rerank_metrics)
 
@@ -716,6 +730,14 @@ def main() -> None:
         "peak_memory_mib": peak_mem_mb,
         "environment": (env_dict := capture_environment()),
     }
+    if benchmark_spec.is_trec_dl:
+        payload["evaluation"] = {
+            **trec_metric_contract(
+                rel_threshold=benchmark_spec.rel_threshold or 2,
+            ),
+            "qrels_source": benchmark_spec.dataset_id,
+            "internal_backend": "msmarco_genqa.evaluation.trec",
+        }
     # Reranker inherits sampling state from its upstream first-stage run:
     # presence of input_stage_dir/sample_doc_ids.json indicates the upstream
     # eval was qrels-anchored. The input and rerank metrics are then over

@@ -122,6 +122,104 @@ Hence
 \sum_{q\in\mathcal Q_{\mathrm{ret}}^{+}}\operatorname{nDCG}_q@k.
 ```
 
+### 2.4 TREC-DL graded and thresholded contract
+
+For a TREC-DL track, let the evaluation scope be every topic present in its
+qrels, including a topic missing from the submitted run:
+
+```math
+\mathcal Q_{\mathrm{TREC}}
+=
+\{q:q\text{ occurs in the qrels}\},
+\qquad
+N_{\mathrm{TREC}}=|\mathcal Q_{\mathrm{TREC}}|.
+```
+
+For MRR and recall, relevance is thresholded at $\tau=2$ by default:
+
+```math
+R_q^{(\tau)}
+=
+\{d:\operatorname{rel}_q(d)\ge\tau\}.
+```
+
+The definitions in Sections 2.1 and 2.2 are then evaluated with
+$R_q^{(\tau)}$ and macro-averaged over $\mathcal Q_{\mathrm{TREC}}$. The
+repository uses the explicit conventions
+
+```math
+R_q^{(\tau)}=\varnothing
+\Longrightarrow
+\operatorname{RR}_q@k
+=
+\operatorname{Recall}_q@k
+=0,
+```
+
+and
+
+```math
+L_q=\varnothing
+\Longrightarrow
+\operatorname{RR}_q@k
+=
+\operatorname{Recall}_q@k
+=
+\operatorname{nDCG}_q@k
+=0.
+```
+
+For graded nDCG, the gain is the raw, non-negative relevance label:
+
+```math
+g_q(d)=\max\{0,\operatorname{rel}_q(d)\}.
+```
+
+Let $g_{q,(1)}\ge g_{q,(2)}\ge\cdots$ be the qrel gains sorted in descending
+order. Then
+
+```math
+\operatorname{DCG}_q@k
+=
+\sum_{i=1}^{k}
+\frac{g_q(d_{q,i})}{\log_2(i+1)},
+\qquad
+\operatorname{IDCG}_q@k
+=
+\sum_{i=1}^{k}
+\frac{g_{q,(i)}}{\log_2(i+1)},
+```
+
+where unavailable ideal gains are zero, and
+
+```math
+\operatorname{nDCG}_q@k
+=
+\begin{cases}
+\dfrac{\operatorname{DCG}_q@k}{\operatorname{IDCG}_q@k},
+& \operatorname{IDCG}_q@k>0,\\[6pt]
+0, & \operatorname{IDCG}_q@k=0,
+\end{cases}
+```
+
+```math
+\operatorname{nDCG}_{\mathrm{TREC}}@k
+=
+\frac{1}{N_{\mathrm{TREC}}}
+\sum_{q\in\mathcal Q_{\mathrm{TREC}}}
+\operatorname{nDCG}_q@k.
+```
+
+Judged-topic run coverage is reported separately from effectiveness:
+
+```math
+\operatorname{Coverage}_{\mathrm{judged}}
+=
+\frac{
+|\mathcal Q_{\mathrm{run}}\cap\mathcal Q_{\mathrm{TREC}}|
+}{N_{\mathrm{TREC}}}.
+```
+
 ## 3. Reference-Based Generation Metrics
 
 Let $\nu(\cdot)$ denote the repository's lowercase, punctuation/article

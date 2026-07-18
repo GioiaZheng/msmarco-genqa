@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 import pytest
@@ -34,6 +35,7 @@ class _FakeMeasure:
 
 
 class _FakeIrMeasures:
+    __version__ = "fixture"
     RR = _FakeMeasure("RR")
     nDCG = _FakeMeasure("nDCG")
     R = _FakeMeasure("R")
@@ -45,6 +47,7 @@ class _FakeIrMeasures:
         expected = {
             "RR@10": 0.75,
             "nDCG@10": 0.622038473168458,
+            "R@100": 0.75,
             "R@1000": 0.75,
         }
         return {measure: expected[measure.name] for measure in measures}
@@ -64,11 +67,16 @@ def test_fixture_export_and_cross_check(tmp_path):
         "run_queries": 2,
         "qrels_queries": 2,
         "evaluated_queries": 2,
+        "run_topic_count": 2,
+        "missing_run_topic_count": 0,
+        "judged_topic_coverage": 1.0,
     }
     assert report["internal_metrics"]["mrr@10"] == pytest.approx(0.75)
     assert report["internal_metrics"]["ndcg@10"] == pytest.approx(0.622038473168458)
+    assert report["internal_metrics"]["recall@100"] == pytest.approx(0.75)
     assert report["internal_metrics"]["recall@1000"] == pytest.approx(0.75)
     assert report["external_evaluator"]["status"] == "passed"
+    assert report["external_evaluator"]["version"] == "fixture"
     assert max(report["external_evaluator"]["absolute_deltas"].values()) < 1e-12
 
     assert (tmp_path / "run.trec").read_text().splitlines() == [
@@ -128,22 +136,50 @@ def test_duplicate_qrels_fail_fast(tmp_path):
         read_qrels(path, qrels_format="trec")
 
 
-def test_cross_check_rejects_graded_qrels(tmp_path):
-    qrels_path = tmp_path / "graded.qrels"
-    qrels_path.write_text("q1 0 d1 2\n")
-    with pytest.raises(ValueError, match="only binary relevance levels"):
-        run_trec_cross_check(
-            run_path=FIXTURE_DIR / "run.tsv",
-            qrels_path=qrels_path,
-            output_dir=tmp_path / "out",
-            qrels_format="trec",
-            backend="none",
-        )
+def test_graded_qrels_use_trec_ndcg_and_thresholded_binary_metrics(tmp_path):
+    report = run_trec_cross_check(
+        run_path=FIXTURE_DIR / "graded_run.tsv",
+        qrels_path=FIXTURE_DIR / "graded_qrels.trec",
+        output_dir=tmp_path / "out",
+        qrels_format="trec",
+        backend="none",
+        rel_threshold=2,
+    )
+
+    q1_dcg = 2.0 + 3.0 / math.log2(3) + 1.0 / math.log2(4)
+    q1_idcg = 3.0 + 2.0 / math.log2(3) + 1.0 / math.log2(4)
+    # q2 is absent from the run; q3 has only a below-threshold label but
+    # remains part of graded nDCG and the all-qrels-topic denominator.
+    assert report["internal_metrics"]["ndcg@10"] == pytest.approx(
+        (q1_dcg / q1_idcg + 0.0 + 1.0) / 3
+    )
+    assert report["internal_metrics"]["mrr@10"] == pytest.approx(1.0 / 3)
+    assert report["internal_metrics"]["recall@100"] == pytest.approx(1.0 / 3)
+    assert report["internal_metrics"]["recall@1000"] == pytest.approx(1.0 / 3)
+    assert report["scope"]["missing_run_topic_count"] == 1
+    assert report["scope"]["judged_topic_coverage"] == pytest.approx(2.0 / 3)
+    assert report["evaluation"]["qrels_type"] == "graded"
+    assert report["evaluation"]["binary_metrics"]["relevance_threshold"] == 2
+    assert (tmp_path / "out" / "run.trec").read_text().splitlines()[:3] == [
+        "q1\tQ0\td2\t1\t1\tmsmarco-genqa",
+        "q1\tQ0\td3\t2\t0.5\tmsmarco-genqa",
+        "q1\tQ0\td1\t3\t0.333333333333\tmsmarco-genqa",
+    ]
 
 
 def test_metric_mismatch_fails_gate():
-    internal = {"mrr@10": 0.5, "ndcg@10": 0.6, "recall@1000": 0.7}
-    external = {"mrr@10": 0.5, "ndcg@10": 0.61, "recall@1000": 0.7}
+    internal = {
+        "mrr@10": 0.5,
+        "ndcg@10": 0.6,
+        "recall@100": 0.7,
+        "recall@1000": 0.7,
+    }
+    external = {
+        "mrr@10": 0.5,
+        "ndcg@10": 0.61,
+        "recall@100": 0.7,
+        "recall@1000": 0.7,
+    }
     with pytest.raises(MetricCrossCheckError, match="ndcg@10"):
         compare_metric_sets(internal, external, tolerance=1e-6)
 
@@ -188,5 +224,24 @@ def test_real_ir_measures_backend_when_installed(tmp_path):
         qrels_format="trec",
         backend="ir-measures",
     )
+    assert report["external_evaluator"]["status"] == "passed"
+    assert max(report["external_evaluator"]["absolute_deltas"].values()) < 1e-12
+
+
+def test_real_ir_measures_graded_backend_when_installed(tmp_path):
+    pytest.importorskip("ir_measures")
+    report = run_trec_cross_check(
+        run_path=FIXTURE_DIR / "graded_run.tsv",
+        qrels_path=FIXTURE_DIR / "graded_qrels.trec",
+        output_dir=tmp_path,
+        qrels_format="trec",
+        backend="ir-measures",
+        rel_threshold=2,
+    )
+    assert report["evaluation"]["graded_metrics"]["ndcg@10"] == {
+        "gain": "identity",
+        "discount": "log2",
+    }
+    assert report["external_evaluator"]["version"] != "unknown"
     assert report["external_evaluator"]["status"] == "passed"
     assert max(report["external_evaluator"]["absolute_deltas"].values()) < 1e-12

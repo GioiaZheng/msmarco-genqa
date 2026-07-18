@@ -9,16 +9,22 @@ calculation through :mod:`ir_measures`.
 from __future__ import annotations
 
 import importlib
+import importlib.metadata
 import json
 import math
 from pathlib import Path
 from typing import Any, Literal
 
-from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
+from msmarco_genqa.evaluation.retrieval import recall_at_k, reciprocal_rank
 from msmarco_genqa.reranking.io import read_run_tsv
 
 
 QrelsFormat = Literal["auto", "trec", "irds-tsv", "three-column"]
+
+DEFAULT_REL_THRESHOLD = 1
+DEFAULT_METRIC_NAMES = ("mrr@10", "ndcg@10", "recall@100", "recall@1000")
+NDCG_GAIN_CONVENTION = "identity"
+NDCG_DISCOUNT = "log2"
 
 
 class QrelsFormatError(ValueError):
@@ -103,8 +109,8 @@ def read_qrels(
     """Read TREC, ir_datasets TSV, or three-column qrels.
 
     Duplicate ``(qid, doc_id)`` judgments fail fast. Relevance values are
-    retained as integers; retrieval metrics treat values greater than zero as
-    relevant, matching the binary MS MARCO dev/small judgments.
+    retained as integers. Graded nDCG consumes the labels directly; MRR and
+    recall use the relevance threshold selected by the caller.
     """
     p = Path(path)
     qrels: dict[str, dict[str, int]] = {}
@@ -147,12 +153,117 @@ def read_qrels(
     return qrels
 
 
-def _positive_qrels(qrels: dict[str, dict[str, int]]) -> dict[str, dict[str, int]]:
+def _validate_rel_threshold(rel_threshold: int) -> None:
+    if isinstance(rel_threshold, bool) or not isinstance(rel_threshold, int):
+        raise TypeError("rel_threshold must be an integer")
+    if rel_threshold < 1:
+        raise ValueError("rel_threshold must be at least 1")
+
+
+def binarize_graded_qrels(
+    qrels: dict[str, dict[str, int]],
+    *,
+    rel_threshold: int,
+) -> dict[str, dict[str, int]]:
+    """Return 0/1 qrels while preserving every judged topic and document."""
+    _validate_rel_threshold(rel_threshold)
     return {
-        qid: judgments
+        qid: {
+            doc_id: int(relevance >= rel_threshold)
+            for doc_id, relevance in judgments.items()
+        }
         for qid, judgments in qrels.items()
-        if any(relevance > 0 for relevance in judgments.values())
     }
+
+
+def graded_ndcg_at_k(
+    retrieved: list[str],
+    judgments: dict[str, int],
+    *,
+    k: int,
+) -> float:
+    """Compute TREC-style graded nDCG using raw labels and log2 discount."""
+    if k < 1:
+        raise ValueError("k must be positive")
+    gains = [max(0, int(judgments.get(doc_id, 0))) for doc_id in retrieved[:k]]
+    dcg = sum(gain / math.log2(rank + 1) for rank, gain in enumerate(gains, 1))
+    ideal_gains = sorted(
+        (max(0, int(relevance)) for relevance in judgments.values()),
+        reverse=True,
+    )[:k]
+    idcg = sum(
+        gain / math.log2(rank + 1)
+        for rank, gain in enumerate(ideal_gains, 1)
+    )
+    return dcg / idcg if idcg > 0 else 0.0
+
+
+def trec_metric_contract(*, rel_threshold: int) -> dict[str, Any]:
+    """Describe the graded and thresholded metric semantics saved with a run."""
+    _validate_rel_threshold(rel_threshold)
+    return {
+        "topic_scope": "all_qrels_topics",
+        "graded_metrics": {
+            "ndcg@10": {
+                "gain": NDCG_GAIN_CONVENTION,
+                "discount": NDCG_DISCOUNT,
+            }
+        },
+        "binary_metrics": {
+            "names": ["mrr@10", "recall@100", "recall@1000"],
+            "relevance_threshold": rel_threshold,
+            "threshold_rule": f"relevance >= {rel_threshold}",
+        },
+    }
+
+
+def evaluate_trec_retrieval(
+    runs: dict[str, list[str]],
+    qrels: dict[str, dict[str, int]],
+    *,
+    rel_threshold: int = DEFAULT_REL_THRESHOLD,
+    ks_mrr: tuple[int, ...] = (10,),
+    ks_ndcg: tuple[int, ...] = (10,),
+    ks_recall: tuple[int, ...] = (100, 1000),
+) -> dict[str, float]:
+    """Evaluate every qrels topic with graded nDCG and thresholded metrics.
+
+    Missing run topics and topics with no judgment at or above
+    ``rel_threshold`` contribute zero. This is deliberately different from
+    the sparse MS MARCO dev/small helper, which skips empty positive sets.
+    """
+    _validate_rel_threshold(rel_threshold)
+    qids = sorted(qrels)
+    if not qids:
+        return {"n_queries": 0}
+
+    metrics: dict[str, float] = {}
+    relevant = {
+        qid: {
+            doc_id
+            for doc_id, relevance in judgments.items()
+            if relevance >= rel_threshold
+        }
+        for qid, judgments in qrels.items()
+    }
+    n = len(qids)
+    for k in ks_mrr:
+        metrics[f"mrr@{k}"] = sum(
+            reciprocal_rank(runs.get(qid, []), relevant[qid], k)
+            for qid in qids
+        ) / n
+    for k in ks_ndcg:
+        metrics[f"ndcg@{k}"] = sum(
+            graded_ndcg_at_k(runs.get(qid, []), qrels[qid], k=k)
+            for qid in qids
+        ) / n
+    for k in ks_recall:
+        metrics[f"recall@{k}"] = sum(
+            recall_at_k(runs.get(qid, []), relevant[qid], k)
+            for qid in qids
+        ) / n
+    metrics["n_queries"] = n
+    return metrics
 
 
 def write_canonical_run(
@@ -196,43 +307,55 @@ def write_canonical_qrels(
 def evaluate_internal_trec_scope(
     run: dict[str, list[tuple[str, float]]],
     qrels: dict[str, dict[str, int]],
+    *,
+    rel_threshold: int = DEFAULT_REL_THRESHOLD,
 ) -> dict[str, float]:
-    """Evaluate all positive-qrels topics, including absent runs as zeroes."""
-    positive = _positive_qrels(qrels)
+    """Evaluate all qrels topics, including absent runs as zeroes."""
     ranked_docs = {
         qid: [doc_id for doc_id, _score in run.get(qid, [])]
-        for qid in positive
+        for qid in qrels
     }
-    binary_qrels = {
-        qid: {doc_id for doc_id, relevance in judgments.items() if relevance > 0}
-        for qid, judgments in positive.items()
-    }
-    return evaluate_retrieval(
-        ranked_docs,
-        binary_qrels,
+    return evaluate_trec_retrieval(
+        runs=ranked_docs,
+        qrels=qrels,
+        rel_threshold=rel_threshold,
         ks_mrr=(10,),
         ks_ndcg=(10,),
-        ks_recall=(1000,),
+        ks_recall=(100, 1000),
     )
+
+
+def _load_ir_measures() -> Any:
+    try:
+        return importlib.import_module("ir_measures")
+    except ModuleNotFoundError as exc:
+        raise OptionalEvaluatorUnavailable(
+            "ir-measures is not installed; install the evaluation extra with "
+            "pip install -e '.[evaluation]'"
+        ) from exc
+
+
+def _ir_measures_version(module: Any) -> str:
+    version = getattr(module, "__version__", None)
+    if version:
+        return str(version)
+    try:
+        return importlib.metadata.version("ir-measures")
+    except importlib.metadata.PackageNotFoundError:
+        return "unknown"
 
 
 def evaluate_ir_measures(
     run: dict[str, list[tuple[str, float]]],
     qrels: dict[str, dict[str, int]],
     *,
+    rel_threshold: int = DEFAULT_REL_THRESHOLD,
     module: Any | None = None,
 ) -> dict[str, float]:
     """Evaluate with the optional :mod:`ir_measures` backend."""
     if module is None:
-        try:
-            module = importlib.import_module("ir_measures")
-        except ModuleNotFoundError as exc:
-            raise OptionalEvaluatorUnavailable(
-                "ir-measures is not installed; install the evaluation extra with "
-                "pip install -e '.[evaluation]'"
-            ) from exc
+        module = _load_ir_measures()
 
-    positive = _positive_qrels(qrels)
     # Rank-preserving scores match the canonical export and remove evaluator
     # ambiguity when the original retrieval backend emitted tied scores.
     scored_run = {
@@ -240,15 +363,28 @@ def evaluate_ir_measures(
             doc_id: 1.0 / rank
             for rank, (doc_id, _score) in enumerate(run.get(qid, []), start=1)
         }
-        for qid in positive
+        for qid in qrels
     }
-    measures = {
+    graded_measure = module.nDCG @ 10
+    binary_measures = {
         "mrr@10": module.RR @ 10,
-        "ndcg@10": module.nDCG @ 10,
+        "recall@100": module.R @ 100,
         "recall@1000": module.R @ 1000,
     }
-    raw = module.calc_aggregate(list(measures.values()), positive, scored_run)
-    return {name: float(raw[measure]) for name, measure in measures.items()}
+    graded_raw = module.calc_aggregate([graded_measure], qrels, scored_run)
+    binary_qrels = binarize_graded_qrels(qrels, rel_threshold=rel_threshold)
+    binary_raw = module.calc_aggregate(
+        list(binary_measures.values()),
+        binary_qrels,
+        scored_run,
+    )
+    return {
+        "ndcg@10": float(graded_raw[graded_measure]),
+        **{
+            name: float(binary_raw[measure])
+            for name, measure in binary_measures.items()
+        },
+    }
 
 
 def compare_metric_sets(
@@ -256,15 +392,22 @@ def compare_metric_sets(
     external: dict[str, float],
     *,
     tolerance: float,
+    metric_names: tuple[str, ...] = DEFAULT_METRIC_NAMES,
 ) -> dict[str, float]:
     """Return absolute deltas or raise when any headline metric disagrees."""
     if tolerance < 0 or not math.isfinite(tolerance):
         raise ValueError("tolerance must be a finite non-negative number")
-    names = ("mrr@10", "ndcg@10", "recall@1000")
-    missing = [name for name in names if name not in internal or name not in external]
+    missing = [
+        name
+        for name in metric_names
+        if name not in internal or name not in external
+    ]
     if missing:
         raise MetricCrossCheckError(f"missing metrics: {', '.join(missing)}")
-    deltas = {name: abs(float(internal[name]) - float(external[name])) for name in names}
+    deltas = {
+        name: abs(float(internal[name]) - float(external[name]))
+        for name in metric_names
+    }
     failures = {name: delta for name, delta in deltas.items() if delta > tolerance}
     if failures:
         details = ", ".join(f"{name} delta={delta:.3g}" for name, delta in failures.items())
@@ -283,6 +426,7 @@ def run_trec_cross_check(
     qrels_format: QrelsFormat = "auto",
     backend: Literal["auto", "ir-measures", "none"] = "auto",
     tolerance: float = 1e-12,
+    rel_threshold: int = DEFAULT_REL_THRESHOLD,
     ir_measures_module: Any | None = None,
 ) -> dict[str, Any]:
     """Validate artifacts, export canonical files, and cross-check metrics."""
@@ -298,32 +442,42 @@ def run_trec_cross_check(
         for judgments in qrels.values()
         for relevance in judgments.values()
     }
-    if not relevance_levels <= {0, 1}:
-        raise ValueError(
-            f"{qrels_source}: only binary relevance levels 0 and 1 are supported; "
-            f"got {sorted(relevance_levels)}"
-        )
+    if any(relevance < 0 for relevance in relevance_levels):
+        raise ValueError(f"{qrels_source}: relevance levels must be non-negative")
+    _validate_rel_threshold(rel_threshold)
     destination.mkdir(parents=True, exist_ok=True)
     canonical_run = destination / "run.trec"
     canonical_qrels = destination / "qrels.trec"
     write_canonical_run(canonical_run, run, run_id=run_id)
     write_canonical_qrels(canonical_qrels, qrels)
 
-    internal = evaluate_internal_trec_scope(run, qrels)
-    if not internal.get("n_queries"):
-        raise ValueError(f"{qrels_source}: qrels contain no positive judgments")
+    internal = evaluate_internal_trec_scope(
+        run,
+        qrels,
+        rel_threshold=rel_threshold,
+    )
     report: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "source_run": str(run_source),
         "source_qrels": str(qrels_source),
         "canonical_run": str(canonical_run),
         "canonical_qrels": str(canonical_qrels),
         "run_id": run_id,
         "qrels_format": qrels_format,
+        "evaluation": {
+            **trec_metric_contract(rel_threshold=rel_threshold),
+            "qrels_source": str(qrels_source),
+            "qrels_type": "graded" if not relevance_levels <= {0, 1} else "binary",
+            "relevance_levels": sorted(relevance_levels),
+            "internal_backend": "msmarco_genqa.evaluation.trec",
+        },
         "scope": {
             "run_queries": len(run),
             "qrels_queries": len(qrels),
             "evaluated_queries": int(internal.get("n_queries", 0)),
+            "run_topic_count": len(set(run) & set(qrels)),
+            "missing_run_topic_count": len(set(qrels) - set(run)),
+            "judged_topic_coverage": len(set(run) & set(qrels)) / len(qrels),
         },
         "internal_metrics": internal,
         "external_evaluator": {
@@ -335,10 +489,12 @@ def run_trec_cross_check(
     cross_check_error: MetricCrossCheckError | None = None
     if backend != "none":
         try:
+            evaluator_module = ir_measures_module or _load_ir_measures()
             external = evaluate_ir_measures(
                 run,
                 qrels,
-                module=ir_measures_module,
+                rel_threshold=rel_threshold,
+                module=evaluator_module,
             )
         except OptionalEvaluatorUnavailable as exc:
             if backend == "ir-measures":
@@ -350,7 +506,7 @@ def run_trec_cross_check(
             except MetricCrossCheckError as exc:
                 deltas = {
                     name: abs(float(internal[name]) - float(external[name]))
-                    for name in ("mrr@10", "ndcg@10", "recall@1000")
+                    for name in DEFAULT_METRIC_NAMES
                     if name in internal and name in external
                 }
                 cross_check_error = exc
@@ -360,6 +516,7 @@ def run_trec_cross_check(
             report["external_evaluator"].update(
                 {
                     "backend": "ir-measures",
+                    "version": _ir_measures_version(evaluator_module),
                     "status": status,
                     "metrics": external,
                     "absolute_deltas": deltas,
