@@ -103,6 +103,33 @@ Expected headline value:
 First-run runtime is about 30 minutes on a recent CPU laptop. Later runs can
 reuse the cached BM25 index and finish faster.
 
+## Reproducing the Published TREC-DL Evidence
+
+The fast external-evidence target is:
+
+```bash
+make reproduce-trec-eval
+```
+
+It downloads the pinned GitHub Release asset, verifies the ZIP size and
+SHA-256 digest, validates every member against the bundle manifest, and
+recomputes the BM25 and BM25-plus-cross-encoder metrics for TREC-DL 2019 and
+2020. Public qrels are recovered through `ir_datasets`; no private credentials
+are required. The command writes checked outputs under
+`outputs/reproductions/trec_dl_baselines_v1/evaluation/`.
+
+This is an evidence reproduction, not a new model run: it takes the published
+rankings as input and avoids rebuilding the full 8.8M-passage index or
+rerunning the cross-encoder. Use the full-corpus commands in
+`docs/trec_dl_external_validity.md` when the retrieval pipeline itself must be
+rerun.
+
+The Git-tracked pointer is
+`artifacts/trec_dl_baselines_v1.json`. It pins the immutable release tag, asset
+name, byte size, archive hash, experiment commit, and compact source record.
+The release contains document identifiers and scores only; it does not
+redistribute MS MARCO passage/query text, qrels mirrors, or model weights.
+
 ## Full Pipeline Plan
 
 Print the executable plan:
