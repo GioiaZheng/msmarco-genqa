@@ -66,6 +66,27 @@ Reranking reorders dense top-100 results:
 Recall@100 is unchanged because reranking only changes order within the
 retrieved top-100.
 
+## External Retrieval Benchmark: TREC-DL 2019/2020
+
+The full-corpus BM25 first stage and fixed top-100 cross-encoder reranker were
+also evaluated on the deeply judged TREC-DL passage tracks:
+
+| Track | Metric | BM25 | BM25 + CE | Delta |
+|---|---|---:|---:|---:|
+| 2019 (43 topics) | MRR@10, rel >= 2 | 0.5471 | 0.8787 | +0.3315 |
+| 2019 (43 topics) | nDCG@10, graded | 0.4239 | 0.7210 | +0.2971 |
+| 2020 (54 topics) | MRR@10, rel >= 2 | 0.6280 | 0.8256 | +0.1976 |
+| 2020 (54 topics) | nDCG@10, graded | 0.4773 | 0.6801 | +0.2027 |
+
+All judged topics remain in the denominator, and an independent `ir-measures`
+cross-check reproduced the metrics with a maximum absolute delta of
+`2.22e-16`. The complete protocol, runtime notes, query-level lift analysis,
+and artifact hashes are in
+[`docs/trec_dl_external_validity.md`](docs/trec_dl_external_validity.md).
+
+These are validated retrieval results. They do not show that the retrieval
+gain transfers to answer generation on TREC-DL.
+
 ## Query-Type Slice
 
 Token-F1 lift by query type:
@@ -95,6 +116,14 @@ have different evaluation boundaries:
 The dense sample includes all dev relevant documents by construction. This is
 useful for isolating model behavior, but it is optimistic relative to full
 corpus retrieval.
+
+### Conclusion Boundary
+
+| Status | Boundary |
+|---|---|
+| Validated | The paired T5-small generation comparison on MS MARCO `dev/small`; full-corpus BM25 plus cross-encoder retrieval on TREC-DL 2019/2020. |
+| Implemented but not yet evaluated | The T5-base generator-capacity sweep and configurable alternative-generator paths. Their existence is not an empirical result. |
+| Not supported by current evidence | TREC-DL retrieval lift transfers to generation; a fair full-corpus dense-vs-BM25 conclusion; cross-domain RAG generalization. |
 
 ## Grounding
 

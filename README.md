@@ -40,6 +40,15 @@ ACL-style findings write-up is
 | Does retrieval lift transfer to generation? | BM25 top-3 → T5-small vs reranked top-3 → T5-small | Token-F1 0.1966 → 0.3677 |
 | Is the generation lift statistically reliable? | 6,980 paired qids, 10,000 bootstrap resamples | ΔToken-F1 +0.1711, 95% CI [+0.1632, +0.1789] |
 
+## Evidence status
+
+| Status | What can be claimed | Evidence and boundary |
+|---|---|---|
+| Validated result | On MS MARCO `dev/small`, reranked dense top-3 improves T5-small surface metrics over BM25 top-3 on 6,980 paired queries. | [`RESULTS.md`](RESULTS.md) reports the paired metrics and confidence intervals. Dense retrieval and reranking use the documented 50k qrels-anchored candidate pool, not a full-corpus dense first stage. |
+| Validated external retrieval benchmark | On TREC-DL 2019 and 2020, cross-encoder reranking improves MRR@10 and graded nDCG@10 over a full-corpus BM25 first stage on all 43 and 54 judged topics. | [`docs/trec_dl_external_validity.md`](docs/trec_dl_external_validity.md) records the run commit, models, candidate depths, runtimes, independent `ir-measures` cross-check, and links to the checked artifact. This is retrieval evidence, not generation evidence. |
+| Implemented, evaluation pending | The T5-base generator-capacity sweep driver and configurable alternative-generator paths exist. | [`scripts/run_generator_capacity_sweep.py`](scripts/run_generator_capacity_sweep.py) and the Phase A protocol are implemented, but no T5-base or FLAN-T5 headline result is claimed until a complete versioned run lands. |
+| Not established | TREC-DL retrieval gains transfer to grounded generation; dense retrieval beats BM25 under a fair full-corpus candidate condition; or the findings generalize beyond the MS MARCO passage collection. | These remain research questions, not conclusions of the committed artifacts. |
+
 ## Implemented components
 
 | Area | What is included |
