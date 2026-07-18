@@ -4,12 +4,28 @@ from __future__ import annotations
 
 import pytest
 
+from scripts.analyze_retrieval_lift import load_qrels_tsv
 from msmarco_genqa.evaluation.retrieval import (
     compare_retrieval_runs_per_query,
     first_relevant_rank,
     query_retrieval_delta,
     retrieval_shift_bucket,
 )
+
+
+def test_lift_qrels_respect_graded_relevance_threshold(tmp_path):
+    qrels_path = tmp_path / "graded.qrels"
+    qrels_path.write_text("q1 0 d1 1\nq1 0 d2 2\nq1 0 d3 3\n")
+
+    assert load_qrels_tsv(qrels_path, rel_threshold=2) == {"q1": {"d2", "d3"}}
+
+
+def test_lift_qrels_reject_invalid_threshold(tmp_path):
+    qrels_path = tmp_path / "graded.qrels"
+    qrels_path.write_text("q1 0 d1 1\n")
+
+    with pytest.raises(ValueError, match="at least 1"):
+        load_qrels_tsv(qrels_path, rel_threshold=0)
 
 
 def test_first_relevant_rank_respects_cutoff():
