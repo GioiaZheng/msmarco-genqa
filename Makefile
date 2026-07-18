@@ -4,7 +4,7 @@
 # Python dependencies are installed (``pip install -r requirements.txt &&
 # pip install -e .``).
 
-.PHONY: help install test test-slow lint check-results check-fixture-metrics check-lockfile check-notebooks check-artifacts export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-small reproduce-baseline
+.PHONY: help install test test-slow lint check-results check-fixture-metrics check-lockfile check-notebooks check-artifacts export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-small reproduce-baseline reproduce-trec-eval build-trec-release
 
 PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
@@ -29,6 +29,8 @@ help:
 	@echo "  make serve-dev            -- start the optional FastAPI generation service"
 	@echo "  make reproduce-small      -- build the tiny trace-export interop fixture"
 	@echo "  make reproduce-baseline   -- re-run + verify the BM25 baseline (~30 min CPU laptop)"
+	@echo "  make reproduce-trec-eval  -- fetch + verify published TREC-DL runs and metrics"
+	@echo "  make build-trec-release   -- build the maintainer release ZIP from canonical runs"
 
 # ----------------------------------------------------------------------------- #
 # Install
@@ -134,3 +136,15 @@ reproduce-small:
 reproduce-baseline: install
 	mgq-retrieve --require-clean-tree
 	$(PYTHON) scripts/verify_reproduction.py outputs/bm25_baseline
+
+# Fast evidence reproduction: download the public text-only run bundle,
+# verify both archive and member hashes, recover the public judged qrels via
+# ir_datasets, and recompute the four reported TREC-DL result rows. This does
+# not rebuild the 8.8M-passage index or rerun the cross-encoder.
+reproduce-trec-eval:
+	$(PYTHON) -m msmarco_genqa.cli.trec_release reproduce
+
+# Maintainer-only packaging target. The generated ZIP remains under ignored
+# outputs/; its exact hash and size are pinned by artifacts/trec_dl_baselines_v1.json.
+build-trec-release:
+	$(PYTHON) -m msmarco_genqa.cli.trec_release build --output outputs/releases/trec-dl-baselines-v1.zip

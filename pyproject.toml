@@ -106,6 +106,7 @@ mgq-pipeline = "msmarco_genqa.cli.pipeline:main"
 mgq-serve    = "msmarco_genqa.service.app:main"
 rag-eval     = "msmarco_genqa.cli.rag_eval:main"
 mgq-trec-eval = "msmarco_genqa.cli.trec_eval:main"
+mgq-trec-release = "msmarco_genqa.cli.trec_release:main"
 
 
 # --------------------------------------------------------------------------- #

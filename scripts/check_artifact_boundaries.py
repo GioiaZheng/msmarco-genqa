@@ -32,6 +32,7 @@ DATA_PREFIXES = (
     "data/processed/",
     "data/cache/",
 )
+ARTIFACT_POINTER_PREFIX = "artifacts/"
 
 ALLOWED_EXACT = {
     "data/raw/.gitkeep",
@@ -78,6 +79,14 @@ def check_paths(
 
         file_path = project_root / path
         suffix = file_path.suffix.lower()
+
+        if path.startswith(ARTIFACT_POINTER_PREFIX):
+            if path != "artifacts/README.md" and suffix != ".json":
+                errors.append(f"{path}: artifacts/ may contain only JSON pointers and README.md")
+                continue
+            if file_path.stat().st_size > max_pointer_bytes:
+                errors.append(f"{path}: external artifact pointers must stay small")
+            continue
 
         if path.startswith(DATA_PREFIXES):
             errors.append(f"{path}: data payloads must stay outside Git")
