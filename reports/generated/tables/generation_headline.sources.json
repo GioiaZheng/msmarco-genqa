@@ -1,6 +1,7 @@
 {
   "schema": "msmarco-genqa.table-sources.v1",
   "table_id": "generation_headline",
+  "hash_convention": "sha256_lf",
   "sources": [
     {
       "path": "reports/generated/artifacts/generation_surface.json",

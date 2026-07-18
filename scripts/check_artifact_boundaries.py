@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -43,10 +45,10 @@ ALLOWED_EXACT = {
 }
 
 
-def tracked_files(project_root: Path) -> list[str]:
+def tracked_files(project_root: Path, *, git_executable: str = "git") -> list[str]:
     """Return tracked repository paths using forward slashes."""
     result = subprocess.run(
-        ["git", "ls-files", "-z"],
+        [git_executable, "ls-files", "-z"],
         cwd=project_root,
         check=True,
         stdout=subprocess.PIPE,
@@ -120,11 +122,22 @@ def main(argv: list[str] | None = None) -> int:
         default=250_000,
         help="Maximum size for pointer files such as .dvc records.",
     )
+    parser.add_argument(
+        "--git-executable",
+        default=None,
+        help="Git executable used to enumerate tracked files.",
+    )
     args = parser.parse_args(argv)
 
     project_root = args.project_root.resolve()
+    git_executable = (
+        args.git_executable
+        or os.environ.get("GIT_EXECUTABLE")
+        or shutil.which("git")
+        or "git"
+    )
     errors = check_paths(
-        tracked_files(project_root),
+        tracked_files(project_root, git_executable=git_executable),
         project_root=project_root,
         max_pointer_bytes=args.max_pointer_bytes,
     )

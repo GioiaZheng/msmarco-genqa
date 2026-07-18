@@ -1,0 +1,280 @@
+{
+  "schema": "msmarco-genqa.artifact-registry.v1",
+  "registry_id": "canonical-headline-evidence",
+  "hash_convention": "sha256_lf normalizes CRLF and CR text newlines to LF before hashing",
+  "current_lockfile": {
+    "path": "requirements-lock.txt",
+    "sha256_lf": "cc0420bbd69869b353ad2a74e6e62b23370e2ecb5718ae333d8d6302b1497715",
+    "last_dependency_change_commit": "fe7077994b9a4eea643a7a1db51ae431a05b3c8e",
+    "reproduction_note": "docs/lockfile_reproduction.md",
+    "validation": [
+      "python -m pip install --dry-run -r requirements-lock.txt",
+      "python scripts/check_fixture_headline_metrics.py",
+      "python scripts/export_report_tables.py"
+    ]
+  },
+  "entries": [
+    {
+      "id": "bm25-full-corpus-dev-small",
+      "artifact_record": {
+        "path": "reports/generated/artifacts/bm25_full_corpus.json",
+        "sha256_lf": "d9fad7666d70b48a75d62591b6704f49f1696c6d6e5a779f33b965cec84b0603",
+        "schema": "msmarco-genqa.table-artifact.v1",
+        "artifact_id": "bm25_full_corpus"
+      },
+      "provenance": {
+        "status": "historical_partial",
+        "production_commit": null,
+        "evidence_commits": [
+          "3c8c912e2195e4cea24a1519d841648c8751db11"
+        ],
+        "report_anchor": {
+          "tag": "v1.0-first-report",
+          "commit": "cd8edec45f14236f9836dc7f55aabbb01bde75f5"
+        },
+        "manifests": [
+          {
+            "path": "outputs/bm25_baseline/provenance.backfill.json",
+            "kind": "backfill",
+            "availability": "local_only"
+          }
+        ]
+      },
+      "config_snapshots": [
+        {
+          "path": "configs/baseline.yaml",
+          "commit": "3c8c912e2195e4cea24a1519d841648c8751db11",
+          "sha256_lf": "41925d3df7592f95810e357fd0a9c089d8b10fee2da10686da59c2065aaaabc7",
+          "runtime_use": "unknown"
+        }
+      ],
+      "lockfile_snapshots": [
+        {
+          "path": "requirements-lock.txt",
+          "commit": "3c8c912e2195e4cea24a1519d841648c8751db11",
+          "sha256_lf": null,
+          "status": "not_present"
+        }
+      ],
+      "metric_summary": {
+        "mrr@10": 0.1703,
+        "recall@100": 0.6212,
+        "recall@1000": 0.8154
+      },
+      "notes": [
+        "The original production commit and installed environment were not captured.",
+        "The evidence commit is the earliest retained commit that explicitly identifies 0.1703 as the official baseline; it is not asserted to be the production commit."
+      ]
+    },
+    {
+      "id": "dense-sample-and-cross-encoder",
+      "artifact_record": {
+        "path": "reports/generated/artifacts/retrieval_dense_rerank.json",
+        "sha256_lf": "1b60a7eaaf93794937abfed0d2a07deec8d777b5631884ad21677a6b8ad8e123",
+        "schema": "msmarco-genqa.table-artifact.v1",
+        "artifact_id": "retrieval_dense_rerank"
+      },
+      "provenance": {
+        "status": "historical_partial",
+        "production_commit": null,
+        "evidence_commits": [
+          "8acfc0c63259112f65dfe7b2ddab308e123c7862",
+          "4048943726b702341def761febc096d66393904f"
+        ],
+        "report_anchor": {
+          "tag": "v1.0-first-report",
+          "commit": "cd8edec45f14236f9836dc7f55aabbb01bde75f5"
+        },
+        "manifests": [
+          {
+            "path": "outputs/dense_retrieval/provenance.backfill.json",
+            "kind": "backfill",
+            "availability": "local_only"
+          },
+          {
+            "path": "outputs/cross_encoder_rerank/provenance.backfill.json",
+            "kind": "backfill",
+            "availability": "local_only"
+          }
+        ]
+      },
+      "config_snapshots": [
+        {
+          "path": "configs/baseline.yaml",
+          "commit": "8acfc0c63259112f65dfe7b2ddab308e123c7862",
+          "sha256_lf": "e731b977c655f54f26e6a8c3189d30cc0fca6f38feac094d95c87c858c1e221c",
+          "runtime_use": "unknown"
+        },
+        {
+          "path": "configs/baseline.yaml",
+          "commit": "4048943726b702341def761febc096d66393904f",
+          "sha256_lf": "cc47bf91733b801da8537adf4311b6e68a247c98b937b8cca17552bbfe3eb2a1",
+          "runtime_use": "unknown"
+        }
+      ],
+      "lockfile_snapshots": [
+        {
+          "path": "requirements-lock.txt",
+          "commit": "8acfc0c63259112f65dfe7b2ddab308e123c7862",
+          "sha256_lf": null,
+          "status": "not_present"
+        },
+        {
+          "path": "requirements-lock.txt",
+          "commit": "4048943726b702341def761febc096d66393904f",
+          "sha256_lf": "947ec2cd5b5cf0cc85b687787023a5046d1406c29fbf8de1986b1150b4447a67",
+          "status": "repository_snapshot"
+        }
+      ],
+      "metric_summary": {
+        "bm25_sample_mrr@10": 0.6948,
+        "dense_mrr@10": 0.883,
+        "dense_ndcg@10": 0.9041,
+        "dense_recall@100": 0.9946,
+        "dense_ce_mrr@10": 0.9304,
+        "dense_ce_ndcg@10": 0.9434
+      },
+      "notes": [
+        "Dense and BM25 sample metrics use the same qrels-anchored 50k passage sample and are not directly comparable to full-corpus BM25.",
+        "Backfills enumerate the missing production commit, argv, package, input-byte, and effective-seeding evidence."
+      ]
+    },
+    {
+      "id": "generation-full-dev-paired",
+      "artifact_record": {
+        "path": "reports/generated/artifacts/generation_surface.json",
+        "sha256_lf": "8703a291a16be9f5bc8fc80d0e8436fbbaf8e256c90b4079993fd39493c85728",
+        "schema": "msmarco-genqa.table-artifact.v1",
+        "artifact_id": "generation_surface"
+      },
+      "provenance": {
+        "status": "historical_partial",
+        "production_commit": null,
+        "evidence_commits": [
+          "16f4d8283354f9db79198831f6b83e2980e81eb1"
+        ],
+        "report_anchor": {
+          "tag": "v1.0-first-report",
+          "commit": "cd8edec45f14236f9836dc7f55aabbb01bde75f5"
+        },
+        "manifests": [
+          {
+            "path": "outputs/generation_bm25_full/manifest.json",
+            "kind": "runtime_manifest",
+            "availability": "not_preserved"
+          },
+          {
+            "path": "outputs/generation_reranked_full/manifest.json",
+            "kind": "runtime_manifest",
+            "availability": "not_preserved"
+          },
+          {
+            "path": "outputs/generation_bootstrap_full/metrics.json",
+            "kind": "evaluation_record",
+            "availability": "not_preserved"
+          }
+        ]
+      },
+      "config_snapshots": [
+        {
+          "path": "configs/baseline.yaml",
+          "commit": "16f4d8283354f9db79198831f6b83e2980e81eb1",
+          "sha256_lf": "cc47bf91733b801da8537adf4311b6e68a247c98b937b8cca17552bbfe3eb2a1",
+          "runtime_use": "unknown"
+        }
+      ],
+      "lockfile_snapshots": [
+        {
+          "path": "requirements-lock.txt",
+          "commit": "16f4d8283354f9db79198831f6b83e2980e81eb1",
+          "sha256_lf": "947ec2cd5b5cf0cc85b687787023a5046d1406c29fbf8de1986b1150b4447a67",
+          "status": "repository_snapshot"
+        }
+      ],
+      "metric_summary": {
+        "bm25_token_f1": 0.1966,
+        "reranked_token_f1": 0.3677,
+        "token_f1_delta": 0.1711,
+        "token_f1_delta_ci95_low": 0.1632,
+        "token_f1_delta_ci95_high": 0.1789,
+        "rouge_l_delta": 0.1742
+      },
+      "notes": [
+        "Both generation arms cover the same 6,980 query ids; the upstream retrieval source is the controlled difference.",
+        "The evidence commit records the complete reported comparison, but the runtime manifests and original installed environment were not preserved."
+      ]
+    },
+    {
+      "id": "trec-dl-2019-2020-bm25-ce",
+      "artifact_record": {
+        "path": "reports/generated/artifacts/trec_dl_bm25_ce.json",
+        "sha256_lf": "0f103e4eb0b0bf658b7b053010b6c146940fcc9d60655f0bffdf742a339af25c",
+        "schema": "msmarco-genqa.table-artifact.v1",
+        "artifact_id": "trec_dl_bm25_ce"
+      },
+      "external_pointer": {
+        "path": "artifacts/trec_dl_baselines_v1.json",
+        "sha256_lf": "dc3b85d353de7c69ce2cbb7d7f0dde26027525befaf96ff6aea74d38652c8566",
+        "schema": "msmarco-genqa.external-artifact-pointer.v1",
+        "artifact_id": "trec-dl-bm25-ce-2019-2020-v1"
+      },
+      "provenance": {
+        "status": "exact",
+        "production_commit": "0362a48bb4d000a93f5af5c26a4de934db37e74f",
+        "evidence_commits": [
+          "1d12d5131f8c130d52389ce61e2a88007b5c294f"
+        ],
+        "manifests": [
+          {
+            "path": "outputs/trec_dl_2019/bm25/manifest.json",
+            "kind": "runtime_manifest",
+            "availability": "local_only"
+          },
+          {
+            "path": "outputs/trec_dl_2019/cross_encoder_rerank/manifest.json",
+            "kind": "runtime_manifest",
+            "availability": "local_only"
+          },
+          {
+            "path": "outputs/trec_dl_2020/bm25/manifest.json",
+            "kind": "runtime_manifest",
+            "availability": "local_only"
+          },
+          {
+            "path": "outputs/trec_dl_2020/cross_encoder_rerank/manifest.json",
+            "kind": "runtime_manifest",
+            "availability": "local_only"
+          }
+        ]
+      },
+      "config_snapshots": [
+        {
+          "path": "outputs/trec_dl_2019/bm25/resolved_config.yaml",
+          "commit": "0362a48bb4d000a93f5af5c26a4de934db37e74f",
+          "sha256_lf": "d65f5719d5999fb339de97f5f06115d9c08324042ed7b508c701659dfbf4e23d",
+          "runtime_use": "exact_local_artifact"
+        }
+      ],
+      "lockfile_snapshots": [
+        {
+          "path": "requirements-lock.txt",
+          "commit": "0362a48bb4d000a93f5af5c26a4de934db37e74f",
+          "sha256_lf": "cc0420bbd69869b353ad2a74e6e62b23370e2ecb5718ae333d8d6302b1497715",
+          "status": "repository_snapshot"
+        }
+      ],
+      "metric_summary": {
+        "2019_bm25_mrr@10": 0.5471483942414175,
+        "2019_bm25_ce_mrr@10": 0.8786821705426356,
+        "2019_bm25_ce_ndcg@10": 0.7210235158468563,
+        "2020_bm25_mrr@10": 0.6280055849500293,
+        "2020_bm25_ce_mrr@10": 0.8256172839506173,
+        "2020_bm25_ce_ndcg@10": 0.6800565227602772
+      },
+      "notes": [
+        "The public release pointer recovers the exact four ranked runs without private credentials.",
+        "Runtime manifests and resolved configs remain local because they contain machine-specific paths; their hashes are retained in the checked artifact record."
+      ]
+    }
+  ]
+}

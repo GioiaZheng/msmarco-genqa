@@ -1,0 +1,30 @@
+{
+  "schema": "msmarco-genqa.table-artifact.v1",
+  "artifact_id": "bm25_full_corpus",
+  "metric_schema": "retrieval.full_corpus_bm25.v1",
+  "query_set": {
+    "id": "msmarco-passage-dev-small",
+    "n_queries": 6980
+  },
+  "model_revision": {
+    "backend": "bm25s",
+    "corpus": "msmarco-passage",
+    "corpus_scope": "full",
+    "corpus_size": 8841823,
+    "retrieval_depth": 1000
+  },
+  "tables": [
+    {
+      "id": "bm25_full_corpus",
+      "columns": [
+        {"heading": "Metric", "align": "l"},
+        {"heading": "\\bmtwofive{}", "align": "r"}
+      ],
+      "rows": [
+        {"cells": ["\\mrr{}", "0.1703"]},
+        {"cells": ["\\recallH{}", "0.6212"]},
+        {"cells": ["\\recallK{}", "0.8154"]}
+      ]
+    }
+  ]
+}

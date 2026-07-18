@@ -30,6 +30,12 @@ small pointer files is documented in `docs/artifact_versioning.md`. Use
 `make check-artifacts` to verify that common large artifact formats and
 generated run payloads have not entered Git.
 
+The canonical headline-evidence index is `artifacts/registry.json`. It joins
+the checked metric artifacts to commits, configuration and lockfile snapshots,
+manifest availability, and explicit provenance limitations. Its contract is
+documented in `docs/artifact_registry.md`; dependency snapshot changes follow
+`docs/lockfile_reproduction.md`.
+
 Important scale reference:
 
 | Item | Value |
@@ -46,6 +52,7 @@ These commands are intended for local development and CI:
 make test
 make lint
 make check-artifacts
+make check-registry
 python scripts/run_pipeline.py --dry-run
 ```
 
