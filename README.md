@@ -262,17 +262,24 @@ reranking only reorders the top-100. A 1 000-query pilot produced
 MRR Δ +0.0435, nDCG Δ +0.0398 — close to the full-dev deltas, so the
 gain is not specific to the subsample.
 
-### TREC-DL benchmark readiness
+### TREC-DL full-corpus benchmark
 
-The full-corpus BM25 and BM25-plus-cross-encoder runners support the judged
-TREC-DL 2019 and 2020 passage tracks. Runner integration, output isolation, and
-benchmark provenance are complete. The graded relevance path now reports
-nDCG@10 from the original labels, thresholded MRR/recall, topic coverage, and
-an `ir-measures` cross-check under
-[#153](https://github.com/GioiaZheng/msmarco-genqa/issues/153). The reportable
-two-year benchmark remains open in
-[#154](https://github.com/GioiaZheng/msmarco-genqa/issues/154). No TREC-DL
-headline result is claimed yet.
+BM25 and BM25-plus-cross-encoder were run separately on the judged TREC-DL
+2019 and 2020 passage tracks against all 8,841,823 MS MARCO passages. Graded
+nDCG keeps the original 0–3 labels; MRR and recall use `rel >= 2`.
+
+| Track | System | MRR@10 | nDCG@10 | Recall@100 | Recall@1000 |
+|---|---|---:|---:|---:|---:|
+| 2019 (43 topics) | BM25 | 0.5471 | 0.4239 | 0.4469 | 0.6983 |
+| 2019 (43 topics) | BM25 + CE top-100 | **0.8787** | **0.7210** | 0.4469 | n/a |
+| 2020 (54 topics) | BM25 | 0.6280 | 0.4773 | 0.5105 | 0.7521 |
+| 2020 (54 topics) | BM25 + CE top-100 | **0.8256** | **0.6801** | 0.5105 | n/a |
+
+The reranker improves ordering on both tracks without changing its fixed
+top-100 candidate set. All four runs cover every judged topic, and independent
+`ir-measures` 0.4.3 checks agree within `2.22e-16`. The CE run has only 100
+documents per topic, so CE Recall@1000 is intentionally not reported. See the
+[full protocol, runtime, provenance, and error review](docs/trec_dl_external_validity.md).
 
 ### Generation × retrieval source
 
@@ -917,9 +924,9 @@ Limitations to be aware of:
 - **CPU-only retrieve is slow at 8.8 M docs.** ~70 min for 6 980 queries. `n_threads=-1` may help; not yet benchmarked on this corpus.
 - **Generation: pretrained T5-small, no fine-tuning.** Numbers will be low on overlap-based metrics. Fine-tuning is in scope for a later iteration.
 - **NumPy 2.x runtime warning.** Some compiled deps (torch) were built against NumPy 1.x. Cosmetic; downgrade to `numpy<2` if it ever causes a real failure.
-- **TREC-DL headline results are not yet reportable.** The graded evaluator and
-  independent cross-check are available, but the full BM25-vs-reranked runs
-  for both tracks still need to be produced and audited under #154.
+- **TREC-DL is retrieval evidence, not generation evidence.** The two judged
+  tracks validate full-corpus BM25 and top-100 reranking. They do not establish
+  downstream answer quality or cross-domain RAG generalization.
 
 ## 8. Next
 
@@ -927,11 +934,9 @@ Longer-horizon research and engineering directions are tracked in
 [`ROADMAP.md`](ROADMAP.md). The list below is the shorter technical queue
 closest to the current experimental surface.
 
-- **TREC-DL full-corpus benchmark.** Complete
-  [#154](https://github.com/GioiaZheng/msmarco-genqa/issues/154): run BM25 and
-  BM25 plus the existing cross-encoder on the 2019 and 2020 judged topics,
-  report the tracks separately, and keep every number traceable to its run and
-  manifest.
+- **TREC-DL reference expansion.** Compare the frozen BM25-plus-MiniLM result
+  against learned sparse or late-interaction retrieval only under the same
+  per-track qrels, candidate-depth, and independent-evaluator contract.
 - **Top-k Pareto.** K ∈ {50, 100, 200} perf-latency Pareto on
   both first stages (1 000-q subsample for K=50/200; K=100 reuses the reranker
   full-dev). Queued.
