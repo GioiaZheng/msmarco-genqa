@@ -1,0 +1,11 @@
+% Refresh with: python scripts/export_report_tables.py
+\begin{tabular}{llrrrr}
+    \toprule
+    Dataset & System & \mrr{} & \ndcg{} & \recallH{} & \recallK{} \\
+    \midrule
+    NFCorpus & \bmtwofive{} & 0.5186 & 0.3064 & 0.2378 & 0.4572 \\
+    NFCorpus & \bmtwofive{} $+$ CE & 0.5662 & 0.3411 & 0.2378 & n/a \\
+    SciFact & \bmtwofive{} & 0.6312 & 0.6617 & 0.8759 & 0.9606 \\
+    SciFact & \bmtwofive{} $+$ CE & 0.6517 & 0.6787 & 0.8759 & n/a \\
+    \bottomrule
+\end{tabular}
