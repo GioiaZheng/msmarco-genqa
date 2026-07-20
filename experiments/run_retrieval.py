@@ -37,11 +37,13 @@ from msmarco_genqa.data.benchmark import (
     MSMARCO_DEV_SMALL,
     SUPPORTED_DATASETS,
     BenchmarkSpec,
+    default_retrieval_index_dir,
     default_retrieval_output_dir,
     get_benchmark_spec,
+    load_benchmark_corpus,
     load_benchmark_queries,
+    lookup_document_text,
 )
-from msmarco_genqa.data.msmarco import load_msmarco_passage
 from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
 from msmarco_genqa.evaluation.trec import evaluate_trec_retrieval, trec_metric_contract
 from msmarco_genqa.retrieval.bm25 import BM25Retriever
@@ -187,7 +189,15 @@ def main() -> None:
     seed_coverage = set_global_seed(seed)
 
     output_dir = resolve_output_dir(args, cfg, benchmark_spec)
-    index_dir = PROJECT_ROOT / cfg["retrieval"]["index_dir"]
+    index_dir_config = default_retrieval_index_dir(
+        benchmark_spec,
+        cfg["retrieval"]["index_dir"],
+    )
+    index_dir = (
+        index_dir_config
+        if index_dir_config.is_absolute()
+        else PROJECT_ROOT / index_dir_config
+    )
     cache_dir = PROJECT_ROOT / cfg["data"].get("cache_dir", "data/raw")
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -203,7 +213,8 @@ def main() -> None:
 
     # ---- 1. Data ----
     have_index = (index_dir / "config.json").exists() and not args.rebuild_index
-    corpus_data = load_msmarco_passage(
+    corpus_data = load_benchmark_corpus(
+        benchmark_spec,
         cache_dir=cache_dir,
         load_corpus=not have_index,
         limit=corpus_limit,
@@ -211,7 +222,6 @@ def main() -> None:
     benchmark = load_benchmark_queries(
         args.dataset,
         cache_dir=cache_dir,
-        msmarco_data=corpus_data,
     )
     query_text_by_qid, query_transform_summary, query_transform_outputs = (
         materialize_query_transform(
@@ -377,11 +387,11 @@ def main() -> None:
     logger.info("Reading %s for evaluation...", run_path)
     runs, scores_by_qid = _read_runs_from_tsv(run_path)
 
-    if benchmark_spec.is_trec_dl:
+    if benchmark_spec.has_graded_qrels:
         metrics = evaluate_trec_retrieval(
             runs=runs,
             qrels=benchmark.graded_qrels,
-            rel_threshold=benchmark_spec.rel_threshold or 2,
+            rel_threshold=benchmark_spec.rel_threshold or 1,
             ks_mrr=tuple(ks_mrr),
             ks_recall=tuple(ks_recall),
             ks_ndcg=tuple(ks_ndcg),
@@ -405,13 +415,15 @@ def main() -> None:
         def get_text(doc_id: str) -> str:
             return id_to_text.get(doc_id, "")
     else:
-        from msmarco_genqa.data.msmarco import get_docs_store
-
-        store = get_docs_store(cache_dir=cache_dir)
+        store = corpus_data.docs_store or load_benchmark_corpus(
+            benchmark_spec,
+            cache_dir=cache_dir,
+            load_corpus=False,
+        ).docs_store
 
         def get_text(doc_id: str) -> str:
             try:
-                return store.get(doc_id).text
+                return lookup_document_text(store, doc_id)
             except KeyError:
                 return ""
 
@@ -464,7 +476,7 @@ def main() -> None:
     judged_qids = set(benchmark.graded_qrels)
     benchmark_metadata.update(
         {
-            "corpus_id": "msmarco-passage",
+            "corpus_id": benchmark_spec.corpus_id,
             "corpus_scope": "first-N-truncated" if corpus_limit is not None else "full",
             "run_topic_count": len(set(runs) & set(benchmark.queries)),
             "judged_topic_coverage": (
@@ -490,10 +502,10 @@ def main() -> None:
         "query_transform": query_transform_summary,
         "resumed": args.resume and bool(set(qids) - set(pending_qids)),
     }
-    if benchmark_spec.is_trec_dl:
+    if benchmark_spec.has_graded_qrels:
         payload["evaluation"] = {
             **trec_metric_contract(
-                rel_threshold=benchmark_spec.rel_threshold or 2,
+                rel_threshold=benchmark_spec.rel_threshold or 1,
             ),
             "qrels_source": benchmark_spec.dataset_id,
             "internal_backend": "msmarco_genqa.evaluation.trec",
@@ -526,6 +538,7 @@ def main() -> None:
             "n_eval_queries": len(qids),
             "n_metric_queries": n_examples,
             "dataset": benchmark_spec.dataset_id,
+            "corpus_id": benchmark_spec.corpus_id,
             "track_year": benchmark_spec.track_year,
             "judged_topic_count": benchmark.judged_topic_count,
             "run_topic_count": len(set(runs) & set(benchmark.queries)),

@@ -69,9 +69,10 @@ from msmarco_genqa.data.benchmark import (
     default_retrieval_output_dir,
     default_reranker_output_dir,
     get_benchmark_spec,
+    load_benchmark_corpus,
     load_benchmark_queries,
+    lookup_document_text,
 )
-from msmarco_genqa.data.msmarco import get_docs_store, load_msmarco_passage
 from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
 from msmarco_genqa.evaluation.trec import evaluate_trec_retrieval, trec_metric_contract
 from msmarco_genqa.reranking.cross_encoder import CrossEncoderReranker
@@ -217,10 +218,10 @@ def resolve_input_run(
 ) -> Path:
     if args.input_run is not None:
         return args.input_run if args.input_run.is_absolute() else project_root / args.input_run
-    if spec.is_trec_dl:
-        path = default_retrieval_output_dir(spec, cfg["eval_retrieval"]["output_dir"])
-        return project_root / path / "run.tsv"
-    return project_root / "outputs/dense_retrieval/run.tsv"
+    if spec.dataset_id == MSMARCO_DEV_SMALL:
+        return project_root / "outputs/dense_retrieval/run.tsv"
+    path = default_retrieval_output_dir(spec, cfg["eval_retrieval"]["output_dir"])
+    return project_root / path / "run.tsv"
 
 
 def resolve_input_stage_dir(
@@ -247,7 +248,7 @@ def resolve_output_dir(
 
 
 def first_stage_label(spec: BenchmarkSpec, input_run_path: Path) -> str:
-    if spec.is_trec_dl or "bm25" in str(input_run_path).lower():
+    if spec.dataset_id != MSMARCO_DEV_SMALL or "bm25" in str(input_run_path).lower():
         return "bm25"
     if "dense" in str(input_run_path).lower():
         return "dense"
@@ -285,7 +286,7 @@ def validate_trec_input_run(
     upstream_metadata: dict[str, object],
 ) -> None:
     """Fail before model loading when a TREC run has the wrong topic scope."""
-    if not spec.is_trec_dl:
+    if spec.dataset_id == MSMARCO_DEV_SMALL:
         return
 
     upstream_dataset = upstream_metadata.get("dataset_id")
@@ -331,7 +332,7 @@ def _resolve_passages(doc_ids: list[str], docs_store) -> dict[str, str]:
     out: dict[str, str] = {}
     for d in doc_ids:
         try:
-            out[d] = docs_store.get(d).text
+            out[d] = lookup_document_text(docs_store, d)
         except KeyError:
             out[d] = ""
             n_missing += 1
@@ -421,12 +422,15 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     # 2. Queries + qrels
     # ---------------------------------------------------------------- #
-    corpus_data = load_msmarco_passage(cache_dir=cache_dir, load_corpus=False)
-    docs_store = corpus_data.docs_store or get_docs_store(cache_dir=cache_dir)
+    corpus_data = load_benchmark_corpus(
+        benchmark_spec,
+        cache_dir=cache_dir,
+        load_corpus=False,
+    )
+    docs_store = corpus_data.docs_store
     benchmark = load_benchmark_queries(
         args.dataset,
         cache_dir=cache_dir,
-        msmarco_data=corpus_data,
     )
     upstream_benchmark = load_upstream_benchmark_metadata(input_stage_dir)
     validate_trec_input_run(
@@ -437,7 +441,7 @@ def main() -> None:
     )
     sample_qrels = (
         benchmark.qrels
-        if benchmark_spec.is_trec_dl
+        if benchmark_spec.dataset_id != MSMARCO_DEV_SMALL
         else _load_sample_qrels(input_stage_dir, benchmark.qrels)
     )
 
@@ -605,8 +609,8 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     input_runs_eval = {q: [d for d, _ in runs_topk[q]] for q in eval_qids}
 
-    if benchmark_spec.is_trec_dl:
-        rel_threshold = benchmark_spec.rel_threshold or 2
+    if benchmark_spec.has_graded_qrels:
+        rel_threshold = benchmark_spec.rel_threshold or 1
         input_metrics = evaluate_trec_retrieval(
             input_runs_eval,
             benchmark.graded_qrels,
@@ -678,7 +682,7 @@ def main() -> None:
     benchmark_metadata = benchmark.metadata()
     benchmark_metadata.update(
         {
-            "corpus_id": "msmarco-passage",
+            "corpus_id": benchmark_spec.corpus_id,
             "corpus_scope": upstream_benchmark.get("corpus_scope", "unknown"),
             "input_run_topic_count": len(runs_topk),
             "reranked_topic_count": len(final_runs),
@@ -730,10 +734,10 @@ def main() -> None:
         "peak_memory_mib": peak_mem_mb,
         "environment": (env_dict := capture_environment()),
     }
-    if benchmark_spec.is_trec_dl:
+    if benchmark_spec.has_graded_qrels:
         payload["evaluation"] = {
             **trec_metric_contract(
-                rel_threshold=benchmark_spec.rel_threshold or 2,
+                rel_threshold=benchmark_spec.rel_threshold or 1,
             ),
             "qrels_source": benchmark_spec.dataset_id,
             "internal_backend": "msmarco_genqa.evaluation.trec",
@@ -786,6 +790,7 @@ def main() -> None:
             else str(input_run_path),
             "resumed": bool(args.resume) and len(done_qids) > 0,
             "dataset": benchmark_spec.dataset_id,
+            "corpus_id": benchmark_spec.corpus_id,
             "track_year": benchmark_spec.track_year,
             "judged_topic_count": benchmark.judged_topic_count,
             "judged_topic_coverage": benchmark_metadata["judged_topic_coverage"],

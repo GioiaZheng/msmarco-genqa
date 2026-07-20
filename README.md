@@ -46,6 +46,7 @@ ACL-style findings write-up is
 |---|---|---|
 | Validated result | On MS MARCO `dev/small`, reranked dense top-3 improves T5-small surface metrics over BM25 top-3 on 6,980 paired queries. | [`RESULTS.md`](RESULTS.md) reports the paired metrics and confidence intervals. Dense retrieval and reranking use the documented 50k qrels-anchored candidate pool, not a full-corpus dense first stage. |
 | Validated external retrieval benchmark | On TREC-DL 2019 and 2020, cross-encoder reranking improves MRR@10 and graded nDCG@10 over a full-corpus BM25 first stage on all 43 and 54 judged topics. | [`docs/trec_dl_external_validity.md`](docs/trec_dl_external_validity.md) records the run commit, models, candidate depths, runtimes, independent `ir-measures` cross-check, and links to the checked artifact. This is retrieval evidence, not generation evidence. |
+| Implemented, evaluation pending | NFCorpus and SciFact are available as first cross-domain BEIR retrieval benchmarks. | [`docs/cross_domain_benchmarks.md`](docs/cross_domain_benchmarks.md) documents the dataset ids, corpus separation, runner commands, metrics, and output layout. No NFCorpus or SciFact benchmark number is claimed until a full checked run lands. |
 | Implemented, evaluation pending | The T5-base generator-capacity sweep driver and configurable alternative-generator paths exist. | [`scripts/run_generator_capacity_sweep.py`](scripts/run_generator_capacity_sweep.py) and the Phase A protocol are implemented, but no T5-base or FLAN-T5 headline result is claimed until a complete versioned run lands. |
 | Not established | TREC-DL retrieval gains transfer to grounded generation; dense retrieval beats BM25 under a fair full-corpus candidate condition; or the findings generalize beyond the MS MARCO passage collection. | These remain research questions, not conclusions of the committed artifacts. |
 
@@ -53,8 +54,8 @@ ACL-style findings write-up is
 
 | Area | What is included |
 |---|---|
-| Retrieval | BM25, dense SBERT/FAISS, BM25-on-sample comparisons, and full-corpus BM25 runner support for the judged TREC-DL 2019/2020 passage tracks. |
-| Reranking | Cross-encoder reranking with dataset-selectable TREC-DL runners, aggregate lift, first-stage comparison, and query-level promoted/demoted/new-hit/lost-hit diagnostics. |
+| Retrieval | BM25, dense SBERT/FAISS, BM25-on-sample comparisons, full-corpus BM25 runner support for the judged TREC-DL 2019/2020 passage tracks, and BEIR NFCorpus/SciFact adapters. |
+| Reranking | Cross-encoder reranking with dataset-selectable TREC-DL and BEIR runners, aggregate lift, first-stage comparison, and query-level promoted/demoted/new-hit/lost-hit diagnostics. |
 | Generation | Paired BM25-vs-reranked generation runs using the same generator, prompt format, query set, and top-k depth. |
 | Evaluation | Paired-bootstrap confidence intervals, BERTScore proxy checks, grounding audit, RAG triad reporting, query-form slicing, and regression taxonomy. |
 | Reproducibility | Config-driven runners, manifests, output hashes, metadata, CI, report artifacts, and optional experiment tracking. |
@@ -81,6 +82,7 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/lockfile_reproduction.md`](docs/lockfile_reproduction.md) — dependency snapshot update and reproduction policy.
 - [`docs/rag_observatory_exports.md`](docs/rag_observatory_exports.md) — trace and sweep exports for external RAG observability analysis.
 - [`docs/trec_dl_external_validity.md`](docs/trec_dl_external_validity.md) — TREC-DL dataset contract, runner commands, metric boundaries, and benchmark follow-ups.
+- [`docs/cross_domain_benchmarks.md`](docs/cross_domain_benchmarks.md) — NFCorpus and SciFact benchmark contract, commands, output isolation, and result boundary.
 - [`notebooks/rag_eval_demo.ipynb`](notebooks/rag_eval_demo.ipynb) — lightweight evaluation workflow demo.
 
 ## Engineering surface
@@ -122,6 +124,11 @@ auditing the experiments:
   [#153](https://github.com/GioiaZheng/msmarco-genqa/issues/153) and the
   benchmark in [#154](https://github.com/GioiaZheng/msmarco-genqa/issues/154);
   it is not itself a new empirical result.
+- **Cross-domain benchmark adapters.** NFCorpus and SciFact run through the same
+  BM25 and cross-encoder entry points, but each dataset uses its own BEIR corpus,
+  BM25 index, qrels, and output directory. This is the execution surface for
+  [#165](https://github.com/GioiaZheng/msmarco-genqa/issues/165); it does not
+  claim cross-domain results until complete checked artifacts are committed.
 - **RAG triad reporting.** `mgq-rag-triad` joins prediction files with optional
   qrels and writes per-query context relevance, groundedness, and answer
   relevance diagnostics. See
@@ -591,6 +598,27 @@ the original graded labels for nDCG@10 and relevance threshold 2 for MRR@10,
 Recall@100, and Recall@1000. Reportable runs still pass through the independent
 cross-check below. See
 [`docs/trec_dl_external_validity.md`](docs/trec_dl_external_validity.md).
+
+### NFCorpus / SciFact cross-domain retrieval
+
+NFCorpus and SciFact are the first BEIR targets for checking whether the
+retrieval and reranking stack generalizes beyond MS MARCO-derived passage
+benchmarks:
+
+```bash
+mgq-retrieve --dataset beir/nfcorpus/test --resume
+mgq-rerank --dataset beir/nfcorpus/test --resume
+
+mgq-retrieve --dataset beir/scifact/test --resume
+mgq-rerank --dataset beir/scifact/test --resume
+```
+
+Unlike TREC-DL, these datasets do not reuse the MS MARCO passage corpus. Their
+default outputs are isolated under `outputs/beir_nfcorpus_test/` and
+`outputs/beir_scifact_test/`, and their BM25 indexes are isolated under
+`data/processed/bm25_index_beir_nfcorpus_test/` and
+`data/processed/bm25_index_beir_scifact_test/`. See
+[`docs/cross_domain_benchmarks.md`](docs/cross_domain_benchmarks.md).
 
 ### Independent TREC metric cross-check
 
