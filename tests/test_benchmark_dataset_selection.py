@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -21,10 +23,15 @@ from experiments.run_retrieval import (
 )
 from msmarco_genqa.data import benchmark as benchmark_module
 from msmarco_genqa.data.benchmark import (
+    BEIR_NFCORPUS_TEST,
+    BEIR_SCIFACT_TEST,
     MSMARCO_DEV_SMALL,
     SUPPORTED_DATASETS,
+    default_retrieval_index_dir,
     get_benchmark_spec,
+    load_benchmark_corpus,
     load_benchmark_queries,
+    lookup_document_text,
 )
 from msmarco_genqa.data.trec_dl import TREC_DL_DATASETS, load_trec_dl_from_files
 
@@ -38,6 +45,64 @@ def cfg() -> dict:
         "eval_retrieval": {"output_dir": "outputs/bm25_baseline"},
         "reranker": {"output_dir": "outputs/cross_encoder_rerank"},
     }
+
+
+class FakeDocsStore:
+    def __init__(self, docs: dict[str, object]):
+        self.docs = docs
+
+    def get(self, doc_id: str) -> object:
+        return self.docs[doc_id]
+
+
+class FakeIrDataset:
+    def __init__(self) -> None:
+        self.docs = {
+            "D1": SimpleNamespace(
+                doc_id="D1",
+                title="Trial result",
+                text="A scientific abstract about treatment response.",
+                url="https://example.test/d1",
+            ),
+            "D2": SimpleNamespace(
+                doc_id="D2",
+                title="Background",
+                text="A non-relevant background document.",
+                url="https://example.test/d2",
+            ),
+        }
+        self.queries = [
+            SimpleNamespace(
+                query_id="q1",
+                text="does treatment improve response",
+                url="https://example.test/q1",
+            ),
+            SimpleNamespace(query_id="q2", text="unjudged claim"),
+        ]
+        self.qrels = [
+            SimpleNamespace(query_id="q1", doc_id="D1", relevance=1, iteration="0"),
+            SimpleNamespace(query_id="q1", doc_id="D2", relevance=0, iteration="0"),
+        ]
+
+    def docs_iter(self):
+        return iter(self.docs.values())
+
+    def queries_iter(self):
+        return iter(self.queries)
+
+    def qrels_iter(self):
+        return iter(self.qrels)
+
+    def docs_store(self):
+        return FakeDocsStore(self.docs)
+
+
+@pytest.fixture
+def fake_irds(monkeypatch):
+    dataset = FakeIrDataset()
+    fake_module = SimpleNamespace(load=lambda dataset_id: dataset)
+    monkeypatch.setitem(sys.modules, "ir_datasets", fake_module)
+    return dataset
 
 
 @pytest.mark.parametrize("year", [2019, 2020])
@@ -71,9 +136,77 @@ def test_supported_datasets_keep_dev_small_as_default():
         MSMARCO_DEV_SMALL,
         TREC_DL_DATASETS[2019],
         TREC_DL_DATASETS[2020],
+        BEIR_NFCORPUS_TEST,
+        BEIR_SCIFACT_TEST,
     )
     assert parse_retrieval_args([]).dataset == MSMARCO_DEV_SMALL
     assert parse_reranker_args([]).dataset == MSMARCO_DEV_SMALL
+
+
+@pytest.mark.parametrize(
+    ("dataset_id", "slug", "domain"),
+    [
+        (BEIR_NFCORPUS_TEST, "beir_nfcorpus_test", "medical"),
+        (BEIR_SCIFACT_TEST, "beir_scifact_test", "scientific"),
+    ],
+)
+def test_beir_default_paths_and_indexes_are_isolated(
+    dataset_id,
+    slug,
+    domain,
+    cfg,
+    tmp_path,
+):
+    spec = get_benchmark_spec(dataset_id)
+    retrieval_args = parse_retrieval_args(["--dataset", dataset_id])
+    reranker_args = parse_reranker_args(["--dataset", dataset_id])
+
+    retrieval_dir = resolve_retrieval_output_dir(
+        retrieval_args,
+        cfg,
+        spec,
+        project_root=tmp_path,
+    )
+    reranker_dir = resolve_reranker_output_dir(
+        reranker_args,
+        cfg,
+        spec,
+        project_root=tmp_path,
+    )
+
+    assert spec.corpus_id == dataset_id
+    assert spec.domain == domain
+    assert spec.has_graded_qrels
+    assert retrieval_dir == tmp_path / "outputs" / slug / "bm25"
+    assert reranker_dir == tmp_path / "outputs" / slug / "cross_encoder_rerank"
+    assert default_retrieval_index_dir(spec, "data/processed/bm25_index_msmarco") == (
+        Path("data") / "processed" / f"bm25_index_{slug}"
+    )
+    assert resolve_input_run(reranker_args, cfg, spec, project_root=tmp_path) == (
+        retrieval_dir / "run.tsv"
+    )
+    assert first_stage_label(spec, retrieval_dir / "run.tsv") == "bm25"
+
+
+def test_beir_query_and_corpus_loaders_use_dataset_corpus(fake_irds):
+    selected = load_benchmark_queries(BEIR_SCIFACT_TEST)
+    spec = get_benchmark_spec(BEIR_SCIFACT_TEST)
+    corpus = load_benchmark_corpus(spec, load_corpus=True)
+    lazy_corpus = load_benchmark_corpus(spec, load_corpus=False)
+
+    assert selected.queries == {
+        "q1": "does treatment improve response",
+        "q2": "unjudged claim",
+    }
+    assert selected.qrels == {"q1": {"D1"}}
+    assert selected.graded_qrels == {"q1": {"D1": 1, "D2": 0}}
+    assert selected.metadata()["corpus_id"] == BEIR_SCIFACT_TEST
+    assert selected.metadata()["benchmark_family"] == "beir"
+    assert corpus.corpus_doc_ids == ["D1", "D2"]
+    assert corpus.corpus_texts[0] == (
+        "Trial result\nA scientific abstract about treatment response."
+    )
+    assert lookup_document_text(lazy_corpus.docs_store, "D1") == corpus.corpus_texts[0]
 
 
 @pytest.mark.parametrize("year", [2019, 2020])
