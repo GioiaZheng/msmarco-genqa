@@ -251,6 +251,7 @@ def compute_data_fingerprint(
     *,
     cache_dir: Path,
     corpus_limit: int | None = None,
+    data_sources: dict[str, str] | None = None,
     extra_files: dict[str, Path] | None = None,
 ) -> str:
     """Lean sha256 hex digest identifying the data inputs of a run.
@@ -259,6 +260,9 @@ def compute_data_fingerprint(
     - ``cache_dir`` as string. Anchors which ir_datasets cache served
       the corpus/queries/qrels for this run.
     - ``corpus_limit``: scalar, ``None`` for the full corpus.
+    - ``data_sources``: stable logical identifiers for the data loaded from
+      that cache, such as the ir_datasets dataset and corpus ids. A cache can
+      contain multiple datasets, so its path alone is not a data identity.
     - ``extra_files``: optional ``{label: Path}`` mapping for run-specific
       inputs that should be content-hashed — e.g. ``sample_doc_ids.json``
       for dense, ``input run.tsv`` for reranker/generation. Each
@@ -274,6 +278,8 @@ def compute_data_fingerprint(
         "cache_dir": str(cache_dir),
         "corpus_limit": corpus_limit,
     }
+    if data_sources:
+        parts["data_sources"] = dict(sorted(data_sources.items()))
     if extra_files:
         for label, raw_path in sorted(extra_files.items()):
             if raw_path is None:

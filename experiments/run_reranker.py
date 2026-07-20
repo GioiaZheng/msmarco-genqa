@@ -824,6 +824,10 @@ def main() -> None:
     resolved_config_hash = compute_resolved_config_hash(cfg)
     data_fingerprint = compute_data_fingerprint(
         cache_dir=cache_dir,
+        data_sources={
+            "dataset_id": benchmark_spec.dataset_id,
+            "corpus_id": benchmark_spec.corpus_id,
+        },
         extra_files={"input_run": input_run_path},
     )
     env_fingerprint = compute_env_fingerprint(env_dict)
