@@ -523,6 +523,10 @@ def main() -> None:
     data_fingerprint = compute_data_fingerprint(
         cache_dir=cache_dir,
         corpus_limit=corpus_limit,
+        data_sources={
+            "dataset_id": benchmark_spec.dataset_id,
+            "corpus_id": benchmark_spec.corpus_id,
+        },
     )
     env_fingerprint = compute_env_fingerprint(env_dict)
 

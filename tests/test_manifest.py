@@ -832,6 +832,38 @@ def test_compute_data_fingerprint_sensitive_to_corpus_limit(tmp_path: Path):
     assert a != b
 
 
+def test_compute_data_fingerprint_sensitive_to_data_sources(tmp_path: Path):
+    """Datasets sharing one ir_datasets cache must not share a fingerprint."""
+    nfcorpus = compute_data_fingerprint(
+        cache_dir=tmp_path / "cache",
+        data_sources={
+            "dataset_id": "beir/nfcorpus/test",
+            "corpus_id": "beir/nfcorpus",
+        },
+    )
+    scifact = compute_data_fingerprint(
+        cache_dir=tmp_path / "cache",
+        data_sources={
+            "dataset_id": "beir/scifact/test",
+            "corpus_id": "beir/scifact",
+        },
+    )
+    assert nfcorpus != scifact
+
+
+def test_compute_data_fingerprint_data_source_order_stable(tmp_path: Path):
+    """Mapping insertion order must not affect the canonical fingerprint."""
+    dataset_first = compute_data_fingerprint(
+        cache_dir=tmp_path / "cache",
+        data_sources={"dataset_id": "dataset", "corpus_id": "corpus"},
+    )
+    corpus_first = compute_data_fingerprint(
+        cache_dir=tmp_path / "cache",
+        data_sources={"corpus_id": "corpus", "dataset_id": "dataset"},
+    )
+    assert dataset_first == corpus_first
+
+
 def test_compute_data_fingerprint_extra_files_change_hash(tmp_path: Path):
     """Changing the content of an extra file changes the fingerprint —
     so sample_doc_ids.json drift or input_run.tsv drift is caught."""
