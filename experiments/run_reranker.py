@@ -364,6 +364,20 @@ def _load_sample_qrels(input_stage_dir: Path, all_qrels: dict[str, set[str]]) ->
     return {q: r for q, r in sample_qrels.items() if r}
 
 
+def metric_cutoffs_within_depth(
+    cutoffs: list[int] | tuple[int, ...],
+    *,
+    run_depth: int,
+) -> tuple[int, ...]:
+    """Keep only cutoffs that a candidate-limited run can actually support."""
+    if run_depth <= 0:
+        raise ValueError("run_depth must be a positive integer")
+    normalized = tuple(int(k) for k in cutoffs)
+    if any(k <= 0 for k in normalized):
+        raise ValueError("metric cutoffs must be positive integers")
+    return tuple(k for k in normalized if k <= run_depth)
+
+
 def main() -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -388,6 +402,16 @@ def main() -> None:
         or rerank_cfg.get("chunk_size", 200)
     )
     n_examples_to_save = int(rerank_cfg.get("n_examples", 20))
+    eval_cfg = cfg.get("eval_retrieval", {})
+    configured_ks_mrr = tuple(eval_cfg.get("ks_mrr", (10,)))
+    configured_ks_ndcg = tuple(eval_cfg.get("ks_ndcg", (10,)))
+    configured_ks_recall = tuple(eval_cfg.get("ks_recall", (100, 1000)))
+    ks_mrr = metric_cutoffs_within_depth(configured_ks_mrr, run_depth=rerank_top_k)
+    ks_ndcg = metric_cutoffs_within_depth(configured_ks_ndcg, run_depth=rerank_top_k)
+    ks_recall = metric_cutoffs_within_depth(
+        configured_ks_recall,
+        run_depth=rerank_top_k,
+    )
     cache_dir = PROJECT_ROOT / cfg["data"].get("cache_dir", "data/raw")
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -615,15 +639,33 @@ def main() -> None:
             input_runs_eval,
             benchmark.graded_qrels,
             rel_threshold=rel_threshold,
+            ks_mrr=ks_mrr,
+            ks_ndcg=ks_ndcg,
+            ks_recall=ks_recall,
         )
         rerank_metrics = evaluate_trec_retrieval(
             rerank_runs_eval,
             benchmark.graded_qrels,
             rel_threshold=rel_threshold,
+            ks_mrr=ks_mrr,
+            ks_ndcg=ks_ndcg,
+            ks_recall=ks_recall,
         )
     else:
-        input_metrics = evaluate_retrieval(input_runs_eval, sample_qrels)
-        rerank_metrics = evaluate_retrieval(rerank_runs_eval, sample_qrels)
+        input_metrics = evaluate_retrieval(
+            input_runs_eval,
+            sample_qrels,
+            ks_mrr=ks_mrr,
+            ks_ndcg=ks_ndcg,
+            ks_recall=ks_recall,
+        )
+        rerank_metrics = evaluate_retrieval(
+            rerank_runs_eval,
+            sample_qrels,
+            ks_mrr=ks_mrr,
+            ks_ndcg=ks_ndcg,
+            ks_recall=ks_recall,
+        )
     logger.info("%s (input) metrics: %s", input_label, input_metrics)
     logger.info("%s + CE rerank metrics: %s", input_label, rerank_metrics)
 
@@ -711,6 +753,19 @@ def main() -> None:
             "batch_size": batch_size,
             "max_length": max_length,
         },
+        "metric_scope": {
+            "run_depth": rerank_top_k,
+            "reported_cutoffs": {
+                "mrr": list(ks_mrr),
+                "ndcg": list(ks_ndcg),
+                "recall": list(ks_recall),
+            },
+            "omitted_cutoffs_above_run_depth": {
+                "mrr": [k for k in configured_ks_mrr if k > rerank_top_k],
+                "ndcg": [k for k in configured_ks_ndcg if k > rerank_top_k],
+                "recall": [k for k in configured_ks_recall if k > rerank_top_k],
+            },
+        },
         "metrics": {
             input_label: input_metrics,
             "rerank": rerank_metrics,
@@ -738,6 +793,10 @@ def main() -> None:
         payload["evaluation"] = {
             **trec_metric_contract(
                 rel_threshold=benchmark_spec.rel_threshold or 1,
+                ks_mrr=ks_mrr,
+                ks_ndcg=ks_ndcg,
+                ks_recall=ks_recall,
+                run_depth=rerank_top_k,
             ),
             "qrels_source": benchmark_spec.dataset_id,
             "internal_backend": "msmarco_genqa.evaluation.trec",

@@ -11,6 +11,7 @@ import pytest
 from experiments.run_reranker import (
     first_stage_label,
     load_upstream_benchmark_metadata,
+    metric_cutoffs_within_depth,
     parse_args as parse_reranker_args,
     resolve_input_run,
     resolve_output_dir as resolve_reranker_output_dir,
@@ -289,3 +290,13 @@ def test_upstream_corpus_scope_is_read_from_metrics(tmp_path):
         "dataset_id": "track",
         "corpus_scope": "first-N-truncated",
     }
+
+
+def test_reranker_metric_cutoffs_stop_at_candidate_depth():
+    assert metric_cutoffs_within_depth((100, 1000), run_depth=100) == (100,)
+    assert metric_cutoffs_within_depth((10,), run_depth=100) == (10,)
+
+
+def test_reranker_metric_cutoffs_reject_invalid_depth():
+    with pytest.raises(ValueError, match="run_depth"):
+        metric_cutoffs_within_depth((100,), run_depth=0)

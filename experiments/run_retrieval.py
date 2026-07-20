@@ -506,6 +506,10 @@ def main() -> None:
         payload["evaluation"] = {
             **trec_metric_contract(
                 rel_threshold=benchmark_spec.rel_threshold or 1,
+                ks_mrr=tuple(ks_mrr),
+                ks_ndcg=tuple(ks_ndcg),
+                ks_recall=tuple(ks_recall),
+                run_depth=top_k,
             ),
             "qrels_source": benchmark_spec.dataset_id,
             "internal_backend": "msmarco_genqa.evaluation.trec",

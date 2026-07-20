@@ -198,23 +198,43 @@ def graded_ndcg_at_k(
     return dcg / idcg if idcg > 0 else 0.0
 
 
-def trec_metric_contract(*, rel_threshold: int) -> dict[str, Any]:
-    """Describe the graded and thresholded metric semantics saved with a run."""
+def trec_metric_contract(
+    *,
+    rel_threshold: int,
+    ks_mrr: tuple[int, ...] = (10,),
+    ks_ndcg: tuple[int, ...] = (10,),
+    ks_recall: tuple[int, ...] = (100, 1000),
+    run_depth: int | None = None,
+) -> dict[str, Any]:
+    """Describe the exact metric cutoffs and run depth saved with a run."""
     _validate_rel_threshold(rel_threshold)
-    return {
+    cutoffs = (*ks_mrr, *ks_ndcg, *ks_recall)
+    if any(k <= 0 for k in cutoffs):
+        raise ValueError("metric cutoffs must be positive integers")
+    if run_depth is not None and run_depth <= 0:
+        raise ValueError("run_depth must be a positive integer")
+
+    contract = {
         "topic_scope": "all_qrels_topics",
         "graded_metrics": {
-            "ndcg@10": {
+            f"ndcg@{k}": {
                 "gain": NDCG_GAIN_CONVENTION,
                 "discount": NDCG_DISCOUNT,
             }
+            for k in ks_ndcg
         },
         "binary_metrics": {
-            "names": ["mrr@10", "recall@100", "recall@1000"],
+            "names": [
+                *(f"mrr@{k}" for k in ks_mrr),
+                *(f"recall@{k}" for k in ks_recall),
+            ],
             "relevance_threshold": rel_threshold,
             "threshold_rule": f"relevance >= {rel_threshold}",
         },
     }
+    if run_depth is not None:
+        contract["run_depth"] = run_depth
+    return contract
 
 
 def evaluate_trec_retrieval(
