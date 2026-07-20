@@ -1641,6 +1641,15 @@ recorded Python environments used CPU-only PyTorch; these are therefore
 CPU timings. Exact metrics, commits, model revision, runtimes, and
 artifact hashes are recorded in
 <code>reports/generated/artifacts/ beir_cross_domain_bm25_ce.json</code>.</p>
+<p>The exact four ranked outputs are also pinned by
+<code>artifacts/beir_cross_domain_v1.json</code> and published as a
+checksummed, text-only GitHub Release bundle. Running
+<code>make reproduce-beir-eval</code> verifies the archive and every
+member, recovers the public test qrels through <code>ir_datasets</code>,
+and recomputes all four rows without rebuilding either corpus index or
+rerunning the cross-encoder. The bundle excludes document and query
+text, qrels mirrors, model weights, caches, and machine-local
+manifests.</p>
 <h2 id="sec:gen-x-retrieval">Headline: Generation <span
 class="math inline">×</span> retrieval source</h2>
 <p>This is the load-bearing result of the project. The question:

@@ -4,7 +4,7 @@
 # Python dependencies are installed (``pip install -r requirements.txt &&
 # pip install -e .``).
 
-.PHONY: help install test test-slow lint check-results check-fixture-metrics check-lockfile check-notebooks check-artifacts check-registry export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-small reproduce-baseline reproduce-trec-eval build-trec-release
+.PHONY: help install test test-slow lint check-results check-fixture-metrics check-lockfile check-notebooks check-artifacts check-registry export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-small reproduce-baseline reproduce-trec-eval build-trec-release reproduce-beir-eval build-beir-release
 
 PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
@@ -32,6 +32,8 @@ help:
 	@echo "  make reproduce-baseline   -- re-run + verify the BM25 baseline (~30 min CPU laptop)"
 	@echo "  make reproduce-trec-eval  -- fetch + verify published TREC-DL runs and metrics"
 	@echo "  make build-trec-release   -- build the maintainer release ZIP from canonical runs"
+	@echo "  make reproduce-beir-eval  -- fetch + verify published BEIR runs and metrics"
+	@echo "  make build-beir-release   -- build the maintainer BEIR release ZIP"
 
 # ----------------------------------------------------------------------------- #
 # Install
@@ -152,3 +154,14 @@ reproduce-trec-eval:
 # outputs/; its exact hash and size are pinned by artifacts/trec_dl_baselines_v1.json.
 build-trec-release:
 	$(PYTHON) -m msmarco_genqa.cli.trec_release build --output outputs/releases/trec-dl-baselines-v1.zip
+
+# Fast external-domain evidence reproduction. The release contains only ranked
+# identifiers and scores; public NFCorpus/SciFact qrels are recovered through
+# ir_datasets before the four result rows are recomputed.
+reproduce-beir-eval:
+	$(PYTHON) -m msmarco_genqa.cli.beir_release reproduce
+
+# Maintainer-only packaging target. The generated ZIP stays under ignored
+# outputs/ and is published only after its exact size and SHA-256 are pinned.
+build-beir-release:
+	$(PYTHON) -m msmarco_genqa.cli.beir_release build --output outputs/releases/beir-cross-domain-baselines-v1.zip

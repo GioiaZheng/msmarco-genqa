@@ -137,6 +137,26 @@ name, byte size, archive hash, experiment commit, and compact source record.
 The release contains document identifiers and scores only; it does not
 redistribute MS MARCO passage/query text, qrels mirrors, or model weights.
 
+## Reproducing the Published BEIR Evidence
+
+The corresponding cross-domain evidence target is:
+
+```bash
+make reproduce-beir-eval
+```
+
+It downloads the immutable NFCorpus/SciFact release asset, checks the pinned
+size and SHA-256 digest, validates every archived run, obtains both public test
+qrels sets through `ir_datasets`, and recomputes BM25 and BM25-plus-cross-
+encoder MRR@10, nDCG@10, and recall. The output is written under
+`outputs/reproductions/beir_cross_domain_v1/evaluation/`.
+
+The Git-tracked pointer is `artifacts/beir_cross_domain_v1.json`. The archive
+contains the exact four ranked run files behind the report table, but no
+document/query text, qrels mirror, model weights, caches, or machine-local
+manifests. This validates the published evidence without rebuilding the
+NFCorpus/SciFact indexes or rerunning the cross-encoder.
+
 ## Full Pipeline Plan
 
 Print the executable plan:

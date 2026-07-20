@@ -576,7 +576,8 @@ Console names: `mgq-transform-queries`, `mgq-query-transform-ablation`,
 `mgq-context-packing-report`,
 `mgq-rag-triad`,
 `mgq-export-rag-observatory`,
-`mgq-rerank`, `mgq-generate`, `mgq-trec-eval`, `mgq-trec-release`.
+`mgq-rerank`, `mgq-generate`, `mgq-trec-eval`, `mgq-trec-release`,
+`mgq-beir-release`.
 The examples below use whichever of the script or console forms makes the
 dataset and stage boundary clearest.
 
@@ -637,6 +638,22 @@ would be misleading. The fixed candidate set also explains the unchanged
 Recall@100. The cross-encoder improves early ranking on both collections, while
 the low NFCorpus Recall@100 identifies the first-stage retriever as the larger
 remaining bottleneck there.
+
+The four ranked runs are published as a checksummed, text-only
+[GitHub Release bundle](https://github.com/GioiaZheng/msmarco-genqa/releases/tag/v2.2-beir-cross-domain-baselines).
+Recompute all four rows without rebuilding either corpus index or rerunning
+the cross-encoder:
+
+```bash
+make reproduce-beir-eval
+```
+
+The command follows
+[`artifacts/beir_cross_domain_v1.json`](artifacts/beir_cross_domain_v1.json),
+verifies the ZIP and every member digest, recovers public qrels through
+`ir_datasets`, and rejects metric drift above `1e-12`. The release contains
+document identifiers, ranks, and scores only; it excludes document/query text,
+qrels mirrors, model weights, caches, and machine-local manifests.
 
 ### Independent TREC metric cross-check
 

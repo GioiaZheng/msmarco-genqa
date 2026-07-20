@@ -150,6 +150,30 @@ repaired without rescoring under strict checks: clean tree, exact commit,
 300 queries, 30,000 pairs, fixed candidate sets, output hashes, and independent
 metric agreement. The manifest records this repair explicitly.
 
+## Public Evidence Bundle
+
+The exact four ranked outputs behind the table are published in the immutable
+GitHub Release `v2.2-beir-cross-domain-baselines`. The Git-tracked pointer
+[`artifacts/beir_cross_domain_v1.json`](../artifacts/beir_cross_domain_v1.json)
+pins the asset name, byte size, outer SHA-256 digest, source-record digest, and
+the per-stage experiment commits.
+
+From a configured clone, run:
+
+```bash
+make reproduce-beir-eval
+```
+
+This downloads the 6.0 MB archive, verifies the archive and every member,
+recovers the public NFCorpus and SciFact test qrels through `ir_datasets`, and
+recomputes the four metric rows with tolerance `1e-12`. It is an evidence
+reproduction, not a new model run: it does not rebuild the two BM25 indexes or
+rerun 62,300 cross-encoder pairs.
+
+The bundle contains ranked document identifiers, ranks, scores, compact
+metadata, and checksums only. It does not redistribute document/query text,
+qrels mirrors, model weights, caches, or machine-local manifests.
+
 ## Interpretation Boundary
 
 These results support a narrow conclusion: the unchanged MS-MARCO-trained

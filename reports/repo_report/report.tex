@@ -1296,6 +1296,15 @@ commits, model revision, runtimes, and artifact hashes are recorded in
 \texttt{reports/generated/artifacts/
 beir\_cross\_domain\_bm25\_ce.json}.
 
+The exact four ranked outputs are also pinned by
+\texttt{artifacts/beir\_cross\_domain\_v1.json} and published as a
+checksummed, text-only GitHub Release bundle.  Running
+\texttt{make reproduce-beir-eval} verifies the archive and every member,
+recovers the public test qrels through \texttt{ir\_datasets}, and recomputes
+all four rows without rebuilding either corpus index or rerunning the
+cross-encoder.  The bundle excludes document and query text, qrels mirrors,
+model weights, caches, and machine-local manifests.
+
 \subsection{Headline: Generation $\times$ retrieval source}
 \label{sec:gen-x-retrieval}
 
