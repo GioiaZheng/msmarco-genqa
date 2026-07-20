@@ -52,12 +52,19 @@ Default BM25 indexes are also isolated:
 
 ## Metrics
 
-Runner `metrics.json` files use:
+The BM25 retrieval `metrics.json` files use:
 
 - MRR@10;
 - nDCG@10 with the original graded labels;
 - Recall@100 and Recall@1000; and
 - coverage diagnostics for queries present in the run and qrels.
+
+The cross-encoder only reranks the fixed BM25 top-100 candidate set. Its
+`metrics.json` therefore reports MRR@10, nDCG@10, and Recall@100, but omits
+Recall@1000. A top-100 reranked run cannot establish Recall@1000: evaluating
+that cutoff would only repeat Recall@100 and could be mistaken for a recall
+drop relative to the full BM25 top-1000 run. Recall@100 is expected to remain
+unchanged because reranking changes order, not candidate membership.
 
 For thresholded metrics such as MRR and recall, BEIR qrels are binarized with
 `rel >= 1`. nDCG retains the original relevance labels.
@@ -87,6 +94,9 @@ mgq-trec-eval --backend ir-measures --qrels-format trec --rel-threshold 1 \
 Repeat the same command for each dataset's
 `cross_encoder_rerank/run.tsv`. Keep NFCorpus and SciFact separate in reports;
 do not average them into one headline without reporting both dataset values.
+The standalone evaluator still computes Recall@1000 for any supplied run. For
+a top-100 reranked file, that value is candidate-set Recall@100 under a larger
+cutoff and must not be presented as a comparable Recall@1000 result.
 
 ## Current Status
 
@@ -97,7 +107,9 @@ benchmark score is claimed yet. A reportable result should include:
 - the resolved config and manifest;
 - BM25 and reranked `metrics.json`;
 - the TREC-compatible cross-check output; and
-- notes on any query or document coverage gaps.
+- notes on any query or document coverage gaps;
+- the reranker candidate depth and omitted metric cutoffs; and
+- runtime plus hardware/device information for both stages.
 
 Only after those artifacts exist should the project move to deeper error
 analysis on failures.

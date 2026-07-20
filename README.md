@@ -617,7 +617,9 @@ Unlike TREC-DL, these datasets do not reuse the MS MARCO passage corpus. Their
 default outputs are isolated under `outputs/beir_nfcorpus_test/` and
 `outputs/beir_scifact_test/`, and their BM25 indexes are isolated under
 `data/processed/bm25_index_beir_nfcorpus_test/` and
-`data/processed/bm25_index_beir_scifact_test/`. See
+`data/processed/bm25_index_beir_scifact_test/`. The BM25 runs report
+Recall@1000; top-100 cross-encoder runs omit it because their candidate depth
+cannot support a comparable Recall@1000 measurement. See
 [`docs/cross_domain_benchmarks.md`](docs/cross_domain_benchmarks.md).
 
 ### Independent TREC metric cross-check

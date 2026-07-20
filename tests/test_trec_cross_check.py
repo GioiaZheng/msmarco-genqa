@@ -14,6 +14,7 @@ from msmarco_genqa.evaluation.trec import (
     compare_metric_sets,
     read_qrels,
     run_trec_cross_check,
+    trec_metric_contract,
 )
 
 
@@ -165,6 +166,21 @@ def test_graded_qrels_use_trec_ndcg_and_thresholded_binary_metrics(tmp_path):
         "q1\tQ0\td3\t2\t0.5\tmsmarco-genqa",
         "q1\tQ0\td1\t3\t0.333333333333\tmsmarco-genqa",
     ]
+
+
+def test_metric_contract_records_only_reported_cutoffs_and_run_depth():
+    contract = trec_metric_contract(
+        rel_threshold=1,
+        ks_mrr=(10,),
+        ks_ndcg=(10,),
+        ks_recall=(100,),
+        run_depth=100,
+    )
+
+    assert contract["run_depth"] == 100
+    assert contract["binary_metrics"]["names"] == ["mrr@10", "recall@100"]
+    assert "ndcg@10" in contract["graded_metrics"]
+    assert "recall@1000" not in contract["binary_metrics"]["names"]
 
 
 def test_metric_mismatch_fails_gate():
