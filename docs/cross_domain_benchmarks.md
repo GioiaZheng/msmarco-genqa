@@ -13,8 +13,7 @@ The goal of this step is deliberately narrow:
   collections;
 - keep each dataset's own corpus, qrels, indexes, and outputs separate;
 - report retrieval metrics before doing deeper error analysis; and
-- avoid claiming cross-domain generalization until complete checked artifacts
-  are committed.
+- make only the transfer claim supported by complete checked artifacts.
 
 ## Dataset Contract
 
@@ -98,18 +97,91 @@ The standalone evaluator still computes Recall@1000 for any supplied run. For
 a top-100 reranked file, that value is candidate-set Recall@100 under a larger
 cutoff and must not be presented as a comparable Recall@1000 result.
 
-## Current Status
+## Results
 
-The code path and offline tests are implemented. No NFCorpus or SciFact
-benchmark score is claimed yet. A reportable result should include:
+The full checked runs include every judged test query and use each dataset's
+full corpus:
 
-- the run commit;
-- the resolved config and manifest;
-- BM25 and reranked `metrics.json`;
-- the TREC-compatible cross-check output; and
-- notes on any query or document coverage gaps;
-- the reranker candidate depth and omitted metric cutoffs; and
-- runtime plus hardware/device information for both stages.
+| Dataset | System | MRR@10 | nDCG@10 | Recall@100 | Recall@1000 |
+|---|---|---:|---:|---:|---:|
+| NFCorpus (323 queries) | BM25 | 0.5186 | 0.3064 | 0.2378 | 0.4572 |
+| NFCorpus (323 queries) | BM25 + CE | 0.5662 | 0.3411 | 0.2378 | n/a (top-100 run) |
+| SciFact (300 queries) | BM25 | 0.6312 | 0.6617 | 0.8759 | 0.9606 |
+| SciFact (300 queries) | BM25 + CE | 0.6517 | 0.6787 | 0.8759 | n/a (top-100 run) |
 
-Only after those artifacts exist should the project move to deeper error
-analysis on failures.
+| Dataset | MRR@10 delta | Relative | nDCG@10 delta | Relative |
+|---|---:|---:|---:|---:|
+| NFCorpus | +0.0476 | +9.18% | +0.0347 | +11.33% |
+| SciFact | +0.0205 | +3.25% | +0.0170 | +2.56% |
+
+The reranker improves early ranking on both collections. Recall@100 is
+unchanged because it receives the same BM25 top-100 document set. The large
+difference in first-stage Recall@100 — 0.2378 on NFCorpus versus 0.8759 on
+SciFact — is the main diagnostic result: NFCorpus is primarily candidate-set
+limited, so a stronger first-stage retriever is a more plausible next change
+than further tuning the fixed-candidate reranker.
+
+## Provenance and Audit
+
+| Evidence | NFCorpus | SciFact |
+|---|---|---|
+| Run commits | `e276d80fb4da` | BM25 `e276d80fb4da`; CE `f82caf651041` |
+| BM25 coverage | 323/323 topics, depth 1000 | 300/300 topics, depth 1000 |
+| CE coverage | 323/323 topics, 32,300 pairs | 300/300 topics, 30,000 pairs |
+| BM25 runtime | 2.72 s index; 0.91 s search | 2.80 s index; 1.02 s search |
+| CE runtime | 3,110.14 s; 10.39 pairs/s | 2,393.56 s; 12.53 pairs/s |
+| CE device | CPU | CPU |
+
+Both reranking runs use
+`cross-encoder/ms-marco-MiniLM-L-6-v2`, batch size 64, maximum length 512,
+and fixed depth 100. The machine has an NVIDIA GPU, but the recorded Python
+environments used CPU-only PyTorch; the table therefore reports CPU runtimes.
+
+The repository manifest verifier passed for every run. A separate structural
+audit found no missing topics, malformed TREC rows, duplicate documents, rank
+sequence errors, non-finite scores, or BM25/CE candidate-set mismatches. All
+323 NFCorpus and all 300 SciFact rankings changed. Independent `ir-measures`
+evaluation reproduced the reported metrics with maximum absolute difference
+`4.45e-16`.
+
+The SciFact CE scoring run completed before its launcher failed to record Git
+metadata because Git was absent from that process's `PATH`. The manifest was
+repaired without rescoring under strict checks: clean tree, exact commit,
+300 queries, 30,000 pairs, fixed candidate sets, output hashes, and independent
+metric agreement. The manifest records this repair explicitly.
+
+## Public Evidence Bundle
+
+The exact four ranked outputs behind the table are published in the immutable
+GitHub Release `v2.2-beir-cross-domain-baselines`. The Git-tracked pointer
+[`artifacts/beir_cross_domain_v1.json`](../artifacts/beir_cross_domain_v1.json)
+pins the asset name, byte size, outer SHA-256 digest, source-record digest, and
+the per-stage experiment commits.
+
+From a configured clone, run:
+
+```bash
+make reproduce-beir-eval
+```
+
+This downloads the 6.0 MB archive, verifies the archive and every member,
+recovers the public NFCorpus and SciFact test qrels through `ir_datasets`, and
+recomputes the four metric rows with tolerance `1e-12`. It is an evidence
+reproduction, not a new model run: it does not rebuild the two BM25 indexes or
+rerun 62,300 cross-encoder pairs.
+
+The bundle contains ranked document identifiers, ranks, scores, compact
+metadata, and checksums only. It does not redistribute document/query text,
+qrels mirrors, model weights, caches, or machine-local manifests.
+
+## Interpretation Boundary
+
+These results support a narrow conclusion: the unchanged MS-MARCO-trained
+cross-encoder improves top-rank retrieval quality on two non-MS-MARCO corpora.
+They do not show that the full retrieval-augmented generation pipeline
+generalizes across domains, because neither dataset was run through generation
+or grounded-answer evaluation. They also do not establish state of the art or
+replace a broader benchmark suite.
+
+The next evidence-driven step is first-stage retrieval analysis on NFCorpus,
+where Recall@100 leaves most relevant documents outside the reranker's reach.

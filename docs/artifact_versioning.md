@@ -47,10 +47,12 @@ complete long-term artifact backend for large indexes or model outputs.
 ## Public release backend
 
 GitHub Releases is the current no-credential backend for compact, public,
-text-only experiment outputs. The first published bundle contains four
-TREC-DL ranked runs (BM25 and BM25-plus-cross-encoder for 2019 and 2020).
-Git tracks only `artifacts/trec_dl_baselines_v1.json`, which pins the release
-tag, asset name, byte size, archive SHA-256 digest, source experiment commit,
+text-only experiment outputs. The published bundles contain four TREC-DL
+ranked runs (BM25 and BM25-plus-cross-encoder for 2019 and 2020) and four BEIR
+cross-domain runs (the same systems on NFCorpus and SciFact). Git tracks the
+small `artifacts/trec_dl_baselines_v1.json` and
+`artifacts/beir_cross_domain_v1.json` pointers, which pin the release tag,
+asset name, byte size, archive SHA-256 digest, source experiment commit(s),
 and compact report record.
 
 `make reproduce-trec-eval` resolves that pointer, verifies the outer archive
@@ -60,10 +62,17 @@ passage/query text, qrels mirrors, model caches, and machine-local manifests.
 This keeps the public evidence useful while respecting the repository's data
 boundary.
 
+`make reproduce-beir-eval` applies the same contract to NFCorpus and SciFact:
+it recovers their public qrels, verifies all four ranked runs, and recomputes
+the checked cross-domain table without rebuilding the per-dataset indexes or
+rerunning the cross-encoder. The BEIR bundle follows the same text-only data
+boundary.
+
 Use a new immutable tag and pointer for every changed payload; never replace a
 published asset in place. Hugging Face Datasets remains a reasonable future
 backend if the project accumulates many tabular prediction splits that need
-streaming or dataset-card discovery. It is not needed for this 1 MiB release.
+streaming or dataset-card discovery. It is not needed for these compact
+release bundles.
 
 ## When DVC is worth adding
 

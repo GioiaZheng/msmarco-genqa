@@ -337,7 +337,11 @@ def build_release_bundle(
     }
 
 
-def _read_archive_manifest(archive: zipfile.ZipFile) -> dict[str, Any]:
+def _read_archive_manifest(
+    archive: zipfile.ZipFile,
+    *,
+    expected_schema: str = BUNDLE_SCHEMA,
+) -> dict[str, Any]:
     try:
         if archive.getinfo(MANIFEST_NAME).file_size > MAX_MANIFEST_BYTES:
             raise ReleaseArtifactError(f"{MANIFEST_NAME} exceeds the size limit")
@@ -347,8 +351,8 @@ def _read_archive_manifest(archive: zipfile.ZipFile) -> dict[str, Any]:
         raise ReleaseArtifactError(f"archive is missing {MANIFEST_NAME}") from exc
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ReleaseArtifactError(f"invalid {MANIFEST_NAME}: {exc}") from exc
-    if not isinstance(manifest, dict) or manifest.get("schema") != BUNDLE_SCHEMA:
-        raise ReleaseArtifactError(f"archive does not use {BUNDLE_SCHEMA}")
+    if not isinstance(manifest, dict) or manifest.get("schema") != expected_schema:
+        raise ReleaseArtifactError(f"archive does not use {expected_schema}")
     return manifest
 
 
@@ -384,6 +388,7 @@ def verify_release_archive(
     *,
     expected_sha256: str | None = None,
     expected_bytes: int | None = None,
+    expected_schema: str = BUNDLE_SCHEMA,
 ) -> dict[str, Any]:
     """Verify outer archive identity, safe paths, and every member checksum."""
     source = Path(archive_path)
@@ -406,7 +411,7 @@ def verify_release_archive(
             names = [_safe_archive_name(info.filename) for info in infos]
             if len(names) != len(set(names)):
                 raise ReleaseArtifactError("archive contains duplicate member names")
-            manifest = _read_archive_manifest(archive)
+            manifest = _read_archive_manifest(archive, expected_schema=expected_schema)
             member_records = _manifest_members(manifest)
             expected_names = {MANIFEST_NAME, *member_records}
             if set(names) != expected_names:
@@ -535,8 +540,13 @@ def _safe_extraction_target(bundle_dir: Path, name: str) -> Path:
     return target
 
 
-def _extract_verified_archive(archive_path: Path, bundle_dir: Path) -> dict[str, Any]:
-    verified = verify_release_archive(archive_path)
+def _extract_verified_archive(
+    archive_path: Path,
+    bundle_dir: Path,
+    *,
+    expected_schema: str = BUNDLE_SCHEMA,
+) -> dict[str, Any]:
+    verified = verify_release_archive(archive_path, expected_schema=expected_schema)
     manifest = verified["manifest"]
     bundle_dir.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(archive_path) as archive:
@@ -565,6 +575,7 @@ def fetch_release_bundle(
     pointer_path: Path | str,
     output_dir: Path | str,
     timeout: float = 60.0,
+    expected_schema: str = BUNDLE_SCHEMA,
 ) -> dict[str, Any]:
     """Download, verify, and safely extract the release selected by a pointer."""
     pointer = load_release_pointer(pointer_path)
@@ -582,6 +593,7 @@ def fetch_release_bundle(
             archive_path,
             expected_sha256=expected_hash,
             expected_bytes=expected_bytes,
+            expected_schema=expected_schema,
         )
     else:
         try:
@@ -599,9 +611,14 @@ def fetch_release_bundle(
             archive_path,
             expected_sha256=expected_hash,
             expected_bytes=expected_bytes,
+            expected_schema=expected_schema,
         )
     bundle_dir = destination / "bundle"
-    verified = _extract_verified_archive(archive_path, bundle_dir)
+    verified = _extract_verified_archive(
+        archive_path,
+        bundle_dir,
+        expected_schema=expected_schema,
+    )
     if verified["manifest"].get("artifact_id") != pointer["artifact_id"]:
         raise ReleaseArtifactError(
             "release bundle artifact_id does not match the Git-tracked pointer"

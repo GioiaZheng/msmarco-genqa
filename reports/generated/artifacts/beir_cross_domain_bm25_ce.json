@@ -1,0 +1,147 @@
+{
+  "schema": "msmarco-genqa.table-artifact.v1",
+  "artifact_id": "beir_cross_domain_bm25_ce",
+  "metric_schema": "retrieval.beir_bm25_ce.v1",
+  "query_set": {
+    "id": "beir-nfcorpus-and-scifact-test",
+    "n_queries": 623
+  },
+  "model_revision": {
+    "first_stage": "bm25s-0.3.9",
+    "reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "reranker_revision": "c5ee24cb16019beea0893ab7796b1df96625c6b8",
+    "candidate_depth": 100
+  },
+  "experiment": {
+    "git_commits": {
+      "nfcorpus_bm25": "e276d80fb4da",
+      "nfcorpus_bm25_ce": "e276d80fb4da",
+      "scifact_bm25": "e276d80fb4da",
+      "scifact_bm25_ce": "f82caf651041"
+    },
+    "corpus_scope": "full_per_dataset",
+    "bm25": {
+      "k1": 1.5,
+      "b": 0.75,
+      "stopwords": "en",
+      "retrieval_depth": 1000
+    },
+    "reranker": {
+      "depth": 100,
+      "batch_size": 64,
+      "max_length": 512,
+      "device": "cpu"
+    },
+    "evaluation": {
+      "qrels_type": "graded",
+      "binary_relevance_threshold": 1,
+      "independent_backend": "ir-measures",
+      "max_abs_delta": 4.45e-16
+    },
+    "resolved_config_sha256": "d65f5719d5999fb339de97f5f06115d9c08324042ed7b508c701659dfbf4e23d"
+  },
+  "results": {
+    "nfcorpus": {
+      "dataset_id": "beir/nfcorpus/test",
+      "domain": "medical",
+      "judged_topics": 323,
+      "bm25": {
+        "mrr@10": 0.5186041083099907,
+        "ndcg@10": 0.30640715529625967,
+        "recall@100": 0.23775575921008424,
+        "recall@1000": 0.4572325663968621,
+        "index_seconds": 2.7234506607055664,
+        "search_seconds": 0.9133541584014893
+      },
+      "bm25_ce": {
+        "mrr@10": 0.5662133274362376,
+        "ndcg@10": 0.3411291921537352,
+        "recall@100": 0.23775575921008424,
+        "rerank_seconds": 3110.1401278972626,
+        "pairs_per_second": 10.385384153683692,
+        "n_pairs": 32300
+      },
+      "delta": {
+        "mrr@10": 0.0476092191262469,
+        "mrr@10_relative": 0.091802626,
+        "ndcg@10": 0.03472203685747553,
+        "ndcg@10_relative": 0.113319928,
+        "recall@100": 0.0
+      },
+      "cross_check_max_abs_delta": 4.45e-16,
+      "artifact_sha256": {
+        "bm25_run": "4ad5eaa880db0d1fa4f1c9e34370d71e861ec2a0e4b88b3738918de1e273f30a",
+        "bm25_manifest": "cfdc42a3eebcff3d654724f185f21307d5c9e20514954ea2026d4960f9bf86ab",
+        "rerank_run": "0ba549fa223b9af485a77f86dee580e66468867e8da32229936c2979e3e68158",
+        "rerank_manifest": "055bee80b86552406998df23d5702486c79970685ff6d32c7873c375a9b4ad21"
+      },
+      "artifact_paths": {
+        "bm25_run": "outputs/beir_nfcorpus_test/bm25/run.tsv",
+        "bm25_manifest": "outputs/beir_nfcorpus_test/bm25/manifest.json",
+        "rerank_run": "outputs/beir_nfcorpus_test/cross_encoder_rerank/run.tsv",
+        "rerank_manifest": "outputs/beir_nfcorpus_test/cross_encoder_rerank/manifest.json"
+      }
+    },
+    "scifact": {
+      "dataset_id": "beir/scifact/test",
+      "domain": "scientific",
+      "judged_topics": 300,
+      "bm25": {
+        "mrr@10": 0.6312301587301588,
+        "ndcg@10": 0.6616913885341652,
+        "recall@100": 0.8758888888888888,
+        "recall@1000": 0.9605555555555556,
+        "index_seconds": 2.804069995880127,
+        "search_seconds": 1.020082712173462
+      },
+      "bm25_ce": {
+        "mrr@10": 0.6517208994708994,
+        "ndcg@10": 0.6786514506793424,
+        "recall@100": 0.8758888888888888,
+        "rerank_seconds": 2393.5589582920074,
+        "pairs_per_second": 12.533637367097638,
+        "n_pairs": 30000
+      },
+      "delta": {
+        "mrr@10": 0.0204907407407406,
+        "mrr@10_relative": 0.0324615997,
+        "ndcg@10": 0.0169600621451772,
+        "ndcg@10_relative": 0.0256313781,
+        "recall@100": 0.0
+      },
+      "cross_check_max_abs_delta": 2.220446049250313e-16,
+      "artifact_sha256": {
+        "bm25_run": "ae5d1f01a950327df540e2490b03335852e88405fd35ce27b3490eb5642cce8c",
+        "bm25_manifest": "71a70aa8a5b4fb6587b3d61f75c3dec9d4cc266d34e380517a9ec69ce7c250d6",
+        "rerank_run": "dec4f2ba1d0b19936d38e21a3f3ccdeaed96ba7ebbe429fb6755778d693ebe82",
+        "rerank_manifest": "007e809d21bc845346e0c57fe69c83d714a77c1cbe2e8a7dd3393cdcc6a2042c"
+      },
+      "artifact_paths": {
+        "bm25_run": "outputs/beir_scifact_test/bm25/run.tsv",
+        "bm25_manifest": "outputs/beir_scifact_test/bm25/manifest.json",
+        "rerank_run": "outputs/beir_scifact_test/cross_encoder_rerank/run.tsv",
+        "rerank_manifest": "outputs/beir_scifact_test/cross_encoder_rerank/manifest.json"
+      },
+      "manifest_note": "CE scoring completed before Git metadata collection failed because Git was absent from the launcher PATH; the manifest was repaired under exact-commit, clean-tree, coverage, candidate-set, metric, and output-hash checks."
+    }
+  },
+  "tables": [
+    {
+      "id": "beir_cross_domain_bm25_ce",
+      "columns": [
+        {"heading": "Dataset", "align": "l"},
+        {"heading": "System", "align": "l"},
+        {"heading": "\\mrr{}", "align": "r"},
+        {"heading": "\\ndcg{}", "align": "r"},
+        {"heading": "\\recallH{}", "align": "r"},
+        {"heading": "\\recallK{}", "align": "r"}
+      ],
+      "rows": [
+        {"cells": ["NFCorpus", "\\bmtwofive{}", "0.5186", "0.3064", "0.2378", "0.4572"]},
+        {"cells": ["NFCorpus", "\\bmtwofive{} $+$ CE", "0.5662", "0.3411", "0.2378", "n/a"]},
+        {"cells": ["SciFact", "\\bmtwofive{}", "0.6312", "0.6617", "0.8759", "0.9606"]},
+        {"cells": ["SciFact", "\\bmtwofive{} $+$ CE", "0.6517", "0.6787", "0.8759", "n/a"]}
+      ]
+    }
+  ]
+}

@@ -15,3 +15,5 @@ Current records:
   availability, and explicit provenance limits.
 - `trec_dl_baselines_v1.json` — text-only BM25 and BM25-plus-cross-encoder
   TREC-DL 2019/2020 ranked runs.
+- `beir_cross_domain_v1.json` — text-only BM25 and BM25-plus-cross-encoder
+  NFCorpus/SciFact ranked runs.

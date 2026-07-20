@@ -1,0 +1,38 @@
+{
+  "schema": "msmarco-genqa.external-artifact-pointer.v1",
+  "artifact_id": "beir-nfcorpus-scifact-bm25-ce-v1",
+  "kind": "beir_run_bundle",
+  "release": {
+    "repository": "GioiaZheng/msmarco-genqa",
+    "tag": "v2.2-beir-cross-domain-baselines",
+    "asset": "beir-cross-domain-baselines-v1.zip"
+  },
+  "download": {
+    "url": "https://github.com/GioiaZheng/msmarco-genqa/releases/download/v2.2-beir-cross-domain-baselines/beir-cross-domain-baselines-v1.zip",
+    "bytes": 6006875,
+    "sha256": "15e8e4ded1fe8d889e24a31f7794988ce0bbb6750c5f9b10e1d7dd4b38a5f633"
+  },
+  "source": {
+    "experiment_commits": {
+      "nfcorpus_bm25": "e276d80fb4da",
+      "nfcorpus_bm25_ce": "e276d80fb4da",
+      "scifact_bm25": "e276d80fb4da",
+      "scifact_bm25_ce": "f82caf651041"
+    },
+    "record": "reports/generated/artifacts/beir_cross_domain_bm25_ce.json",
+    "record_sha256": "56bea3c1664d0523aeed068c0d0daf0c343a4352ec0d34f679c63f39bc7d4ccb"
+  },
+  "contents": {
+    "datasets": ["beir/nfcorpus/test", "beir/scifact/test"],
+    "systems": ["bm25", "bm25_ce"],
+    "run_files": 4,
+    "contains_document_text": false,
+    "contains_model_weights": false
+  },
+  "reproduce": {
+    "command": "make reproduce-beir-eval",
+    "requires_private_credentials": false,
+    "rebuilds_corpus_indexes": false,
+    "reruns_cross_encoder": false
+  }
+}

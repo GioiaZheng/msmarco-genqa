@@ -39,6 +39,7 @@ ACL-style findings write-up is
 | Does reranking add value after dense retrieval? | Dense top-100 vs cross-encoder reranked top-100 | MRR@10 0.8830 → 0.9304 |
 | Does retrieval lift transfer to generation? | BM25 top-3 → T5-small vs reranked top-3 → T5-small | Token-F1 0.1966 → 0.3677 |
 | Is the generation lift statistically reliable? | 6,980 paired qids, 10,000 bootstrap resamples | ΔToken-F1 +0.1711, 95% CI [+0.1632, +0.1789] |
+| Does the unchanged reranker help on external corpora? | BEIR NFCorpus / SciFact BM25 top-100 → CE rerank | MRR@10 +9.18% / +3.25% relative |
 
 ## Evidence status
 
@@ -46,9 +47,9 @@ ACL-style findings write-up is
 |---|---|---|
 | Validated result | On MS MARCO `dev/small`, reranked dense top-3 improves T5-small surface metrics over BM25 top-3 on 6,980 paired queries. | [`RESULTS.md`](RESULTS.md) reports the paired metrics and confidence intervals. Dense retrieval and reranking use the documented 50k qrels-anchored candidate pool, not a full-corpus dense first stage. |
 | Validated external retrieval benchmark | On TREC-DL 2019 and 2020, cross-encoder reranking improves MRR@10 and graded nDCG@10 over a full-corpus BM25 first stage on all 43 and 54 judged topics. | [`docs/trec_dl_external_validity.md`](docs/trec_dl_external_validity.md) records the run commit, models, candidate depths, runtimes, independent `ir-measures` cross-check, and links to the checked artifact. This is retrieval evidence, not generation evidence. |
-| Implemented, evaluation pending | NFCorpus and SciFact are available as first cross-domain BEIR retrieval benchmarks. | [`docs/cross_domain_benchmarks.md`](docs/cross_domain_benchmarks.md) documents the dataset ids, corpus separation, runner commands, metrics, and output layout. No NFCorpus or SciFact benchmark number is claimed until a full checked run lands. |
+| Validated external-domain retrieval benchmark | On BEIR NFCorpus and SciFact, the unchanged cross-encoder improves MRR@10 and nDCG@10 over BM25 on all 323 and 300 test queries. | [`docs/cross_domain_benchmarks.md`](docs/cross_domain_benchmarks.md) records separate corpora, full query coverage, candidate depth, CPU runtimes, manifests, and an independent `ir-measures` cross-check. This supports transfer on two retrieval collections, not broad cross-domain RAG or generation generalization. |
 | Implemented, evaluation pending | The T5-base generator-capacity sweep driver and configurable alternative-generator paths exist. | [`scripts/run_generator_capacity_sweep.py`](scripts/run_generator_capacity_sweep.py) and the Phase A protocol are implemented, but no T5-base or FLAN-T5 headline result is claimed until a complete versioned run lands. |
-| Not established | TREC-DL retrieval gains transfer to grounded generation; dense retrieval beats BM25 under a fair full-corpus candidate condition; or the findings generalize beyond the MS MARCO passage collection. | These remain research questions, not conclusions of the committed artifacts. |
+| Not established | Retrieval gains transfer to grounded generation on the external benchmarks; dense retrieval beats BM25 under a fair full-corpus candidate condition; or the findings generalize beyond the two evaluated BEIR collections. | These remain research questions, not conclusions of the checked artifacts. |
 
 ## Implemented components
 
@@ -575,7 +576,8 @@ Console names: `mgq-transform-queries`, `mgq-query-transform-ablation`,
 `mgq-context-packing-report`,
 `mgq-rag-triad`,
 `mgq-export-rag-observatory`,
-`mgq-rerank`, `mgq-generate`, `mgq-trec-eval`, `mgq-trec-release`.
+`mgq-rerank`, `mgq-generate`, `mgq-trec-eval`, `mgq-trec-release`,
+`mgq-beir-release`.
 The examples below use whichever of the script or console forms makes the
 dataset and stage boundary clearest.
 
@@ -621,6 +623,37 @@ default outputs are isolated under `outputs/beir_nfcorpus_test/` and
 Recall@1000; top-100 cross-encoder runs omit it because their candidate depth
 cannot support a comparable Recall@1000 measurement. See
 [`docs/cross_domain_benchmarks.md`](docs/cross_domain_benchmarks.md).
+
+The complete checked runs cover all 323 NFCorpus and 300 SciFact test queries:
+
+| Dataset | System | MRR@10 | nDCG@10 | Recall@100 | Recall@1000 |
+|---|---|---:|---:|---:|---:|
+| NFCorpus | BM25 | 0.5186 | 0.3064 | 0.2378 | 0.4572 |
+| NFCorpus | BM25 + CE | 0.5662 | 0.3411 | 0.2378 | n/a |
+| SciFact | BM25 | 0.6312 | 0.6617 | 0.8759 | 0.9606 |
+| SciFact | BM25 + CE | 0.6517 | 0.6787 | 0.8759 | n/a |
+
+Here `n/a` means the reranked run has depth 100; reporting it as Recall@1000
+would be misleading. The fixed candidate set also explains the unchanged
+Recall@100. The cross-encoder improves early ranking on both collections, while
+the low NFCorpus Recall@100 identifies the first-stage retriever as the larger
+remaining bottleneck there.
+
+The four ranked runs are published as a checksummed, text-only
+[GitHub Release bundle](https://github.com/GioiaZheng/msmarco-genqa/releases/tag/v2.2-beir-cross-domain-baselines).
+Recompute all four rows without rebuilding either corpus index or rerunning
+the cross-encoder:
+
+```bash
+make reproduce-beir-eval
+```
+
+The command follows
+[`artifacts/beir_cross_domain_v1.json`](artifacts/beir_cross_domain_v1.json),
+verifies the ZIP and every member digest, recovers public qrels through
+`ir_datasets`, and rejects metric drift above `1e-12`. The release contains
+document identifiers, ranks, and scores only; it excludes document/query text,
+qrels mirrors, model weights, caches, and machine-local manifests.
 
 ### Independent TREC metric cross-check
 
@@ -984,6 +1017,10 @@ Limitations to be aware of:
 - **TREC-DL is retrieval evidence, not generation evidence.** The two judged
   tracks validate full-corpus BM25 and top-100 reranking. They do not establish
   downstream answer quality or cross-domain RAG generalization.
+- **BEIR coverage is deliberately narrow.** NFCorpus and SciFact show that the
+  same reranker improves early ranking on two non-MS-MARCO corpora. Two small
+  retrieval collections do not establish broad domain generalization, and no
+  generation stage was evaluated on either dataset.
 
 ## 8. Next
 

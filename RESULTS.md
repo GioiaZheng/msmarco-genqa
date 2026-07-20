@@ -87,6 +87,45 @@ and artifact hashes are in
 These are validated retrieval results. They do not show that the retrieval
 gain transfers to answer generation on TREC-DL.
 
+## Cross-Domain Retrieval Benchmark: NFCorpus / SciFact
+
+The same BM25 first stage and unchanged
+`cross-encoder/ms-marco-MiniLM-L-6-v2` reranker were evaluated on two BEIR test
+collections with their own corpora and qrels. The reranker reorders the fixed
+BM25 top-100 candidate set:
+
+| Dataset | System | MRR@10 | nDCG@10 | Recall@100 | Recall@1000 |
+|---|---|---:|---:|---:|---:|
+| NFCorpus (323 queries) | BM25 | 0.5186 | 0.3064 | 0.2378 | 0.4572 |
+| NFCorpus (323 queries) | BM25 + CE | 0.5662 | 0.3411 | 0.2378 | n/a (top-100 run) |
+| SciFact (300 queries) | BM25 | 0.6312 | 0.6617 | 0.8759 | 0.9606 |
+| SciFact (300 queries) | BM25 + CE | 0.6517 | 0.6787 | 0.8759 | n/a (top-100 run) |
+
+Cross-encoder reranking raises MRR@10 and nDCG@10 on both datasets. The larger
+relative lift is on NFCorpus: +9.18% MRR@10 and +11.33% nDCG@10, compared with
++3.25% and +2.56% on SciFact. Recall@100 is unchanged by construction because
+the candidate membership is fixed. The first-stage limitation is much stronger
+on NFCorpus (Recall@100 0.2378) than on SciFact (0.8759), so reranking alone
+cannot recover most NFCorpus relevant documents.
+
+All 323 NFCorpus and 300 SciFact judged queries are included. Independent
+`ir-measures` evaluation reproduced every reported metric to floating-point
+precision (maximum absolute delta `4.45e-16`), and the run-file audit found no
+missing topics, malformed rows, duplicate documents, or candidate-set changes.
+The protocol, runtime evidence, provenance, and metric boundaries are recorded
+in [`docs/cross_domain_benchmarks.md`](docs/cross_domain_benchmarks.md).
+
+The exact four run files are recoverable without private credentials from the
+checksummed
+[`v2.2-beir-cross-domain-baselines`](https://github.com/GioiaZheng/msmarco-genqa/releases/tag/v2.2-beir-cross-domain-baselines)
+release. `make reproduce-beir-eval` verifies the archive and member hashes,
+recovers public qrels through `ir_datasets`, and recomputes all reported rows
+without rebuilding indexes or rerunning the cross-encoder.
+
+These results show that the ranking benefit transfers to two non-MS-MARCO
+retrieval collections. They do not establish broad cross-domain RAG
+generalization or downstream generation quality.
+
 ## Query-Type Slice
 
 Token-F1 lift by query type:
@@ -121,9 +160,9 @@ corpus retrieval.
 
 | Status | Boundary |
 |---|---|
-| Validated | The paired T5-small generation comparison on MS MARCO `dev/small`; full-corpus BM25 plus cross-encoder retrieval on TREC-DL 2019/2020. |
+| Validated | The paired T5-small generation comparison on MS MARCO `dev/small`; full-corpus BM25 plus cross-encoder retrieval on TREC-DL 2019/2020; full-corpus BM25 plus fixed top-100 cross-encoder reranking on BEIR NFCorpus and SciFact. |
 | Implemented but not yet evaluated | The T5-base generator-capacity sweep and configurable alternative-generator paths. Their existence is not an empirical result. |
-| Not supported by current evidence | TREC-DL retrieval lift transfers to generation; a fair full-corpus dense-vs-BM25 conclusion; cross-domain RAG generalization. |
+| Not supported by current evidence | Retrieval lift transfers to generation on TREC-DL or BEIR; a fair full-corpus dense-vs-BM25 conclusion; broad cross-domain RAG generalization beyond the two evaluated retrieval collections. |
 
 ## Grounding
 
