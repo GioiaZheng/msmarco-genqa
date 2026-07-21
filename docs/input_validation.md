@@ -60,5 +60,10 @@ payload:
 }
 ```
 
-This keeps production-facing errors explicit while preserving the research
-pipeline's deterministic batch behavior.
+This keeps service errors explicit while preserving the research pipeline's
+deterministic batch behavior.
+
+`mgq-serve` binds to `127.0.0.1` by default. A non-loopback `--host` is rejected
+unless the operator also passes `--allow-remote`. That flag is an explicit risk
+acknowledgement, not a production-security mode: the service does not implement
+authentication, TLS, or rate limiting.
