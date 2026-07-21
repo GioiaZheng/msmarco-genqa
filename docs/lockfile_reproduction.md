@@ -30,8 +30,9 @@ needed.
 
 The current snapshot updates `torch` from 2.12.1 to 2.13.0 and `nltk` from
 3.9.4 to 3.10.0. The change removes the direct pins flagged for
-CVE-2025-3000 and CVE-2026-12243 during the repository security audit while
-keeping the rest of the model and evaluation stack fixed.
+CVE-2025-3000 and CVE-2026-12243 during the repository security audit. It also
+adds the previously omitted `bert-score==0.3.13` direct dependency to the
+pinned snapshot; the supported dependency range itself is unchanged.
 
 The two packages have different reproduction implications:
 
