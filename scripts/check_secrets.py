@@ -51,22 +51,54 @@ SKIP_EXTENSIONS = {
     ".zip",
 }
 
-ALLOWLIST_HINTS = re.compile(
-    r"(dummy|example|fake|placeholder|redacted|sample|test[-_ ]?only|"
-    r"your[-_ ]?(api[-_ ]?)?(key|secret|token)|xxxxx|<[^>]+>)",
-    re.IGNORECASE,
-)
-
 PATTERNS = [
     ("private key block", re.compile(r"-----BEGIN(?: [A-Z]+)? PRIVATE KEY-----")),
-    ("GitHub token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36}\b")),
+    ("GitHub token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36,255}\b")),
     ("GitHub fine-grained token", re.compile(r"\bgithub_pat_[A-Za-z0-9_]{80,}\b")),
+    ("Hugging Face token", re.compile(r"\bhf_[A-Za-z0-9]{30,}\b")),
     ("AWS access key", re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")),
     ("Google API key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b")),
     ("Slack token", re.compile(r"\bxox[baprs]-[0-9A-Za-z-]{20,}\b")),
     ("Stripe live secret key", re.compile(r"\bsk_live_[0-9A-Za-z]{24,}\b")),
-    ("sk-prefixed API key", re.compile(r"\bsk-[A-Za-z0-9]{48,}\b")),
+    (
+        "sk-prefixed API key",
+        re.compile(r"\bsk-(?:(?:proj|svcacct)-)?[A-Za-z0-9_-]{32,}\b"),
+    ),
 ]
+
+
+def is_placeholder(candidate: str) -> bool:
+    """Return whether the matched credential-shaped value is visibly inert.
+
+    Only an all-``x`` or all-zero payload is accepted. The decision is scoped
+    to the match itself, so prose such as ``sample`` elsewhere on the line
+    cannot suppress a real credential.
+    """
+
+    value = candidate.casefold()
+    prefixes = (
+        "github_pat_",
+        "sk-svcacct-",
+        "sk-proj-",
+        "sk_live_",
+        "ghp_",
+        "gho_",
+        "ghu_",
+        "ghs_",
+        "ghr_",
+        "hf_",
+        "xoxb-",
+        "xoxa-",
+        "xoxp-",
+        "xoxr-",
+        "xoxs-",
+        "akia",
+        "asia",
+        "aiza",
+        "sk-",
+    )
+    payload = next((value[len(prefix) :] for prefix in prefixes if value.startswith(prefix)), "")
+    return bool(payload and re.fullmatch(r"[x0_-]{8,}", payload))
 
 
 def tracked_files() -> list[Path]:
@@ -97,10 +129,8 @@ def scan_file(path: Path) -> list[tuple[int, str]]:
 
     findings: list[tuple[int, str]] = []
     for line_no, line in enumerate(data.decode("utf-8", errors="replace").splitlines(), 1):
-        if ALLOWLIST_HINTS.search(line):
-            continue
         for label, pattern in PATTERNS:
-            if pattern.search(line):
+            if any(not is_placeholder(match.group(0)) for match in pattern.finditer(line)):
                 findings.append((line_no, label))
     return findings
 
