@@ -4,7 +4,13 @@ import json
 
 import pytest
 
-from msmarco_genqa.service.app import GenerationService, create_app, load_passages_jsonl
+from msmarco_genqa.service.app import (
+    GenerationService,
+    create_app,
+    is_loopback_host,
+    load_passages_jsonl,
+    validate_bind_host,
+)
 from msmarco_genqa.util.input_validation import InputValidationError
 
 
@@ -90,3 +96,17 @@ def test_generate_endpoint_returns_structured_validation_error():
         "message": "must not be empty",
         "field": "query",
     }
+
+
+@pytest.mark.parametrize("host", ["localhost", "localhost.", "127.0.0.1", "127.4.3.2", "::1"])
+def test_loopback_hosts_are_recognized(host):
+    assert is_loopback_host(host)
+    validate_bind_host(host, allow_remote=False)
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "::", "192.168.1.20", "service.internal"])
+def test_remote_bind_requires_explicit_opt_in(host):
+    assert not is_loopback_host(host)
+    with pytest.raises(ValueError, match="--allow-remote"):
+        validate_bind_host(host, allow_remote=False)
+    validate_bind_host(host, allow_remote=True)

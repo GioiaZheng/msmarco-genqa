@@ -8,6 +8,7 @@ FastAPI. Install the `serve` extra and run `mgq-serve` to expose `/health` and
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -93,6 +94,30 @@ def build_generator_from_env() -> RAGGenerator:
     )
 
 
+def is_loopback_host(host: str) -> bool:
+    """Return whether *host* is an explicit local-only bind target."""
+
+    normalized = host.strip()
+    if normalized.casefold().rstrip(".") == "localhost":
+        return True
+    if normalized.startswith("[") and normalized.endswith("]"):
+        normalized = normalized[1:-1]
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False
+
+
+def validate_bind_host(host: str, *, allow_remote: bool) -> None:
+    """Reject accidental network exposure unless the operator opts in."""
+
+    if not allow_remote and not is_loopback_host(host):
+        raise ValueError(
+            "refusing to bind to a non-loopback host without --allow-remote; "
+            "the demo service has no authentication, TLS, or rate limiting"
+        )
+
+
 def create_app(generator: object | None = None):
     try:
         from fastapi import FastAPI
@@ -136,7 +161,19 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Serve the RAG generator over FastAPI.")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument(
+        "--allow-remote",
+        action="store_true",
+        help=(
+            "allow a non-loopback bind; the demo service has no authentication, "
+            "TLS, or rate limiting"
+        ),
+    )
     args = parser.parse_args()
+    try:
+        validate_bind_host(args.host, allow_remote=args.allow_remote)
+    except ValueError as exc:
+        parser.error(str(exc))
     try:
         import uvicorn
     except ImportError as exc:

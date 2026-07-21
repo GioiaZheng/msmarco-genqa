@@ -2,6 +2,7 @@
 
 [![CI status](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/ci.yml?query=branch%3Amain)
 [![Secret scan](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/secret-scan.yml/badge.svg?branch=main)](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/secret-scan.yml?query=branch%3Amain)
+[![CodeQL](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/codeql.yml?query=branch%3Amain)
 [![Latest release](https://img.shields.io/github/v/release/GioiaZheng/msmarco-genqa?display_name=tag)](https://github.com/GioiaZheng/msmarco-genqa/releases/latest)
 [![Python](https://img.shields.io/badge/python-%E2%89%A53.10-3776AB?logo=python&logoColor=white)](https://github.com/GioiaZheng/msmarco-genqa/blob/main/pyproject.toml)
 [![License](https://img.shields.io/github/license/GioiaZheng/msmarco-genqa)](https://github.com/GioiaZheng/msmarco-genqa/blob/main/LICENSE)
@@ -158,8 +159,11 @@ auditing the experiments:
   requiring a hosted tracking service.
 - **Model serving.** `mgq-serve` exposes a lightweight FastAPI wrapper around
   the generator (`pip install -e ".[serve]"`), with `/health` and `/generate`
-  endpoints for local demos or integration tests. Validation failures are
-  returned as structured 422 payloads. See
+  endpoints for local demos or integration tests. It binds to `127.0.0.1` by
+  default and rejects non-loopback hosts unless `--allow-remote` is supplied.
+  The opt-in does not add authentication, TLS, or rate limiting, so place the
+  service behind appropriate controls rather than exposing it directly.
+  Validation failures are returned as structured 422 payloads. See
   `examples/demo_payload.json` for a minimal request body:
 
   ```bash
