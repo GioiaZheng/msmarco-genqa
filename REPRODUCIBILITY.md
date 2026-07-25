@@ -118,6 +118,13 @@ The fast external-evidence target is:
 make reproduce-trec-eval
 ```
 
+On Windows or other environments without `make`, run the equivalent Python
+entry point directly:
+
+```bash
+python -m msmarco_genqa.cli.trec_release reproduce
+```
+
 It downloads the pinned GitHub Release asset, verifies the ZIP size and
 SHA-256 digest, validates every member against the bundle manifest, and
 recomputes the BM25 and BM25-plus-cross-encoder metrics for TREC-DL 2019 and
@@ -143,6 +150,12 @@ The corresponding cross-domain evidence target is:
 
 ```bash
 make reproduce-beir-eval
+```
+
+The equivalent direct Python command is:
+
+```bash
+python -m msmarco_genqa.cli.beir_release reproduce
 ```
 
 It downloads the immutable NFCorpus/SciFact release asset, checks the pinned
