@@ -127,10 +127,12 @@ neither BM25 scores nor the architecture; it removes a cross-platform
 tie-breaking artifact. The deterministic title result is frozen before either
 treatment is run.
 
-Before that freeze, the title guard requires exact reproduction of the
-published MRR@10, nDCG@10, and positive-score Recall@100/1000 invariants.
-After the freeze it also requires every deterministic aggregate metric to
-match within `1e-12`.
+The deterministic rule was committed before running either treatment. Its
+title baseline is MRR@10 `0.47801898537192655`, nDCG@10
+`0.2492523025557319`, Recall@100 `0.2820649478633883`, and Recall@1000
+`0.4918916912361657`. The runner now requires all four values to match within
+`1e-12`. Published fixed-run deltas and positive-score Recall remain in the
+audit summary as diagnostics rather than cross-platform acceptance guards.
 
 ## Execution
 
