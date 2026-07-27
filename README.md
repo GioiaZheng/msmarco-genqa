@@ -77,6 +77,7 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/retrieval_quality_reporting.md`](docs/retrieval_quality_reporting.md) — run-level retrieval metrics and matched-qid comparison reports.
 - [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md) — query-level reranker lift analysis protocol.
 - [`docs/nfcorpus_first_stage_error_analysis.md`](docs/nfcorpus_first_stage_error_analysis.md) — fixed-output NFCorpus candidate-set coverage diagnosis.
+- [`docs/nfcorpus_first_stage_taxonomy_review.md`](docs/nfcorpus_first_stage_taxonomy_review.md) — complete 72-query review of NFCorpus source-context and first-stage failures.
 - [`docs/context_packing.md`](docs/context_packing.md) — prompt compression, provenance, and packed-vs-plain generation comparison.
 - [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md) — context relevance, groundedness, and answer relevance report protocol.
 - [`docs/input_validation.md`](docs/input_validation.md) — run-file, JSONL, prompt, and serving input validation contract.
@@ -641,11 +642,17 @@ The complete checked runs cover all 323 NFCorpus and 300 SciFact test queries:
 Here `n/a` means the reranked run has depth 100; reporting it as Recall@1000
 would be misleading. The fixed candidate set also explains the unchanged
 Recall@100. The cross-encoder improves early ranking on both collections, while
-the low NFCorpus Recall@100 identifies the first-stage retriever as the larger
-remaining bottleneck there. The fixed-output follow-up finds that 72/323
-NFCorpus queries have no relevant document in the BM25 top-100 candidate set;
-see
-[`docs/nfcorpus_first_stage_error_analysis.md`](docs/nfcorpus_first_stage_error_analysis.md).
+the low NFCorpus Recall@100 establishes a candidate-set ceiling. The
+fixed-output follow-up finds that 72/323 queries have no relevant document in
+the BM25 top-100 set. A complete review attributes 67/72 cases primarily to
+source-page context missing from the exported title; 62/72 contain only
+level-1 qrels and 58/72 come from topic pages. On the 144 non-topic queries,
+MRR@10 moves from 0.5073 to 0.5827 after reranking while Recall@100 remains
+0.2769. This makes benchmark representation a competing explanation to
+retriever capacity rather than an architecture verdict. See
+[`docs/nfcorpus_first_stage_error_analysis.md`](docs/nfcorpus_first_stage_error_analysis.md)
+and the
+[`72-case taxonomy review`](docs/nfcorpus_first_stage_taxonomy_review.md).
 
 The four ranked runs are published as a checksummed, text-only
 [GitHub Release bundle](https://github.com/GioiaZheng/msmarco-genqa/releases/tag/v2.2-beir-cross-domain-baselines).

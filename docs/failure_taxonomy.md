@@ -7,6 +7,31 @@ Use it when a reranked output is worse than the BM25 output, when grounding
 metrics disagree, or when a new ablation changes a headline metric enough to
 deserve inspection.
 
+## NFCorpus First-Stage Retrieval Labels
+
+The NFCorpus first-stage review is a retrieval-only analysis and does not use
+the generation labels below. Its unit of review is one query from either the
+`depth_recoverable_101_1000` or `miss_top_1000` cohort. The machine-readable
+definitions and frozen cohort sizes live in
+[`configs/nfcorpus_retrieval_review_taxonomy.json`](../configs/nfcorpus_retrieval_review_taxonomy.json).
+
+| Label | Review decision | Experiment implication |
+|---|---|---|
+| `lexical_competition` | Relevant text contains the query terms but receives a weaker lexical score than competing documents. | Test first-stage discrimination or hybrid retrieval. |
+| `vocabulary_or_form_mismatch` | Query and relevant text express the same concept through different forms or terminology. | Test normalization, expansion, dense retrieval, or hybrid retrieval. |
+| `underspecified_or_ambiguous_query` | The exported query text alone cannot distinguish the qrels target from other plausible collection topics. | Test clarification or richer query fields. |
+| `source_context_dependency` | The qrel is supported by the source page or its link graph, but the exported page title omits the context needed to infer that relation. | Evaluate richer NFCorpus query fields or the official source-type subsets before changing the model. |
+| `qrels_or_scope_gap` | Query and judged document have a material scope mismatch not explained by wording or known source-page context. | Audit judgments or segmentation before treating the case as model failure. |
+| `other_unclear` | Available evidence does not support one of the preceding labels. | Adjudicate or collect more evidence. |
+
+Each row has one primary label, an optional secondary label, and a short
+evidence note. `pending` rows cannot contain judgments;
+`needs_adjudication` rows cannot assert a primary label. Published shares use
+reviewed cases only.
+
+The current 72-case census and its limitations are documented in
+[`docs/nfcorpus_first_stage_taxonomy_review.md`](nfcorpus_first_stage_taxonomy_review.md).
+
 ## Unit Of Review
 
 One review item is a paired query record:
