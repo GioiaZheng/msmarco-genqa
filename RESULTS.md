@@ -106,7 +106,9 @@ relative lift is on NFCorpus: +9.18% MRR@10 and +11.33% nDCG@10, compared with
 +3.25% and +2.56% on SciFact. Recall@100 is unchanged by construction because
 the candidate membership is fixed. The first-stage limitation is much stronger
 on NFCorpus (Recall@100 0.2378) than on SciFact (0.8759), so reranking alone
-cannot recover most NFCorpus relevant documents.
+cannot recover most NFCorpus relevant documents. The follow-up below shows
+that this is a benchmark-level candidate limitation; it should not be
+attributed to retriever capacity alone.
 
 All 323 NFCorpus and 300 SciFact judged queries are included. Independent
 `ir-measures` evaluation reproduced every reported metric to floating-point
@@ -145,6 +147,21 @@ queries. It still leaves 6,753 of 12,334 positive qrels unretrieved. The
 definitions, exact reconciliation, limitations, and reproduction command are
 in
 [`docs/nfcorpus_first_stage_error_analysis.md`](docs/nfcorpus_first_stage_error_analysis.md).
+
+A complete review of the 24 depth-recoverable and 48 top-1000-miss queries
+assigned 67/72 cases to `source_context_dependency`, 4/72 to
+`vocabulary_or_form_mismatch`, and 1/72 to
+`underspecified_or_ambiguous_query`. Sixty-two cases contain only relevance
+level 1 qrels, and topic pages account for 58/72 no-hit-at-100 queries. In the
+fixed source-type slices, the unchanged cross-encoder improves early ranking
+for every group; on the 144 non-topic queries MRR@10 moves from 0.5073 to
+0.5827 and nDCG@10 from 0.2612 to 0.3224 with Recall@100 fixed at 0.2769.
+
+The defensible conclusion is therefore narrower than “BM25 fails on medical
+language”: many NFCorpus failures depend on link-derived relevance that is not
+recoverable from the exported page title alone. The case-level evidence,
+taxonomy contract, limitations, and exact reproduction command are in
+[`docs/nfcorpus_first_stage_taxonomy_review.md`](docs/nfcorpus_first_stage_taxonomy_review.md).
 
 ## Query-Type Slice
 

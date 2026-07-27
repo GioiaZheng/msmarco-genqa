@@ -1,0 +1,52 @@
+{
+  "schema": "msmarco-genqa.first-stage-review-taxonomy.v1",
+  "dataset_id": "beir/nfcorpus/test",
+  "review_unit": "one query from a pre-declared first-stage failure cohort",
+  "review_statuses": [
+    "pending",
+    "reviewed",
+    "needs_adjudication"
+  ],
+  "labels": {
+    "lexical_competition": {
+      "definition": "The judged relevant text contains the query terms, but higher-ranked non-relevant documents contain the same terms or otherwise receive stronger lexical scores.",
+      "experiment_implication": "Test ranking discrimination or a hybrid first stage before changing query semantics."
+    },
+    "vocabulary_or_form_mismatch": {
+      "definition": "The query concept and judged relevant text use different surface forms, such as a paraphrase, inflection, spelling variant, abbreviation, or related terminology.",
+      "experiment_implication": "Test normalization, expansion, dense retrieval, or a hybrid first stage."
+    },
+    "underspecified_or_ambiguous_query": {
+      "definition": "The query is too broad or short to distinguish the qrels target from other plausible collection topics using its text alone.",
+      "experiment_implication": "Test query clarification or expansion before changing the reranker."
+    },
+    "source_context_dependency": {
+      "definition": "The judged document is linked or cited by the source NutritionFacts page, but its relevance cannot be inferred reliably from the exported page title used as the BEIR query without omitted page context.",
+      "experiment_implication": "Evaluate enriched query fields or the official non-topic/video subsets before treating the case as first-stage model failure."
+    },
+    "qrels_or_scope_gap": {
+      "definition": "The judged documents and the exported query show a material scope mismatch not adequately explained by ordinary wording differences or known source-page context.",
+      "experiment_implication": "Audit the extracted links, judgments, or collection segmentation before treating the case as model failure."
+    },
+    "other_unclear": {
+      "definition": "The available query, qrels, and ranked documents do not support one of the other labels with sufficient confidence.",
+      "experiment_implication": "Require adjudication or more evidence; do not use the case to select an architecture."
+    }
+  },
+  "required_review_fields": [
+    "qid",
+    "cohort",
+    "review_status",
+    "primary_label",
+    "secondary_label",
+    "evidence_note"
+  ],
+  "evidence_note_min_chars": 12,
+  "selection": {
+    "seed": "nfcorpus-first-stage-human-review-v1",
+    "cohorts": {
+      "depth_recoverable_101_1000": 24,
+      "miss_top_1000": 48
+    }
+  }
+}

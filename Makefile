@@ -4,7 +4,7 @@
 # Python dependencies are installed (``pip install -r requirements.txt &&
 # pip install -e .``).
 
-.PHONY: help install test test-slow lint check-results check-fixture-metrics check-lockfile check-notebooks check-artifacts check-registry export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-small reproduce-baseline reproduce-trec-eval build-trec-release reproduce-beir-eval build-beir-release analyze-nfcorpus-first-stage
+.PHONY: help install test test-slow lint check-results check-fixture-metrics check-lockfile check-notebooks check-artifacts check-registry export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-small reproduce-baseline reproduce-trec-eval build-trec-release reproduce-beir-eval build-beir-release analyze-nfcorpus-first-stage review-nfcorpus-first-stage
 
 PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
@@ -35,6 +35,7 @@ help:
 	@echo "  make reproduce-beir-eval  -- fetch + verify published BEIR runs and metrics"
 	@echo "  make build-beir-release   -- build the maintainer BEIR release ZIP"
 	@echo "  make analyze-nfcorpus-first-stage -- reproduce inputs + diagnose BM25 coverage"
+	@echo "  make review-nfcorpus-first-stage -- validate the 72-case taxonomy review"
 
 # ----------------------------------------------------------------------------- #
 # Install
@@ -172,3 +173,8 @@ build-beir-release:
 # target does not rebuild the index, rerun retrieval, or invoke the reranker.
 analyze-nfcorpus-first-stage: reproduce-beir-eval
 	$(PYTHON) scripts/analyze_nfcorpus_first_stage.py
+
+# Validate the complete 24+48 NFCorpus review census and regenerate the ignored
+# evidence guide and summary from the compact tracked annotations.
+review-nfcorpus-first-stage: analyze-nfcorpus-first-stage
+	$(PYTHON) scripts/export_nfcorpus_first_stage_review.py --annotations reports/annotations/nfcorpus_first_stage_review_v1.csv
