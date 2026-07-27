@@ -24,6 +24,7 @@ Run from the project root::
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import random
@@ -251,6 +252,29 @@ def _positive_score_recall(
     return metrics
 
 
+def _index_fingerprint(index_dir: Path) -> dict[str, object]:
+    """Hash a small experiment index as an ordered set of files."""
+
+    digest = hashlib.sha256()
+    files = sorted(path for path in index_dir.rglob("*") if path.is_file())
+    total_bytes = 0
+    for path in files:
+        relative = path.relative_to(index_dir).as_posix()
+        size = path.stat().st_size
+        total_bytes += size
+        digest.update(f"{relative}\0{size}\0".encode("utf-8"))
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    return {
+        "algorithm": "sha256",
+        "sha256": digest.hexdigest(),
+        "file_count": len(files),
+        "bytes": total_bytes,
+        "path": index_dir.relative_to(PROJECT_ROOT).as_posix(),
+    }
+
+
 def _validate_query_representation_args(
     args: argparse.Namespace,
     cfg: dict,
@@ -476,6 +500,10 @@ def main() -> None:
         retriever.build()
         index_time = time.time() - t0
         retriever.save(index_dir)
+    if query_representation_bundle is not None:
+        query_representation_summary["index_fingerprint"] = _index_fingerprint(
+            index_dir
+        )
 
     # ---- 3. Plan retrieval ----
     qids = list(benchmark.queries.keys())

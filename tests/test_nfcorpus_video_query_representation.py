@@ -17,6 +17,7 @@ from experiments.run_reranker import (
     parse_args as parse_reranker_args,
 )
 from experiments.run_retrieval import (
+    _index_fingerprint,
     _select_video_query_cohort,
     _validate_query_representation_args,
     _validate_representation_resume,
@@ -342,6 +343,28 @@ def test_bm25_deterministic_ties_score_then_doc_id(
 
     assert doc_ids == [["d1", "d4", "d2"]]
     assert scores.tolist() == [[1.0, 1.0, 0.0]]
+
+
+def test_index_fingerprint_is_order_stable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    index_dir = tmp_path / "index"
+    index_dir.mkdir()
+    (index_dir / "b.bin").write_bytes(b"two")
+    (index_dir / "a.bin").write_bytes(b"one")
+    monkeypatch.setattr(
+        "experiments.run_retrieval.PROJECT_ROOT",
+        tmp_path,
+    )
+
+    first = _index_fingerprint(index_dir)
+    second = _index_fingerprint(index_dir)
+
+    assert first == second
+    assert first["file_count"] == 2
+    assert first["bytes"] == 6
+    assert first["path"] == "index"
 
 
 def test_runner_requires_isolated_nfcorpus_output(tmp_path: Path) -> None:
