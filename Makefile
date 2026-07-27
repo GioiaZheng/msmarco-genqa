@@ -4,7 +4,7 @@
 # Python dependencies are installed (``pip install -r requirements.txt &&
 # pip install -e .``).
 
-.PHONY: help install test test-slow lint check-results check-fixture-metrics check-lockfile check-notebooks check-artifacts check-registry export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-small reproduce-baseline reproduce-trec-eval build-trec-release reproduce-beir-eval build-beir-release
+.PHONY: help install test test-slow lint check-results check-fixture-metrics check-lockfile check-notebooks check-artifacts check-registry export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-small reproduce-baseline reproduce-trec-eval build-trec-release reproduce-beir-eval build-beir-release analyze-nfcorpus-first-stage
 
 PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
@@ -34,6 +34,7 @@ help:
 	@echo "  make build-trec-release   -- build the maintainer release ZIP from canonical runs"
 	@echo "  make reproduce-beir-eval  -- fetch + verify published BEIR runs and metrics"
 	@echo "  make build-beir-release   -- build the maintainer BEIR release ZIP"
+	@echo "  make analyze-nfcorpus-first-stage -- reproduce inputs + diagnose BM25 coverage"
 
 # ----------------------------------------------------------------------------- #
 # Install
@@ -159,9 +160,15 @@ build-trec-release:
 # identifiers and scores; public NFCorpus/SciFact qrels are recovered through
 # ir_datasets before the four result rows are recomputed.
 reproduce-beir-eval:
-	$(PYTHON) -m msmarco_genqa.cli.beir_release reproduce
+	$(PYTHON) -m msmarco_genqa.cli.beir_release reproduce --cache-dir outputs/reproductions/beir_irds_cache
 
 # Maintainer-only packaging target. The generated ZIP stays under ignored
 # outputs/ and is published only after its exact size and SHA-256 are pinned.
 build-beir-release:
 	$(PYTHON) -m msmarco_genqa.cli.beir_release build --output outputs/releases/beir-cross-domain-baselines-v1.zip
+
+# Query-level diagnosis over the immutable NFCorpus BM25 run. The dependency
+# materializes and verifies the public release, qrels, and source archive; this
+# target does not rebuild the index, rerun retrieval, or invoke the reranker.
+analyze-nfcorpus-first-stage: reproduce-beir-eval
+	$(PYTHON) scripts/analyze_nfcorpus_first_stage.py

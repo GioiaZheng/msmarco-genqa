@@ -76,6 +76,7 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/failure_taxonomy.md`](docs/failure_taxonomy.md) — regression and grounding error taxonomy.
 - [`docs/retrieval_quality_reporting.md`](docs/retrieval_quality_reporting.md) — run-level retrieval metrics and matched-qid comparison reports.
 - [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md) — query-level reranker lift analysis protocol.
+- [`docs/nfcorpus_first_stage_error_analysis.md`](docs/nfcorpus_first_stage_error_analysis.md) — fixed-output NFCorpus candidate-set coverage diagnosis.
 - [`docs/context_packing.md`](docs/context_packing.md) — prompt compression, provenance, and packed-vs-plain generation comparison.
 - [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md) — context relevance, groundedness, and answer relevance report protocol.
 - [`docs/input_validation.md`](docs/input_validation.md) — run-file, JSONL, prompt, and serving input validation contract.
@@ -641,7 +642,10 @@ Here `n/a` means the reranked run has depth 100; reporting it as Recall@1000
 would be misleading. The fixed candidate set also explains the unchanged
 Recall@100. The cross-encoder improves early ranking on both collections, while
 the low NFCorpus Recall@100 identifies the first-stage retriever as the larger
-remaining bottleneck there.
+remaining bottleneck there. The fixed-output follow-up finds that 72/323
+NFCorpus queries have no relevant document in the BM25 top-100 candidate set;
+see
+[`docs/nfcorpus_first_stage_error_analysis.md`](docs/nfcorpus_first_stage_error_analysis.md).
 
 The four ranked runs are published as a checksummed, text-only
 [GitHub Release bundle](https://github.com/GioiaZheng/msmarco-genqa/releases/tag/v2.2-beir-cross-domain-baselines).

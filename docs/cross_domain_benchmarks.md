@@ -183,5 +183,8 @@ generalizes across domains, because neither dataset was run through generation
 or grounded-answer evaluation. They also do not establish state of the art or
 replace a broader benchmark suite.
 
-The next evidence-driven step is first-stage retrieval analysis on NFCorpus,
-where Recall@100 leaves most relevant documents outside the reranker's reach.
+The follow-up first-stage analysis is now recorded in
+[`nfcorpus_first_stage_error_analysis.md`](nfcorpus_first_stage_error_analysis.md).
+It uses the published fixed BM25 output and finds that 72/323 queries have no
+relevant document in the top-100 candidate set; 24 of those first obtain a
+relevant hit at ranks 101-1000, while 48 remain misses at depth 1000.

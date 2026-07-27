@@ -124,10 +124,24 @@ def read_qrels(
                 line = raw_line.strip()
                 if not line:
                     raise QrelsFormatError(p, line_number, "empty line")
+                fields = line.split()
+                if line_number == 1 and fields == [
+                    "query-id",
+                    "corpus-id",
+                    "score",
+                ]:
+                    if qrels_format not in {"auto", "three-column"}:
+                        raise QrelsFormatError(
+                            p,
+                            line_number,
+                            "ir_datasets three-column header requires "
+                            "qrels_format='auto' or 'three-column'",
+                        )
+                    continue
                 qid, doc_id, relevance = _parse_qrels_fields(
                     p,
                     line_number,
-                    line.split(),
+                    fields,
                     qrels_format,
                 )
                 if not qid:
