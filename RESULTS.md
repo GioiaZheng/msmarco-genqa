@@ -126,6 +126,26 @@ These results show that the ranking benefit transfers to two non-MS-MARCO
 retrieval collections. They do not establish broad cross-domain RAG
 generalization or downstream generation quality.
 
+### NFCorpus first-stage coverage diagnostic
+
+Query-level analysis of the fixed NFCorpus BM25 run separates candidate-set
+absence from partial coverage:
+
+| Diagnostic | Queries | Share |
+|---|---:|---:|
+| At least one relevant document in BM25 top 100 | 251 | 77.7% |
+| No relevant document in BM25 top 100 | 72 | 22.3% |
+| First relevant hit only at ranks 101-1000 | 24 | 7.4% |
+| No relevant hit at depth 1000 | 48 | 14.9% |
+| Complete relevant-document coverage at 100 | 19 | 5.9% |
+
+Extending the same BM25 output from depth 100 to 1000 increases macro Recall
+from 0.2378 to 0.4572 and finds 3,616 additional positive qrels across 200
+queries. It still leaves 6,753 of 12,334 positive qrels unretrieved. The
+definitions, exact reconciliation, limitations, and reproduction command are
+in
+[`docs/nfcorpus_first_stage_error_analysis.md`](docs/nfcorpus_first_stage_error_analysis.md).
+
 ## Query-Type Slice
 
 Token-F1 lift by query type:

@@ -123,6 +123,37 @@ def test_qrels_layouts(tmp_path, content, qrels_format):
     assert read_qrels(path, qrels_format=qrels_format) == {"q1": {"d1": 1}}
 
 
+def test_qrels_reader_strips_utf8_bom_from_first_qid(tmp_path):
+    path = tmp_path / "qrels.txt"
+    path.write_text("q1 d1 1\nq1 d2 1\n", encoding="utf-8-sig")
+
+    assert read_qrels(path, qrels_format="three-column") == {
+        "q1": {"d1": 1, "d2": 1}
+    }
+
+
+@pytest.mark.parametrize("qrels_format", ["auto", "three-column"])
+def test_qrels_reader_accepts_ir_datasets_three_column_header(
+    tmp_path, qrels_format
+):
+    path = tmp_path / "qrels.txt"
+    path.write_text(
+        "query-id\tcorpus-id\tscore\r\nq1\td1\t2\r\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+    assert read_qrels(path, qrels_format=qrels_format) == {"q1": {"d1": 2}}
+
+
+def test_qrels_reader_rejects_header_with_wrong_explicit_format(tmp_path):
+    path = tmp_path / "qrels.txt"
+    path.write_text("query-id\tcorpus-id\tscore\nq1\td1\t2\n")
+
+    with pytest.raises(QrelsFormatError, match="three-column header requires"):
+        read_qrels(path, qrels_format="trec")
+
+
 def test_ambiguous_qrels_requires_explicit_format(tmp_path):
     path = tmp_path / "qrels.txt"
     path.write_text("q1 0 d1 0\n")
