@@ -116,7 +116,10 @@ def read_qrels(
     qrels: dict[str, dict[str, int]] = {}
     seen: set[tuple[str, str]] = set()
     try:
-        with p.open(encoding="utf-8") as handle:
+        # ``utf-8-sig`` is identical to UTF-8 for ordinary files and removes
+        # a leading BOM when a public qrels export was written by a Windows
+        # tool. Without this, the first qid becomes a distinct hidden value.
+        with p.open(encoding="utf-8-sig") as handle:
             for line_number, raw_line in enumerate(handle, start=1):
                 line = raw_line.strip()
                 if not line:

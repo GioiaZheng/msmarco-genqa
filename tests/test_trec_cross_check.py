@@ -123,6 +123,15 @@ def test_qrels_layouts(tmp_path, content, qrels_format):
     assert read_qrels(path, qrels_format=qrels_format) == {"q1": {"d1": 1}}
 
 
+def test_qrels_reader_strips_utf8_bom_from_first_qid(tmp_path):
+    path = tmp_path / "qrels.txt"
+    path.write_text("q1 d1 1\nq1 d2 1\n", encoding="utf-8-sig")
+
+    assert read_qrels(path, qrels_format="three-column") == {
+        "q1": {"d1": 1, "d2": 1}
+    }
+
+
 def test_ambiguous_qrels_requires_explicit_format(tmp_path):
     path = tmp_path / "qrels.txt"
     path.write_text("q1 0 d1 0\n")

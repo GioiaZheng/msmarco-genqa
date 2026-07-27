@@ -1,0 +1,62 @@
+{
+  "schema": "msmarco-genqa.retrieval-data-metric-contract.v1",
+  "dataset_id": "beir/nfcorpus/test",
+  "analysis_base_commit": "19a9b071044fd1d436fbbe7f39c6cdcaf78ab16c",
+  "experiment_commit": "e276d80fb4da",
+  "release": {
+    "pointer_path": "artifacts/beir_cross_domain_v1.json",
+    "repository": "GioiaZheng/msmarco-genqa",
+    "tag": "v2.2-beir-cross-domain-baselines",
+    "asset": "beir-cross-domain-baselines-v1.zip"
+  },
+  "inputs": {
+    "release_asset": {
+      "path": "outputs/releases/beir-cross-domain-baselines-v1.zip",
+      "bytes": 6006875,
+      "sha256": "15e8e4ded1fe8d889e24a31f7794988ce0bbb6750c5f9b10e1d7dd4b38a5f633"
+    },
+    "source_archive": {
+      "path": "outputs/reproductions/beir_irds_cache/beir/nfcorpus/source.zip",
+      "bytes": 2448432,
+      "sha256": "efe5be03f8c5b86a5870102d0599d227c8c6e2484328e68c6522560385671b0b",
+      "query_member": "nfcorpus/queries.jsonl",
+      "corpus_member": "nfcorpus/corpus.jsonl"
+    },
+    "qrels": {
+      "path": "outputs/reproductions/beir_local_qrels/nfcorpus.qrels",
+      "bytes": 279549,
+      "sha256": "885574a3151a88679251b41919fa75e9db445b0f154728e2574e7039d3606b68"
+    },
+    "bm25_run": {
+      "path": "outputs/beir_nfcorpus_test/bm25/run.tsv",
+      "bytes": 13422823,
+      "sha256": "4ad5eaa880db0d1fa4f1c9e34370d71e861ec2a0e4b88b3738918de1e273f30a",
+      "query_count": 323,
+      "row_count": 323000,
+      "depth": 1000
+    },
+    "ce_run": {
+      "path": "outputs/beir_nfcorpus_test/cross_encoder_rerank/run.tsv",
+      "bytes": 1774037,
+      "sha256": "0ba549fa223b9af485a77f86dee580e66468867e8da32229936c2979e3e68158",
+      "query_count": 323,
+      "row_count": 32300,
+      "depth": 100
+    }
+  },
+  "expected_counts": {
+    "source_queries": 3237,
+    "corpus_documents": 3633,
+    "test_queries": 323,
+    "qrels_judgments": 12334
+  },
+  "qrels_format": "three-column",
+  "binary_relevance_threshold": 1,
+  "expected_bm25_metrics": {
+    "mrr@10": 0.5186041083099907,
+    "ndcg@10": 0.30640715529625967,
+    "recall@100": 0.23775575921008424,
+    "recall@1000": 0.4572325663968621
+  },
+  "metric_tolerance": 1e-12
+}
