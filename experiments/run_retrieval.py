@@ -34,8 +34,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 from msmarco_genqa.data.benchmark import (
+    BEIR_NFCORPUS_TEST,
     MSMARCO_DEV_SMALL,
     SUPPORTED_DATASETS,
+    BenchmarkQueries,
     BenchmarkSpec,
     default_retrieval_index_dir,
     default_retrieval_output_dir,
@@ -43,6 +45,13 @@ from msmarco_genqa.data.benchmark import (
     load_benchmark_corpus,
     load_benchmark_queries,
     lookup_document_text,
+)
+from msmarco_genqa.data.nfcorpus_video import (
+    SUPPORTED_REPRESENTATIONS,
+    NFCorpusVideoQueryBundle,
+    load_nfcorpus_video_query_representation,
+    validate_frozen_title_metrics,
+    write_nfcorpus_video_query_artifacts,
 )
 from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
 from msmarco_genqa.evaluation.trec import evaluate_trec_retrieval, trec_metric_contract
@@ -61,6 +70,9 @@ from msmarco_genqa.util.manifest import (
 from msmarco_genqa.util.seeding import set_global_seed
 
 logger = logging.getLogger("run_retrieval")
+DEFAULT_NFCORPUS_VIDEO_CONTRACT = (
+    PROJECT_ROOT / "configs/nfcorpus_video_query_representation.json"
+)
 
 
 def load_config(path: Path) -> dict:
@@ -124,6 +136,34 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "leave this off so missing reproducibility fields fail loudly."
         ),
     )
+    parser.add_argument(
+        "--query-representation",
+        choices=SUPPORTED_REPRESENTATIONS,
+        default=None,
+        help=(
+            "Run the predeclared 102-query NFCorpus video representation "
+            "experiment. Requires --dataset beir/nfcorpus/test and an explicit "
+            "--output-dir so the full benchmark output cannot be overwritten."
+        ),
+    )
+    parser.add_argument(
+        "--query-representation-contract",
+        type=Path,
+        default=None,
+        help=(
+            "Pinned NFCorpus video experiment contract. When "
+            "--query-representation is set, defaults to "
+            "configs/nfcorpus_video_query_representation.json."
+        ),
+    )
+    parser.add_argument(
+        "--no-query-source-download",
+        action="store_true",
+        help=(
+            "Refuse to download the pinned official NFCorpus archive when it "
+            "is absent. Integrity checks are always enforced."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -177,6 +217,102 @@ def _read_runs_from_tsv(run_path: Path) -> tuple[dict[str, list[str]], dict[str,
     )
 
 
+def _validate_query_representation_args(
+    args: argparse.Namespace,
+    cfg: dict,
+) -> Path | None:
+    """Validate the experiment boundary and return its resolved contract path."""
+
+    if args.query_representation is None:
+        if args.query_representation_contract is not None:
+            raise SystemExit(
+                "--query-representation-contract requires --query-representation"
+            )
+        if args.no_query_source_download:
+            raise SystemExit(
+                "--no-query-source-download requires --query-representation"
+            )
+        return None
+
+    if args.dataset != BEIR_NFCORPUS_TEST:
+        raise SystemExit(
+            "--query-representation is restricted to --dataset beir/nfcorpus/test"
+        )
+    if args.output_dir is None:
+        raise SystemExit(
+            "--query-representation requires an explicit --output-dir to avoid "
+            "overwriting the full NFCorpus benchmark"
+        )
+    query_transform_method = str(
+        (cfg.get("query_transform") or {}).get("method", "none")
+    )
+    if query_transform_method != "none":
+        raise SystemExit(
+            "query_transform.method must remain 'none' for the controlled "
+            "NFCorpus query-representation experiment"
+        )
+
+    path = args.query_representation_contract or DEFAULT_NFCORPUS_VIDEO_CONTRACT
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+def _select_video_query_cohort(
+    benchmark: BenchmarkQueries,
+    bundle: NFCorpusVideoQueryBundle,
+) -> BenchmarkQueries:
+    """Apply a constructed query cohort to judgments after construction."""
+
+    query_ids = set(bundle.queries)
+    missing_qrels = sorted(query_ids - set(benchmark.graded_qrels))
+    if missing_qrels:
+        raise SystemExit(
+            f"{len(missing_qrels)} NFCorpus video queries are missing graded qrels"
+        )
+    return BenchmarkQueries(
+        spec=benchmark.spec,
+        queries=dict(bundle.queries),
+        qrels={qid: set(benchmark.qrels.get(qid, set())) for qid in bundle.queries},
+        graded_qrels={
+            qid: dict(benchmark.graded_qrels[qid]) for qid in bundle.queries
+        },
+    )
+
+
+def _validate_representation_resume(
+    output_dir: Path,
+    bundle: NFCorpusVideoQueryBundle,
+    *,
+    resume: bool,
+) -> None:
+    """Prevent a resumed run from mixing query representations."""
+
+    run_path = output_dir / "run.tsv"
+    if not resume or not run_path.exists():
+        return
+    summary_path = output_dir / "query_representation" / "summary.json"
+    if not summary_path.exists():
+        raise SystemExit(
+            f"refusing to resume {run_path}: query-representation summary is missing"
+        )
+    try:
+        existing = json.loads(summary_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(
+            f"refusing to resume {run_path}: query-representation summary is invalid"
+        ) from exc
+    expected = bundle.summary
+    for key in (
+        "representation",
+        "qid_sha256",
+        "official_query_records_sha256",
+        "effective_queries_sha256",
+    ):
+        if existing.get(key) != expected.get(key):
+            raise SystemExit(
+                f"refusing to resume {run_path}: query representation {key} differs"
+            )
+
+
 def main() -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -185,6 +321,7 @@ def main() -> None:
     args = parse_args()
     cfg = load_config(args.config)
     benchmark_spec = get_benchmark_spec(args.dataset)
+    query_representation_contract = _validate_query_representation_args(args, cfg)
     seed = cfg.get("seed", 42)
     seed_coverage = set_global_seed(seed)
 
@@ -223,6 +360,41 @@ def main() -> None:
         args.dataset,
         cache_dir=cache_dir,
     )
+    query_representation_bundle: NFCorpusVideoQueryBundle | None = None
+    query_representation_outputs: list[Path] = []
+    query_representation_summary: dict[str, object] = {
+        "representation": "benchmark_default",
+        "n_queries": len(benchmark.queries),
+    }
+    if query_representation_contract is not None:
+        query_representation_bundle = load_nfcorpus_video_query_representation(
+            benchmark.queries,
+            representation=args.query_representation,
+            contract_path=query_representation_contract,
+            project_root=PROJECT_ROOT,
+            download_if_missing=not args.no_query_source_download,
+        )
+        _validate_representation_resume(
+            output_dir,
+            query_representation_bundle,
+            resume=args.resume,
+        )
+        benchmark = _select_video_query_cohort(
+            benchmark,
+            query_representation_bundle,
+        )
+        (
+            query_representation_summary,
+            query_representation_outputs,
+        ) = write_nfcorpus_video_query_artifacts(
+            query_representation_bundle,
+            output_dir / "query_representation",
+        )
+        logger.info(
+            "NFCorpus video query representation %s: %d validated queries.",
+            args.query_representation,
+            len(benchmark.queries),
+        )
     query_text_by_qid, query_transform_summary, query_transform_outputs = (
         materialize_query_transform(
             benchmark.queries,
@@ -405,6 +577,22 @@ def main() -> None:
             ks_ndcg=ks_ndcg,
         )
     logger.info("Metrics: %s", metrics)
+    if query_representation_bundle is not None:
+        query_representation_summary["title_baseline_reproduction"] = (
+            validate_frozen_title_metrics(
+                query_representation_bundle,
+                metrics,
+            )
+        )
+        summary_path = output_dir / "query_representation" / "summary.json"
+        with summary_path.open("w", encoding="utf-8", newline="\n") as handle:
+            json.dump(
+                query_representation_summary,
+                handle,
+                indent=2,
+                ensure_ascii=False,
+            )
+            handle.write("\n")
 
     # ---- 6. Qualitative examples ----
     # Resolve passage text. If we built the index in this run, the corpus is
@@ -482,6 +670,7 @@ def main() -> None:
             "judged_topic_coverage": (
                 len(set(runs) & judged_qids) / len(judged_qids) if judged_qids else 0.0
             ),
+            "query_representation": query_representation_summary,
         }
     )
     payload = {
@@ -500,6 +689,7 @@ def main() -> None:
         "environment": env_dict,
         "top_k": top_k,
         "query_transform": query_transform_summary,
+        "query_representation": query_representation_summary,
         "resumed": args.resume and bool(set(qids) - set(pending_qids)),
     }
     if benchmark_spec.has_graded_qrels:
@@ -527,6 +717,14 @@ def main() -> None:
             "dataset_id": benchmark_spec.dataset_id,
             "corpus_id": benchmark_spec.corpus_id,
         },
+        extra_files=(
+            {
+                "query_representation_contract": query_representation_bundle.contract_path,
+                "query_representation_archive": query_representation_bundle.archive_path,
+            }
+            if query_representation_bundle is not None
+            else None
+        ),
     )
     env_fingerprint = compute_env_fingerprint(env_dict)
 
@@ -535,7 +733,13 @@ def main() -> None:
         output_dir=output_dir,
         command=sys.argv,
         config_path=args.config,
-        extra_outputs=[run_path, examples_path, resolved_config_path, *query_transform_outputs],
+        extra_outputs=[
+            run_path,
+            examples_path,
+            resolved_config_path,
+            *query_transform_outputs,
+            *query_representation_outputs,
+        ],
         extra={
             "task": "retrieval",
             "backend": cfg["retrieval"].get("backend", "bm25s"),
@@ -558,6 +762,7 @@ def main() -> None:
             "data_fingerprint": data_fingerprint,
             "env_fingerprint": env_fingerprint,
             "query_transform": query_transform_summary,
+            "query_representation": query_representation_summary,
         },
         require_clean_tree=args.require_clean_tree,
         allow_incomplete=args.allow_incomplete_manifest,

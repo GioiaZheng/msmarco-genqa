@@ -109,6 +109,51 @@ recover a positive at ranks 101–1000, and six still have no positive at depth
 The new title condition must reproduce this slice before either treatment is
 accepted.
 
+## Execution
+
+Each condition uses an isolated output directory and the same cached NFCorpus
+BM25 index. The runner downloads the official archive only when it is absent,
+then verifies the contracted byte size, MD5, SHA-256, cohort hash, record hash,
+and title alignment before retrieval:
+
+```bash
+python -X utf8 experiments/run_retrieval.py \
+  --dataset beir/nfcorpus/test \
+  --query-representation title \
+  --output-dir outputs/beir_nfcorpus_video/title/bm25 \
+  --require-clean-tree
+
+python -X utf8 experiments/run_retrieval.py \
+  --dataset beir/nfcorpus/test \
+  --query-representation description \
+  --output-dir outputs/beir_nfcorpus_video/description/bm25 \
+  --require-clean-tree
+
+python -X utf8 experiments/run_retrieval.py \
+  --dataset beir/nfcorpus/test \
+  --query-representation title_plus_description \
+  --output-dir outputs/beir_nfcorpus_video/title_plus_description/bm25 \
+  --require-clean-tree
+```
+
+The cross-encoder must receive the matching representation explicitly. It
+checks the upstream representation and effective-query hashes before model
+loading:
+
+```bash
+python -X utf8 experiments/run_reranker.py \
+  --dataset beir/nfcorpus/test \
+  --query-representation title \
+  --input-run outputs/beir_nfcorpus_video/title/bm25/run.tsv \
+  --output-dir outputs/beir_nfcorpus_video/title/cross_encoder_rerank \
+  --require-clean-tree
+```
+
+Replace `title` in both paths and the argument with `description` or
+`title_plus_description` for the treatment runs. `--resume` is safe only
+within the same condition; the runner rejects a representation or input hash
+mismatch.
+
 ## Evaluation
 
 Recall@100 is the primary metric because the experiment targets the candidate

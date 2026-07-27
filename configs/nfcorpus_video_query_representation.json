@@ -11,6 +11,7 @@
     },
     "official_nfcorpus_v1": {
       "dataset_id": "nfcorpus/test/video",
+      "path": "outputs/reproductions/beir_irds_cache/downloads/49c061fbadc52ba4d35d0e42e2d742fd",
       "url": "https://www.cl.uni-heidelberg.de/downloads/statnlp/nfcorpus.tar.gz",
       "released": "2016-02-19",
       "bytes": 31039523,
