@@ -106,15 +106,39 @@ Eleven video queries have no positive qrel in the BM25 top 100. Five first
 recover a positive at ranks 101–1000, and six still have no positive at depth
 1000.
 
-The new title condition must reproduce this slice before either treatment is
-accepted.
+### Deterministic tie amendment
+
+The first guarded title rerun on 27 July 2026 reproduced MRR@10 and nDCG@10
+exactly, but produced Recall@100 `0.289741` and Recall@1000 `0.584427`.
+Comparison with the published fixed run isolated the drift to equal-score
+candidate selection:
+
+- only two queries changed Recall@100;
+- those queries had only 11 and 19 positive-score BM25 matches, so the
+  remaining top-100 positions had score `0.0`;
+- 54 queries changed Recall@1000, again at the zero-score boundary;
+- after excluding score-0 fillers, both runs give Recall@100
+  `0.2820649478633883` and Recall@1000 `0.4587958058307442`.
+
+The treatment comparison therefore uses a pre-treatment deterministic rule:
+retrieve all 3,633 NFCorpus documents, sort by score descending and then
+`doc_id` ascending, and only then truncate to the reported depth. This changes
+neither BM25 scores nor the architecture; it removes a cross-platform
+tie-breaking artifact. The deterministic title result is frozen before either
+treatment is run.
+
+Before that freeze, the title guard requires exact reproduction of the
+published MRR@10, nDCG@10, and positive-score Recall@100/1000 invariants.
+After the freeze it also requires every deterministic aggregate metric to
+match within `1e-12`.
 
 ## Execution
 
-Each condition uses an isolated output directory and the same cached NFCorpus
-BM25 index. The runner downloads the official archive only when it is absent,
-then verifies the contracted byte size, MD5, SHA-256, cohort hash, record hash,
-and title alignment before retrieval:
+Each condition uses an isolated output directory, the same cached NFCorpus
+BM25 index, and the deterministic tie rule above. The runner downloads the
+official archive only when it is absent, then verifies the contracted byte
+size, MD5, SHA-256, cohort hash, record hash, and title alignment before
+retrieval:
 
 ```bash
 python -X utf8 experiments/run_retrieval.py \

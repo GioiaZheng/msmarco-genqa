@@ -66,6 +66,9 @@ class NFCorpusVideoQueryBundle:
     archive_path: Path
     frozen_title_metrics: dict[str, float]
     frozen_title_rerank_metrics: dict[str, float]
+    positive_score_title_metrics: dict[str, float]
+    deterministic_title_metrics: dict[str, float] | None
+    deterministic_title_rerank_metrics: dict[str, float] | None
 
 
 def normalize_query_field(text: str) -> str:
@@ -439,6 +442,35 @@ def load_nfcorpus_video_query_representation(
         metric: float(frozen_bm25_ce[metric])
         for metric in ("mrr@10", "ndcg@10", "recall@100")
     }
+    positive_score_bm25 = _require_mapping(
+        frozen.get("positive_score_bm25"),
+        "frozen_title_baseline.positive_score_bm25",
+    )
+    positive_score_title_metrics = {
+        metric: float(positive_score_bm25[metric])
+        for metric in (
+            "positive_score_recall@100",
+            "positive_score_recall@1000",
+        )
+    }
+    deterministic_bm25_raw = frozen.get("deterministic_tie_bm25")
+    deterministic_title_metrics = (
+        {
+            metric: float(deterministic_bm25_raw[metric])
+            for metric in ("mrr@10", "ndcg@10", "recall@100", "recall@1000")
+        }
+        if isinstance(deterministic_bm25_raw, dict)
+        else None
+    )
+    deterministic_ce_raw = frozen.get("deterministic_tie_bm25_ce")
+    deterministic_title_rerank_metrics = (
+        {
+            metric: float(deterministic_ce_raw[metric])
+            for metric in ("mrr@10", "ndcg@10", "recall@100")
+        }
+        if isinstance(deterministic_ce_raw, dict)
+        else None
+    )
     summary: dict[str, object] = {
         "schema": CONTRACT_SCHEMA,
         "dataset_id": _require_string(
@@ -460,6 +492,11 @@ def load_nfcorpus_video_query_representation(
         "title_alignment": {
             "matched": len(queries),
             "mismatched": 0,
+        },
+        "ranking_tie_break": {
+            "order": "score descending, then doc_id ascending",
+            "candidate_pool": "full 3,633-document corpus before top-k truncation",
+            "reason": "Cross-platform BM25 top-k selection is unstable among equal scores.",
         },
         "leakage_boundary": {
             "inputs": [
@@ -486,6 +523,9 @@ def load_nfcorpus_video_query_representation(
         archive_path=archive_path,
         frozen_title_metrics=frozen_title_metrics,
         frozen_title_rerank_metrics=frozen_title_rerank_metrics,
+        positive_score_title_metrics=positive_score_title_metrics,
+        deterministic_title_metrics=deterministic_title_metrics,
+        deterministic_title_rerank_metrics=deterministic_title_rerank_metrics,
     )
 
 
@@ -520,32 +560,72 @@ def validate_frozen_title_metrics(
     bundle: NFCorpusVideoQueryBundle,
     metrics: Mapping[str, object],
     *,
+    positive_score_metrics: Mapping[str, object],
     tolerance: float = 1e-12,
 ) -> dict[str, object]:
-    """Require the title condition to reproduce its predeclared fixed-run slice."""
+    """Validate stable published invariants and any frozen deterministic baseline."""
 
     if bundle.representation != "title":
         return {"required": False, "passed": None}
 
-    deltas: dict[str, float] = {}
-    for metric, expected in bundle.frozen_title_metrics.items():
+    invariant_deltas: dict[str, float] = {}
+    for metric in ("mrr@10", "ndcg@10"):
+        expected = bundle.frozen_title_metrics[metric]
         if metric not in metrics:
             raise NFCorpusVideoContractError(
                 f"title reproduction is missing required metric {metric}"
             )
         observed = float(metrics[metric])
         delta = observed - expected
-        deltas[metric] = delta
+        invariant_deltas[metric] = delta
         if abs(delta) > tolerance:
             raise NFCorpusVideoContractError(
                 f"title baseline metric drift for {metric}: expected {expected:.16g}, "
                 f"found {observed:.16g}, delta {delta:.3g}"
             )
+
+    for metric, expected in bundle.positive_score_title_metrics.items():
+        if metric not in positive_score_metrics:
+            raise NFCorpusVideoContractError(
+                f"title reproduction is missing required metric {metric}"
+            )
+        observed = float(positive_score_metrics[metric])
+        delta = observed - expected
+        invariant_deltas[metric] = delta
+        if abs(delta) > tolerance:
+            raise NFCorpusVideoContractError(
+                f"title baseline metric drift for {metric}: expected {expected:.16g}, "
+                f"found {observed:.16g}, delta {delta:.3g}"
+            )
+
+    deterministic_deltas: dict[str, float] | None = None
+    deterministic_status = "pending_freeze"
+    if bundle.deterministic_title_metrics is not None:
+        deterministic_deltas = {}
+        for metric, expected in bundle.deterministic_title_metrics.items():
+            if metric not in metrics:
+                raise NFCorpusVideoContractError(
+                    f"deterministic title baseline is missing metric {metric}"
+                )
+            observed = float(metrics[metric])
+            delta = observed - expected
+            deterministic_deltas[metric] = delta
+            if abs(delta) > tolerance:
+                raise NFCorpusVideoContractError(
+                    f"deterministic title metric drift for {metric}: "
+                    f"expected {expected:.16g}, found {observed:.16g}, "
+                    f"delta {delta:.3g}"
+                )
+        deterministic_status = "passed"
     return {
         "required": True,
         "passed": True,
         "tolerance": tolerance,
-        "metric_deltas": deltas,
+        "published_invariant_deltas": invariant_deltas,
+        "deterministic_baseline": {
+            "status": deterministic_status,
+            "metric_deltas": deterministic_deltas,
+        },
     }
 
 
@@ -561,10 +641,20 @@ def validate_frozen_title_reranker_metrics(
     if bundle.representation != "title":
         return {"required": False, "passed": None}
 
+    if (
+        bundle.deterministic_title_metrics is None
+        or bundle.deterministic_title_rerank_metrics is None
+    ):
+        return {
+            "required": False,
+            "passed": None,
+            "status": "pending_deterministic_baseline_freeze",
+        }
+
     metric_deltas: dict[str, dict[str, float]] = {"bm25": {}, "bm25_ce": {}}
     expected_groups = (
-        ("bm25", bundle.frozen_title_metrics, input_metrics),
-        ("bm25_ce", bundle.frozen_title_rerank_metrics, rerank_metrics),
+        ("bm25", bundle.deterministic_title_metrics, input_metrics),
+        ("bm25_ce", bundle.deterministic_title_rerank_metrics, rerank_metrics),
     )
     for group, expected_metrics, observed_metrics in expected_groups:
         for metric, expected in expected_metrics.items():

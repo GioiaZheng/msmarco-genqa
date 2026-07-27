@@ -73,6 +73,7 @@
     "reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2",
     "rerank_depth": 100,
     "index_policy": "Reuse one corpus index across all query representations",
+    "ranking_tie_break": "Retrieve the full 3,633-document corpus, then sort by score descending and doc_id ascending before top-k truncation.",
     "architecture_changes": false,
     "training": false
   },
@@ -113,10 +114,17 @@
       "mrr@10": 0.517110177404295,
       "ndcg@10": 0.29720633866694945,
       "recall@100": 0.2820649478633883
-    }
+    },
+    "positive_score_bm25": {
+      "positive_score_recall@100": 0.2820649478633883,
+      "positive_score_recall@1000": 0.4587958058307442
+    },
+    "deterministic_tie_bm25": null,
+    "deterministic_tie_bm25_ce": null
   },
   "acceptance_checks": [
-    "The title condition reproduces the frozen 102-query BM25 slice within 1e-12 for every metric.",
+    "Before freezing the deterministic title baseline, the title condition reproduces the published MRR@10, nDCG@10, and positive-score Recall@100/1000 invariants within 1e-12.",
+    "After freezing, the deterministic title condition reproduces every recorded metric within 1e-12.",
     "All three conditions contain the same 102 qids exactly once.",
     "The corpus, qrels, BM25 parameters, and index fingerprint are identical across conditions.",
     "Each reranked run contains exactly the corresponding BM25 top-100 candidate set per qid.",

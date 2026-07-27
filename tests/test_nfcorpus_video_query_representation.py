@@ -3,9 +3,12 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import sys
 import tarfile
 from pathlib import Path
+from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 from experiments.run_reranker import (
@@ -27,6 +30,7 @@ from msmarco_genqa.data.nfcorpus_video import (
     validate_frozen_title_reranker_metrics,
     write_nfcorpus_video_query_artifacts,
 )
+from msmarco_genqa.retrieval.bm25 import BM25Retriever
 
 
 def _digest(path: Path, algorithm: str) -> str:
@@ -132,7 +136,22 @@ def _make_fixture(tmp_path: Path) -> tuple[Path, dict[str, str]]:
                 "mrr@10": 0.6,
                 "ndcg@10": 0.5,
                 "recall@100": 0.3,
-            }
+            },
+            "positive_score_bm25": {
+                "positive_score_recall@100": 0.3,
+                "positive_score_recall@1000": 0.6,
+            },
+            "deterministic_tie_bm25": {
+                "mrr@10": 0.5,
+                "ndcg@10": 0.4,
+                "recall@100": 0.3,
+                "recall@1000": 0.6,
+            },
+            "deterministic_tie_bm25_ce": {
+                "mrr@10": 0.6,
+                "ndcg@10": 0.5,
+                "recall@100": 0.3,
+            },
         },
     }
     contract_path = tmp_path / "contract.json"
@@ -255,6 +274,10 @@ def test_artifacts_and_title_reproduction_guard(tmp_path: Path) -> None:
             "recall@100": 0.3,
             "recall@1000": 0.6,
         },
+        positive_score_metrics={
+            "positive_score_recall@100": 0.3,
+            "positive_score_recall@1000": 0.6,
+        },
     )
 
     assert summary["representation"] == "title"
@@ -282,7 +305,43 @@ def test_artifacts_and_title_reproduction_guard(tmp_path: Path) -> None:
                 "recall@100": 0.3,
                 "recall@1000": 0.6,
             },
+            positive_score_metrics={
+                "positive_score_recall@100": 0.3,
+                "positive_score_recall@1000": 0.6,
+            },
         )
+
+
+def test_bm25_deterministic_ties_score_then_doc_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeBackend:
+        def retrieve(self, _tokens, *, k, **_kwargs):
+            assert k == 4
+            return (
+                np.asarray([[0, 1, 2, 3]]),
+                np.asarray([[0.0, 1.0, 1.0, 0.0]]),
+            )
+
+    monkeypatch.setitem(
+        sys.modules,
+        "bm25s",
+        SimpleNamespace(tokenize=lambda queries, **_kwargs: queries),
+    )
+    retriever = BM25Retriever(
+        corpus_texts=[],
+        doc_ids=["d2", "d1", "d4", "d3"],
+    )
+    retriever._bm25 = FakeBackend()
+
+    scores, doc_ids = retriever.retrieve_batch(
+        ["query"],
+        k=3,
+        deterministic_ties=True,
+    )
+
+    assert doc_ids == [["d1", "d4", "d2"]]
+    assert scores.tolist() == [[1.0, 1.0, 0.0]]
 
 
 def test_runner_requires_isolated_nfcorpus_output(tmp_path: Path) -> None:

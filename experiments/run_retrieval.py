@@ -217,6 +217,40 @@ def _read_runs_from_tsv(run_path: Path) -> tuple[dict[str, list[str]], dict[str,
     )
 
 
+def _positive_score_recall(
+    runs: dict[str, list[str]],
+    scores_by_qid: dict[str, list[float]],
+    qrels: dict[str, set[str]],
+    *,
+    cutoffs: tuple[int, ...],
+) -> dict[str, float]:
+    """Macro recall after excluding non-retrieved (score <= 0) fillers."""
+
+    qids = [qid for qid in qrels if qid in runs]
+    metrics: dict[str, float] = {}
+    for cutoff in cutoffs:
+        values = []
+        for qid in qids:
+            positive_docs = [
+                doc_id
+                for doc_id, score in zip(
+                    runs[qid][:cutoff],
+                    scores_by_qid.get(qid, [])[:cutoff],
+                )
+                if score > 0.0
+            ]
+            relevant = qrels[qid]
+            values.append(
+                len(set(positive_docs) & relevant) / len(relevant)
+                if relevant
+                else 0.0
+            )
+        metrics[f"positive_score_recall@{cutoff}"] = (
+            sum(values) / len(values) if values else 0.0
+        )
+    return metrics
+
+
 def _validate_query_representation_args(
     args: argparse.Namespace,
     cfg: dict,
@@ -517,6 +551,7 @@ def main() -> None:
                 chunk_scores, chunk_doc_ids = retriever.retrieve_batch(
                     chunk_texts,
                     k=top_k,
+                    deterministic_ties=query_representation_bundle is not None,
                 )
                 chunk_seconds = time.time() - t0
 
@@ -578,10 +613,20 @@ def main() -> None:
         )
     logger.info("Metrics: %s", metrics)
     if query_representation_bundle is not None:
+        positive_score_metrics = _positive_score_recall(
+            runs,
+            scores_by_qid,
+            benchmark.qrels,
+            cutoffs=tuple(ks_recall),
+        )
+        query_representation_summary["positive_score_metrics"] = (
+            positive_score_metrics
+        )
         query_representation_summary["title_baseline_reproduction"] = (
             validate_frozen_title_metrics(
                 query_representation_bundle,
                 metrics,
+                positive_score_metrics=positive_score_metrics,
             )
         )
         summary_path = output_dir / "query_representation" / "summary.json"
