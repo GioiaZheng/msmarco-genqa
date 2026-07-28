@@ -1,0 +1,48 @@
+{
+  "schema": "msmarco-genqa.external-artifact-pointer.v1",
+  "artifact_id": "nfcorpus-video-query-representation-bm25-ce-v1",
+  "kind": "nfcorpus_video_query_representation_run_bundle",
+  "release": {
+    "repository": "GioiaZheng/msmarco-genqa",
+    "tag": "v2.3-nfcorpus-video-query-ablation",
+    "asset": "nfcorpus-video-query-ablation-v1.zip"
+  },
+  "download": {
+    "url": "https://github.com/GioiaZheng/msmarco-genqa/releases/download/v2.3-nfcorpus-video-query-ablation/nfcorpus-video-query-ablation-v1.zip",
+    "bytes": 2975679,
+    "sha256": "6d588eef275989e822d12e40afa67396a6226dd6df52246877a312556c64272f"
+  },
+  "source": {
+    "experiment_commits": {
+      "bm25": "119a9c695547",
+      "reranker": "cc6ae1f9ac08"
+    },
+    "record": "reports/generated/artifacts/nfcorpus_video_query_representation.json",
+    "record_sha256": "321d8296518c696f28d1b8d4bd5456fb825853e24fe2be53397e711cf15cd56c",
+    "record_serialization": "canonical-json-utf8-sorted-keys-compact"
+  },
+  "contents": {
+    "dataset": "beir/nfcorpus/test",
+    "subset": "official_test_video",
+    "query_representations": [
+      "title",
+      "description",
+      "title_plus_description"
+    ],
+    "systems": [
+      "bm25",
+      "bm25_ce"
+    ],
+    "run_files": 6,
+    "contains_query_text": false,
+    "contains_document_text": false,
+    "contains_model_weights": false
+  },
+  "reproduce": {
+    "command": "make reproduce-nfcorpus-video-eval",
+    "requires_private_credentials": false,
+    "rebuilds_corpus_indexes": false,
+    "reruns_retrieval": false,
+    "reruns_cross_encoder": false
+  }
+}

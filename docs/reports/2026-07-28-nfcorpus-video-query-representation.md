@@ -114,6 +114,24 @@ python -X utf8 scripts/analyze_nfcorpus_query_representations.py \
   --tolerance 1e-12
 ```
 
+## Public exact-output artifact
+
+The six fixed ranked runs are published in the text-only GitHub Release
+`v2.3-nfcorpus-video-query-ablation`. From a configured clone, reproduce the
+reported aggregates and paired comparisons with:
+
+```bash
+make reproduce-nfcorpus-video-eval
+```
+
+This command follows the immutable pointer in
+[`artifacts/nfcorpus_video_query_representation_v1.json`](../../artifacts/nfcorpus_video_query_representation_v1.json),
+verifies the downloaded ZIP and every member hash, recovers public NFCorpus
+qrels through `ir_datasets`, and writes checked `metrics.json` and `metrics.md`
+files. It does not rebuild an index or rerun BM25 or the cross-encoder. The
+bundle contains document identifiers, ranks, and scores only, with no query or
+document text, qrels mirror, model weights, caches, or machine-local manifests.
+
 ## Interpretation
 
 The result supports a narrow conclusion: on the official NFCorpus video

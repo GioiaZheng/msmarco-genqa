@@ -70,6 +70,12 @@
         "bm25_manifest": "bd328a7472e235aa91aeee147751e4616b03bc9d718886e2143fb19326f7770a",
         "rerank_run": "c3b21ad0a93a3b0e89625dad3e5ba81235ba7da1890749caed45f40492196f3c",
         "rerank_manifest": "0e7479338688da77dd1989d62f88777f7dca0c66660458b4f7effcad1216485b"
+      },
+      "artifact_paths": {
+        "bm25_run": "outputs/beir_nfcorpus_video/title/bm25/run.tsv",
+        "bm25_manifest": "outputs/beir_nfcorpus_video/title/bm25/manifest.json",
+        "rerank_run": "outputs/beir_nfcorpus_video/title/cross_encoder_rerank/run.tsv",
+        "rerank_manifest": "outputs/beir_nfcorpus_video/title/cross_encoder_rerank/manifest.json"
       }
     },
     "description": {
@@ -99,6 +105,12 @@
         "bm25_manifest": "3a63c47e62e7dd645a4bc88949a513973fb3ae5c39c4aebf95469ddc220716a2",
         "rerank_run": "d07eeff242e0c9a70a7df3bc5c98731211153e91f2f5d85434ca9ab4c1f37760",
         "rerank_manifest": "0a1df9ddb43a8f9dc9626128e840ed16a6ff6880962def40d000101187e70722"
+      },
+      "artifact_paths": {
+        "bm25_run": "outputs/beir_nfcorpus_video/description/bm25/run.tsv",
+        "bm25_manifest": "outputs/beir_nfcorpus_video/description/bm25/manifest.json",
+        "rerank_run": "outputs/beir_nfcorpus_video/description/cross_encoder_rerank/run.tsv",
+        "rerank_manifest": "outputs/beir_nfcorpus_video/description/cross_encoder_rerank/manifest.json"
       }
     },
     "title_plus_description": {
@@ -152,6 +164,12 @@
         "bm25_manifest": "92d059fd5a289ec57dd1e4687d8def04f7e5f00d319790ec91556207c866645f",
         "rerank_run": "5e7807fb66c5567a1aacebb1410fd80fd24b7e9a4a3e33113065b4d2f3603e9a",
         "rerank_manifest": "82626bbb0c9ec4e4b0f5f966eb4b60d5707e97f37341f2b17a8132e08edaa37e"
+      },
+      "artifact_paths": {
+        "bm25_run": "outputs/beir_nfcorpus_video/title_plus_description/bm25/run.tsv",
+        "bm25_manifest": "outputs/beir_nfcorpus_video/title_plus_description/bm25/manifest.json",
+        "rerank_run": "outputs/beir_nfcorpus_video/title_plus_description/cross_encoder_rerank/run.tsv",
+        "rerank_manifest": "outputs/beir_nfcorpus_video/title_plus_description/cross_encoder_rerank/manifest.json"
       }
     }
   },

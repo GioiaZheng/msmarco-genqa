@@ -170,6 +170,38 @@ document/query text, qrels mirror, model weights, caches, or machine-local
 manifests. This validates the published evidence without rebuilding the
 NFCorpus/SciFact indexes or rerunning the cross-encoder.
 
+## Reproducing the NFCorpus Video Query Ablation
+
+The six fixed runs from the 102-query query-representation experiment can be
+recovered and checked with:
+
+```bash
+make reproduce-nfcorpus-video-eval
+```
+
+The equivalent direct Python command is:
+
+```bash
+python -m msmarco_genqa.cli.nfcorpus_video_release reproduce \
+  --cache-dir outputs/reproductions/beir_irds_cache
+```
+
+The command follows
+`artifacts/nfcorpus_video_query_representation_v1.json`, downloads the pinned
+GitHub Release asset, checks its byte size and SHA-256 digest, and validates
+every archived member. It then obtains the public NFCorpus test qrels through
+`ir_datasets`, selects the frozen 102-query video cohort from the run qids, and
+recomputes all six aggregate result rows. It also verifies that each reranked
+candidate set equals the corresponding BM25 top 100 and reruns the published
+10,000-resample paired bootstrap with seed `20260727`.
+
+Checked `metrics.json` and `metrics.md` outputs are written under
+`outputs/reproductions/nfcorpus_video_query_representation_v1/evaluation/`.
+This is an exact-output evidence reproduction: it does not rerun BM25, the
+cross-encoder, or corpus indexing. The archive contains ranked document
+identifiers and scores only; query/document text, qrels mirrors, model weights,
+caches, and machine-local manifests are excluded.
+
 ## Full Pipeline Plan
 
 Print the executable plan:

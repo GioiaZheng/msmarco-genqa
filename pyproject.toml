@@ -108,6 +108,7 @@ rag-eval     = "msmarco_genqa.cli.rag_eval:main"
 mgq-trec-eval = "msmarco_genqa.cli.trec_eval:main"
 mgq-trec-release = "msmarco_genqa.cli.trec_release:main"
 mgq-beir-release = "msmarco_genqa.cli.beir_release:main"
+mgq-nfcorpus-video-release = "msmarco_genqa.cli.nfcorpus_video_release:main"
 
 
 # --------------------------------------------------------------------------- #

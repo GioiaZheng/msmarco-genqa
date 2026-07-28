@@ -4,7 +4,7 @@
 # Python dependencies are installed (``pip install -r requirements.txt &&
 # pip install -e .``).
 
-.PHONY: help install test test-slow lint check-results check-fixture-metrics check-lockfile check-notebooks check-artifacts check-registry export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-small reproduce-baseline reproduce-trec-eval build-trec-release reproduce-beir-eval build-beir-release analyze-nfcorpus-first-stage review-nfcorpus-first-stage
+.PHONY: help install test test-slow lint check-results check-fixture-metrics check-lockfile check-notebooks check-artifacts check-registry export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-small reproduce-baseline reproduce-trec-eval build-trec-release reproduce-beir-eval build-beir-release reproduce-nfcorpus-video-eval build-nfcorpus-video-release analyze-nfcorpus-first-stage review-nfcorpus-first-stage
 
 PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
@@ -34,6 +34,8 @@ help:
 	@echo "  make build-trec-release   -- build the maintainer release ZIP from canonical runs"
 	@echo "  make reproduce-beir-eval  -- fetch + verify published BEIR runs and metrics"
 	@echo "  make build-beir-release   -- build the maintainer BEIR release ZIP"
+	@echo "  make reproduce-nfcorpus-video-eval -- verify + evaluate six query-ablation runs"
+	@echo "  make build-nfcorpus-video-release -- build the maintainer query-ablation ZIP"
 	@echo "  make analyze-nfcorpus-first-stage -- reproduce inputs + diagnose BM25 coverage"
 	@echo "  make review-nfcorpus-first-stage -- validate the 72-case taxonomy review"
 
@@ -167,6 +169,18 @@ reproduce-beir-eval:
 # outputs/ and is published only after its exact size and SHA-256 are pinned.
 build-beir-release:
 	$(PYTHON) -m msmarco_genqa.cli.beir_release build --output outputs/releases/beir-cross-domain-baselines-v1.zip
+
+# Fast reproduction of the NFCorpus test/video query-representation evidence.
+# The release contains six fixed text-only runs (three representations x two
+# systems). Public qrels are recovered through ir_datasets before aggregate
+# metrics, candidate-set invariants, and the pinned paired bootstrap are checked.
+reproduce-nfcorpus-video-eval:
+	$(PYTHON) -m msmarco_genqa.cli.nfcorpus_video_release reproduce --cache-dir outputs/reproductions/beir_irds_cache
+
+# Maintainer-only deterministic packaging target. The generated ZIP remains
+# ignored; the tracked pointer pins its exact byte size and SHA-256 digest.
+build-nfcorpus-video-release:
+	$(PYTHON) -m msmarco_genqa.cli.nfcorpus_video_release build --output outputs/releases/nfcorpus-video-query-ablation-v1.zip
 
 # Query-level diagnosis over the immutable NFCorpus BM25 run. The dependency
 # materializes and verifies the public release, qrels, and source archive; this
