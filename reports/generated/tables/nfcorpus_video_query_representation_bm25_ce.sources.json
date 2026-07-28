@@ -5,7 +5,7 @@
   "sources": [
     {
       "path": "reports/generated/artifacts/nfcorpus_video_query_representation.json",
-      "sha256_16": "8485566947c393a2",
+      "sha256_16": "d5c9a14de462b65e",
       "artifact_schema": "msmarco-genqa.table-artifact.v1",
       "artifact_id": "nfcorpus_video_query_representation",
       "metric_schema": "retrieval.nfcorpus_video_query_representation.v1",
