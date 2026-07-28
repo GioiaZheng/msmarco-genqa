@@ -16,6 +16,12 @@ if str(PROJECT_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from msmarco_genqa.data.benchmark import load_benchmark_queries
+from msmarco_genqa.data.nfcorpus_video import (
+    FIXED_RERANK_DEPTH,
+    FIXED_RERANK_MAX_LENGTH,
+    FIXED_RERANKER_MODEL,
+    FIXED_RERANKER_REVISION,
+)
 from msmarco_genqa.evaluation.bootstrap import paired_bootstrap_diff
 from msmarco_genqa.evaluation.retrieval import (
     first_relevant_rank,
@@ -240,6 +246,12 @@ def validate_rerank_contract(
             or any(character not in "0123456789abcdef" for character in revision)
         ):
             raise ValueError(f"{name}: reranker model revision is not pinned")
+        if reranker.get("rerank_top_k") != FIXED_RERANK_DEPTH:
+            raise ValueError(f"{name}: reranker depth differs from the frozen value")
+        if reranker.get("max_length") != FIXED_RERANK_MAX_LENGTH:
+            raise ValueError(
+                f"{name}: reranker max length differs from the frozen value"
+            )
         model_names.add(model_name)
         model_revisions.add(revision)
 
@@ -247,6 +259,10 @@ def validate_rerank_contract(
         raise ValueError("rerank conditions were produced from different commits")
     if len(model_names) != 1 or len(model_revisions) != 1:
         raise ValueError("rerank conditions do not share one pinned model")
+    if model_names != {FIXED_RERANKER_MODEL}:
+        raise ValueError("rerank conditions do not use the frozen model")
+    if model_revisions != {FIXED_RERANKER_REVISION}:
+        raise ValueError("rerank conditions do not use the frozen model revision")
 
     return {
         "query_count": expected_queries,

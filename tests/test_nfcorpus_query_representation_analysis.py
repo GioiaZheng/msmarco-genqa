@@ -10,6 +10,10 @@ from scripts.analyze_nfcorpus_query_representations import (
     build_per_query_rows,
     validate_rerank_contract,
 )
+from msmarco_genqa.data.nfcorpus_video import (
+    FIXED_RERANKER_MODEL,
+    FIXED_RERANKER_REVISION,
+)
 
 
 def test_per_query_rows_keep_graded_ndcg_and_binary_recall() -> None:
@@ -93,8 +97,10 @@ def _condition(
     if stage == "cross_encoder_rerank":
         metrics_payload["config"] = {
             "reranker": {
-                "model_name": "fixed-model",
-                "revision": "a" * 40,
+                "model_name": FIXED_RERANKER_MODEL,
+                "revision": FIXED_RERANKER_REVISION,
+                "rerank_top_k": 100,
+                "max_length": 512,
             }
         }
     return Condition(

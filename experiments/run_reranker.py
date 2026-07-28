@@ -59,6 +59,7 @@ except ImportError:  # pragma: no cover - exercised on Windows hosts.
 import sys
 import time
 from pathlib import Path
+from typing import Mapping
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -76,6 +77,10 @@ from msmarco_genqa.data.benchmark import (
     lookup_document_text,
 )
 from msmarco_genqa.data.nfcorpus_video import (
+    FIXED_RERANK_DEPTH,
+    FIXED_RERANK_MAX_LENGTH,
+    FIXED_RERANKER_MODEL,
+    FIXED_RERANKER_REVISION,
     SUPPORTED_REPRESENTATIONS,
     NFCorpusVideoQueryBundle,
     load_nfcorpus_video_query_representation,
@@ -83,6 +88,7 @@ from msmarco_genqa.data.nfcorpus_video import (
     write_nfcorpus_video_query_artifacts,
 )
 from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
+from msmarco_genqa.evaluation.retrieval_contract import sha256_file
 from msmarco_genqa.evaluation.trec import evaluate_trec_retrieval, trec_metric_contract
 from msmarco_genqa.reranking.cross_encoder import CrossEncoderReranker
 from msmarco_genqa.reranking.io import (
@@ -451,6 +457,22 @@ def _validate_query_representation_args(
             "query_transform.method must remain 'none' for the controlled "
             "NFCorpus query-representation experiment"
         )
+    reranker = cfg.get("reranker") or {}
+    model_name = args.model_name or reranker.get("model_name")
+    rerank_depth = int(
+        args.rerank_top_k
+        or reranker.get("rerank_top_k", FIXED_RERANK_DEPTH)
+    )
+    if (
+        model_name != FIXED_RERANKER_MODEL
+        or reranker.get("revision") != FIXED_RERANKER_REVISION
+        or rerank_depth != FIXED_RERANK_DEPTH
+        or int(reranker.get("max_length", 0)) != FIXED_RERANK_MAX_LENGTH
+    ):
+        raise SystemExit(
+            "the controlled NFCorpus query-representation experiment requires "
+            "the frozen cross-encoder model, revision, depth, and max length"
+        )
 
     path = args.query_representation_contract or DEFAULT_NFCORPUS_VIDEO_CONTRACT
     return path if path.is_absolute() else PROJECT_ROOT / path
@@ -499,7 +521,7 @@ def _validate_upstream_query_representation(
 
 def _validate_representation_resume(
     output_dir: Path,
-    bundle: NFCorpusVideoQueryBundle,
+    expected: Mapping[str, object],
     *,
     resume: bool,
 ) -> None:
@@ -522,10 +544,11 @@ def _validate_representation_resume(
         "qid_sha256",
         "official_query_records_sha256",
         "effective_queries_sha256",
+        "reranker_system",
     ):
-        if existing.get(key) != bundle.summary.get(key):
+        if existing.get(key) != expected.get(key):
             raise SystemExit(
-                f"refusing to resume {rerank_run}: query representation {key} differs"
+                f"refusing to resume {rerank_run}: resume contract {key} differs"
             )
 
 
@@ -616,11 +639,6 @@ def main() -> None:
             project_root=PROJECT_ROOT,
             download_if_missing=not args.no_query_source_download,
         )
-        _validate_representation_resume(
-            output_dir,
-            query_representation_bundle,
-            resume=args.resume,
-        )
         benchmark = _select_video_query_cohort(
             benchmark,
             query_representation_bundle,
@@ -631,12 +649,29 @@ def main() -> None:
             query_representation_bundle,
             upstream_benchmark,
         )
+        reranker_system = {
+            "model_name": model_name,
+            "revision": rerank_cfg.get("revision"),
+            "rerank_top_k": rerank_top_k,
+            "max_length": max_length,
+            "input_run_sha256": sha256_file(input_run_path),
+        }
+        expected_summary = {
+            **query_representation_bundle.summary,
+            "reranker_system": reranker_system,
+        }
+        _validate_representation_resume(
+            output_dir,
+            expected_summary,
+            resume=args.resume,
+        )
         (
             query_representation_summary,
             query_representation_outputs,
         ) = write_nfcorpus_video_query_artifacts(
             query_representation_bundle,
             output_dir / "query_representation",
+            summary_updates={"reranker_system": reranker_system},
         )
     validate_trec_input_run(
         benchmark_spec,

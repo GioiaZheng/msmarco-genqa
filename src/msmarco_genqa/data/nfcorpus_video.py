@@ -22,6 +22,10 @@ from urllib.parse import urlparse
 
 CONTRACT_SCHEMA = "msmarco-genqa.nfcorpus-video-query-representation.v1"
 SUPPORTED_REPRESENTATIONS = ("title", "description", "title_plus_description")
+FIXED_RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+FIXED_RERANKER_REVISION = "c5ee24cb16019beea0893ab7796b1df96625c6b8"
+FIXED_RERANK_DEPTH = 100
+FIXED_RERANK_MAX_LENGTH = 512
 TITLE_MEMBER = "nfcorpus/test.vid-titles.queries"
 DESCRIPTION_MEMBER = "nfcorpus/test.vid-desc.queries"
 _SPACE_RE = re.compile(r"\s+")
@@ -532,6 +536,8 @@ def load_nfcorpus_video_query_representation(
 def write_nfcorpus_video_query_artifacts(
     bundle: NFCorpusVideoQueryBundle,
     output_dir: Path,
+    *,
+    summary_updates: Mapping[str, object] | None = None,
 ) -> tuple[dict[str, object], list[Path]]:
     """Write the effective-query audit trail for one retrieval run."""
 
@@ -549,6 +555,8 @@ def write_nfcorpus_video_query_artifacts(
                 + "\n"
             )
     summary = dict(bundle.summary)
+    if summary_updates:
+        summary.update(summary_updates)
     summary["queries_path"] = "query_representation/queries.jsonl"
     with summary_path.open("w", encoding="utf-8", newline="\n") as handle:
         json.dump(summary, handle, indent=2, ensure_ascii=False)

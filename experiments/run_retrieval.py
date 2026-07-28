@@ -31,6 +31,7 @@ import random
 import sys
 import time
 from pathlib import Path
+from typing import Mapping
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -309,6 +310,31 @@ def _validate_query_representation_args(
             "query_transform.method must remain 'none' for the controlled "
             "NFCorpus query-representation experiment"
         )
+    retrieval = cfg.get("retrieval") or {}
+    expected_retrieval = {
+        "backend": "bm25s",
+        "k1": 1.5,
+        "b": 0.75,
+        "stopwords": "en",
+        "top_k": 1000,
+    }
+    observed_retrieval = {
+        "backend": retrieval.get("backend"),
+        "k1": retrieval.get("k1"),
+        "b": retrieval.get("b"),
+        "stopwords": retrieval.get("stopwords"),
+        "top_k": retrieval.get("top_k"),
+    }
+    if observed_retrieval != expected_retrieval:
+        raise SystemExit(
+            "the controlled NFCorpus query-representation experiment requires "
+            f"the frozen retrieval configuration {expected_retrieval}"
+        )
+    if (cfg.get("data") or {}).get("corpus_limit") is not None:
+        raise SystemExit(
+            "the controlled NFCorpus query-representation experiment requires "
+            "the full corpus (data.corpus_limit must be null)"
+        )
 
     path = args.query_representation_contract or DEFAULT_NFCORPUS_VIDEO_CONTRACT
     return path if path.is_absolute() else PROJECT_ROOT / path
@@ -338,7 +364,7 @@ def _select_video_query_cohort(
 
 def _validate_representation_resume(
     output_dir: Path,
-    bundle: NFCorpusVideoQueryBundle,
+    expected: Mapping[str, object],
     *,
     resume: bool,
 ) -> None:
@@ -358,16 +384,17 @@ def _validate_representation_resume(
         raise SystemExit(
             f"refusing to resume {run_path}: query-representation summary is invalid"
         ) from exc
-    expected = bundle.summary
     for key in (
         "representation",
         "qid_sha256",
         "official_query_records_sha256",
         "effective_queries_sha256",
+        "index_fingerprint",
+        "retrieval_system",
     ):
         if existing.get(key) != expected.get(key):
             raise SystemExit(
-                f"refusing to resume {run_path}: query representation {key} differs"
+                f"refusing to resume {run_path}: resume contract {key} differs"
             )
 
 
@@ -432,22 +459,11 @@ def main() -> None:
             project_root=PROJECT_ROOT,
             download_if_missing=not args.no_query_source_download,
         )
-        _validate_representation_resume(
-            output_dir,
-            query_representation_bundle,
-            resume=args.resume,
-        )
         benchmark = _select_video_query_cohort(
             benchmark,
             query_representation_bundle,
         )
-        (
-            query_representation_summary,
-            query_representation_outputs,
-        ) = write_nfcorpus_video_query_artifacts(
-            query_representation_bundle,
-            output_dir / "query_representation",
-        )
+        query_representation_summary = dict(query_representation_bundle.summary)
         logger.info(
             "NFCorpus video query representation %s: %d validated queries.",
             args.query_representation,
@@ -501,8 +517,32 @@ def main() -> None:
         index_time = time.time() - t0
         retriever.save(index_dir)
     if query_representation_bundle is not None:
-        query_representation_summary["index_fingerprint"] = _index_fingerprint(
-            index_dir
+        representation_updates: dict[str, object] = {
+            "index_fingerprint": _index_fingerprint(index_dir),
+            "retrieval_system": {
+                "backend": cfg["retrieval"].get("backend"),
+                "k1": float(cfg["retrieval"]["k1"]),
+                "b": float(cfg["retrieval"]["b"]),
+                "stopwords": cfg["retrieval"].get("stopwords"),
+                "top_k": top_k,
+            },
+        }
+        expected_summary = {
+            **query_representation_summary,
+            **representation_updates,
+        }
+        _validate_representation_resume(
+            output_dir,
+            expected_summary,
+            resume=args.resume,
+        )
+        (
+            query_representation_summary,
+            query_representation_outputs,
+        ) = write_nfcorpus_video_query_artifacts(
+            query_representation_bundle,
+            output_dir / "query_representation",
+            summary_updates=representation_updates,
         )
 
     # ---- 3. Plan retrieval ----

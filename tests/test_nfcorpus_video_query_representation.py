@@ -13,6 +13,7 @@ import pytest
 
 from experiments.run_reranker import (
     _validate_query_representation_args as validate_reranker_representation_args,
+    _validate_representation_resume as validate_reranker_resume,
     _validate_upstream_query_representation,
     parse_args as parse_reranker_args,
 )
@@ -25,6 +26,8 @@ from experiments.run_retrieval import (
 )
 from msmarco_genqa.data.benchmark import BenchmarkQueries, get_benchmark_spec
 from msmarco_genqa.data.nfcorpus_video import (
+    FIXED_RERANKER_MODEL,
+    FIXED_RERANKER_REVISION,
     NFCorpusVideoContractError,
     load_nfcorpus_video_query_representation,
     validate_frozen_title_metrics,
@@ -405,6 +408,58 @@ def test_runner_requires_isolated_nfcorpus_output(tmp_path: Path) -> None:
     with pytest.raises(SystemExit, match="explicit --input-run and --output-dir"):
         validate_reranker_representation_args(reranker_missing_paths, cfg)
 
+    fixed_cfg = {
+        "query_transform": {"method": "none"},
+        "reranker": {
+            "model_name": FIXED_RERANKER_MODEL,
+            "revision": FIXED_RERANKER_REVISION,
+            "rerank_top_k": 100,
+            "max_length": 512,
+        },
+    }
+    model_override = parse_reranker_args(
+        [
+            "--dataset",
+            "beir/nfcorpus/test",
+            "--query-representation",
+            "title",
+            "--input-run",
+            str(tmp_path / "input.tsv"),
+            "--output-dir",
+            str(tmp_path / "rerank"),
+            "--model-name",
+            "unfrozen/model",
+        ]
+    )
+    with pytest.raises(SystemExit, match="frozen cross-encoder"):
+        validate_reranker_representation_args(model_override, fixed_cfg)
+
+    retrieval_args = parse_args(
+        [
+            "--dataset",
+            "beir/nfcorpus/test",
+            "--query-representation",
+            "title",
+            "--output-dir",
+            str(tmp_path / "retrieval"),
+        ]
+    )
+    retrieval_cfg = {
+        "query_transform": {"method": "none"},
+        "retrieval": {
+            "backend": "bm25s",
+            "k1": 1.5,
+            "b": 0.75,
+            "stopwords": "en",
+            "top_k": 1000,
+        },
+        "data": {"corpus_limit": None},
+    }
+    assert _validate_query_representation_args(retrieval_args, retrieval_cfg)
+    retrieval_cfg["retrieval"]["top_k"] = 100
+    with pytest.raises(SystemExit, match="frozen retrieval configuration"):
+        _validate_query_representation_args(retrieval_args, retrieval_cfg)
+
 
 def test_cohort_selection_happens_after_query_construction(tmp_path: Path) -> None:
     contract_path, baseline_queries = _make_fixture(tmp_path)
@@ -454,7 +509,23 @@ def test_resume_rejects_mixed_query_representation(tmp_path: Path) -> None:
     )
 
     with pytest.raises(SystemExit, match="representation differs"):
-        _validate_representation_resume(output_dir, bundle, resume=True)
+        _validate_representation_resume(output_dir, bundle.summary, resume=True)
+
+    expected = {
+        **bundle.summary,
+        "index_fingerprint": {"sha256": "new"},
+        "retrieval_system": {"backend": "bm25s"},
+    }
+    stale = {
+        **expected,
+        "index_fingerprint": {"sha256": "old"},
+    }
+    (representation_dir / "summary.json").write_text(
+        json.dumps(stale),
+        encoding="utf-8",
+    )
+    with pytest.raises(SystemExit, match="index_fingerprint differs"):
+        _validate_representation_resume(output_dir, expected, resume=True)
 
 
 def test_reranker_requires_matching_upstream_representation(tmp_path: Path) -> None:
@@ -472,3 +543,43 @@ def test_reranker_requires_matching_upstream_representation(tmp_path: Path) -> N
     upstream["query_representation"]["effective_queries_sha256"] = "0" * 64
     with pytest.raises(SystemExit, match="effective_queries_sha256"):
         _validate_upstream_query_representation(bundle, upstream)
+
+
+def test_reranker_resume_rejects_input_or_model_drift(tmp_path: Path) -> None:
+    contract_path, baseline_queries = _make_fixture(tmp_path)
+    bundle = load_nfcorpus_video_query_representation(
+        baseline_queries,
+        representation="title",
+        contract_path=contract_path,
+        project_root=tmp_path,
+        download_if_missing=False,
+    )
+    output_dir = tmp_path / "rerank"
+    representation_dir = output_dir / "query_representation"
+    representation_dir.mkdir(parents=True)
+    (output_dir / "run.tsv").write_text(
+        "q1\tQ0\td1\t1\t1.0\tbm25+ce\n",
+        encoding="utf-8",
+    )
+    expected = {
+        **bundle.summary,
+        "reranker_system": {
+            "model_name": FIXED_RERANKER_MODEL,
+            "revision": FIXED_RERANKER_REVISION,
+            "input_run_sha256": "new",
+        },
+    }
+    stale = {
+        **expected,
+        "reranker_system": {
+            **expected["reranker_system"],
+            "input_run_sha256": "old",
+        },
+    }
+    (representation_dir / "summary.json").write_text(
+        json.dumps(stale),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit, match="reranker_system differs"):
+        validate_reranker_resume(output_dir, expected, resume=True)
