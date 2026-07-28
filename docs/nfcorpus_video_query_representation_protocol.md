@@ -1,5 +1,9 @@
 # NFCorpus Video Query-Representation Protocol
 
+Status: completed on 28 July 2026. The frozen protocol remains here so the
+decision and leakage boundaries can be distinguished from the
+[post-run result](reports/2026-07-28-nfcorpus-video-query-representation.md).
+
 ## Decision
 
 The next experiment will compare bounded query representations on the official
@@ -199,9 +203,29 @@ The cross-encoder may be run only after each BM25 condition passes its input,
 run-depth, score, and qid checks. It must rerank exactly that condition's
 top-100 candidates; it cannot add documents.
 
+## Completed result
+
+The title-plus-description treatment passes the predeclared primary
+Recall@100 decision rule:
+
+| Representation | BM25 Recall@100 | BM25 Recall@1000 | CE MRR@10 | CE nDCG@10 |
+|---|---:|---:|---:|---:|
+| Title | 0.282065 | 0.491892 | 0.522012 | 0.298003 |
+| Description | 0.327210 | 0.641349 | 0.635699 | 0.356809 |
+| Title + description | **0.370030** | **0.672296** | **0.668857** | **0.385310** |
+
+Against title, the title-plus-description Recall@100 delta is `+0.087965`
+with paired-bootstrap 95% CI `[+0.053494, +0.126537]` and `p < 0.0002`.
+Description alone has delta `+0.045145`, CI
+`[-0.002419, +0.094286]`, and `p = 0.0610`; that primary comparison is not
+conclusive.
+
+The complete report records all predeclared metrics, no-hit transitions,
+candidate-set checks, independent cross-checks, and interpretation limits.
+
 ## Acceptance and stopping rules
 
-The experiment is accepted only if:
+The experiment was accepted after all of the following checks passed:
 
 - all three conditions contain exactly the frozen 102 qids;
 - the title condition reproduces the fixed-run slice within `1e-12`;
@@ -214,6 +238,8 @@ The result will be interpreted through the paired Recall@100 change and the
 change from 11 no-hit-at-100 queries. A better MRR alone is not sufficient to
 claim that missing context repaired the candidate ceiling.
 
-Hybrid or dense retrieval should be considered only if a material first-stage
-limitation remains after the best bounded representation. README headline
-claims will not change until the complete result, review, and CI are finished.
+The best bounded representation improves coverage, but Recall@100 remains
+`0.370030`; a material first-stage limitation therefore remains. Hybrid or
+dense retrieval may be considered only as a new predeclared comparison.
+README headline claims will not change until the complete result, review, and
+CI are finished.
