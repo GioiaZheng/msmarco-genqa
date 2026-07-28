@@ -173,6 +173,10 @@ This sequence distinguishes benchmark representation effects from retriever
 capacity and avoids selecting an architecture to compensate for omitted query
 context.
 
+The resulting feasibility audit and frozen 102-query video comparison are
+specified in the
+[query-representation protocol](nfcorpus_video_query_representation_protocol.md).
+
 ## Further questions
 
 - Does the reranking gain remain stable when topic pages are excluded?

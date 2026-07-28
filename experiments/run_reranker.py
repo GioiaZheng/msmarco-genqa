@@ -59,12 +59,15 @@ except ImportError:  # pragma: no cover - exercised on Windows hosts.
 import sys
 import time
 from pathlib import Path
+from typing import Mapping
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 from msmarco_genqa.data.benchmark import (
+    BEIR_NFCORPUS_TEST,
     MSMARCO_DEV_SMALL,
     SUPPORTED_DATASETS,
+    BenchmarkQueries,
     BenchmarkSpec,
     default_retrieval_output_dir,
     default_reranker_output_dir,
@@ -73,7 +76,19 @@ from msmarco_genqa.data.benchmark import (
     load_benchmark_queries,
     lookup_document_text,
 )
+from msmarco_genqa.data.nfcorpus_video import (
+    FIXED_RERANK_DEPTH,
+    FIXED_RERANK_MAX_LENGTH,
+    FIXED_RERANKER_MODEL,
+    FIXED_RERANKER_REVISION,
+    SUPPORTED_REPRESENTATIONS,
+    NFCorpusVideoQueryBundle,
+    load_nfcorpus_video_query_representation,
+    validate_frozen_title_reranker_metrics,
+    write_nfcorpus_video_query_artifacts,
+)
 from msmarco_genqa.evaluation.retrieval import evaluate_retrieval
+from msmarco_genqa.evaluation.retrieval_contract import sha256_file
 from msmarco_genqa.evaluation.trec import evaluate_trec_retrieval, trec_metric_contract
 from msmarco_genqa.reranking.cross_encoder import CrossEncoderReranker
 from msmarco_genqa.reranking.io import (
@@ -96,6 +111,9 @@ from msmarco_genqa.util.manifest import (
 from msmarco_genqa.util.seeding import set_global_seed
 
 logger = logging.getLogger("run_reranker")
+DEFAULT_NFCORPUS_VIDEO_CONTRACT = (
+    PROJECT_ROOT / "configs/nfcorpus_video_query_representation.json"
+)
 
 
 def load_config(path: Path) -> dict:
@@ -205,6 +223,33 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Bypass the schema-v2 required-field contract on manifest write. "
             "Development-only escape hatch; production / headline runs must "
             "leave this off so missing reproducibility fields fail loudly."
+        ),
+    )
+    parser.add_argument(
+        "--query-representation",
+        choices=SUPPORTED_REPRESENTATIONS,
+        default=None,
+        help=(
+            "Rerank one predeclared 102-query NFCorpus video representation. "
+            "Requires explicit --input-run and --output-dir paths."
+        ),
+    )
+    parser.add_argument(
+        "--query-representation-contract",
+        type=Path,
+        default=None,
+        help=(
+            "Pinned NFCorpus video experiment contract. When "
+            "--query-representation is set, defaults to "
+            "configs/nfcorpus_video_query_representation.json."
+        ),
+    )
+    parser.add_argument(
+        "--no-query-source-download",
+        action="store_true",
+        help=(
+            "Refuse to download the pinned official NFCorpus archive when it "
+            "is absent. Integrity checks are always enforced."
         ),
     )
     return parser.parse_args(argv)
@@ -378,6 +423,135 @@ def metric_cutoffs_within_depth(
     return tuple(k for k in normalized if k <= run_depth)
 
 
+def _validate_query_representation_args(
+    args: argparse.Namespace,
+    cfg: dict,
+) -> Path | None:
+    """Validate reranker paths for the controlled representation experiment."""
+
+    if args.query_representation is None:
+        if args.query_representation_contract is not None:
+            raise SystemExit(
+                "--query-representation-contract requires --query-representation"
+            )
+        if args.no_query_source_download:
+            raise SystemExit(
+                "--no-query-source-download requires --query-representation"
+            )
+        return None
+
+    if args.dataset != BEIR_NFCORPUS_TEST:
+        raise SystemExit(
+            "--query-representation is restricted to --dataset beir/nfcorpus/test"
+        )
+    if args.input_run is None or args.output_dir is None:
+        raise SystemExit(
+            "--query-representation requires explicit --input-run and --output-dir "
+            "paths to prevent cross-condition mixing"
+        )
+    query_transform_method = str(
+        (cfg.get("query_transform") or {}).get("method", "none")
+    )
+    if query_transform_method != "none":
+        raise SystemExit(
+            "query_transform.method must remain 'none' for the controlled "
+            "NFCorpus query-representation experiment"
+        )
+    reranker = cfg.get("reranker") or {}
+    model_name = args.model_name or reranker.get("model_name")
+    rerank_depth = int(
+        args.rerank_top_k
+        or reranker.get("rerank_top_k", FIXED_RERANK_DEPTH)
+    )
+    if (
+        model_name != FIXED_RERANKER_MODEL
+        or reranker.get("revision") != FIXED_RERANKER_REVISION
+        or rerank_depth != FIXED_RERANK_DEPTH
+        or int(reranker.get("max_length", 0)) != FIXED_RERANK_MAX_LENGTH
+    ):
+        raise SystemExit(
+            "the controlled NFCorpus query-representation experiment requires "
+            "the frozen cross-encoder model, revision, depth, and max length"
+        )
+
+    path = args.query_representation_contract or DEFAULT_NFCORPUS_VIDEO_CONTRACT
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+def _select_video_query_cohort(
+    benchmark: BenchmarkQueries,
+    bundle: NFCorpusVideoQueryBundle,
+) -> BenchmarkQueries:
+    query_ids = set(bundle.queries)
+    missing_qrels = sorted(query_ids - set(benchmark.graded_qrels))
+    if missing_qrels:
+        raise SystemExit(
+            f"{len(missing_qrels)} NFCorpus video queries are missing graded qrels"
+        )
+    return BenchmarkQueries(
+        spec=benchmark.spec,
+        queries=dict(bundle.queries),
+        qrels={qid: set(benchmark.qrels.get(qid, set())) for qid in bundle.queries},
+        graded_qrels={
+            qid: dict(benchmark.graded_qrels[qid]) for qid in bundle.queries
+        },
+    )
+
+
+def _validate_upstream_query_representation(
+    bundle: NFCorpusVideoQueryBundle,
+    upstream_benchmark: dict[str, object],
+) -> None:
+    upstream = upstream_benchmark.get("query_representation")
+    if not isinstance(upstream, dict):
+        raise SystemExit(
+            "input run metadata does not contain a query-representation contract"
+        )
+    for key in (
+        "representation",
+        "qid_sha256",
+        "official_query_records_sha256",
+        "effective_queries_sha256",
+    ):
+        if upstream.get(key) != bundle.summary.get(key):
+            raise SystemExit(
+                f"input run query representation {key} does not match the reranker"
+            )
+
+
+def _validate_representation_resume(
+    output_dir: Path,
+    expected: Mapping[str, object],
+    *,
+    resume: bool,
+) -> None:
+    rerank_run = output_dir / "run.tsv"
+    if not resume or not rerank_run.exists():
+        return
+    summary_path = output_dir / "query_representation" / "summary.json"
+    if not summary_path.exists():
+        raise SystemExit(
+            f"refusing to resume {rerank_run}: query-representation summary is missing"
+        )
+    try:
+        existing = json.loads(summary_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(
+            f"refusing to resume {rerank_run}: query-representation summary is invalid"
+        ) from exc
+    for key in (
+        "representation",
+        "qid_sha256",
+        "official_query_records_sha256",
+        "effective_queries_sha256",
+        "reranker_system",
+    ):
+        if existing.get(key) != expected.get(key):
+            raise SystemExit(
+                f"refusing to resume {rerank_run}: resume contract {key} differs"
+            )
+
+
 def main() -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -386,6 +560,7 @@ def main() -> None:
     args = parse_args()
     cfg = load_config(args.config)
     benchmark_spec = get_benchmark_spec(args.dataset)
+    query_representation_contract = _validate_query_representation_args(args, cfg)
     seed = cfg.get("seed", 42)
     seed_coverage = set_global_seed(seed)
 
@@ -446,23 +621,70 @@ def main() -> None:
     # ---------------------------------------------------------------- #
     # 2. Queries + qrels
     # ---------------------------------------------------------------- #
-    corpus_data = load_benchmark_corpus(
-        benchmark_spec,
-        cache_dir=cache_dir,
-        load_corpus=False,
-    )
-    docs_store = corpus_data.docs_store
     benchmark = load_benchmark_queries(
         args.dataset,
         cache_dir=cache_dir,
     )
+    query_representation_bundle: NFCorpusVideoQueryBundle | None = None
+    query_representation_outputs: list[Path] = []
+    query_representation_summary: dict[str, object] = {
+        "representation": "benchmark_default",
+        "n_queries": len(benchmark.queries),
+    }
+    if query_representation_contract is not None:
+        query_representation_bundle = load_nfcorpus_video_query_representation(
+            benchmark.queries,
+            representation=args.query_representation,
+            contract_path=query_representation_contract,
+            project_root=PROJECT_ROOT,
+            download_if_missing=not args.no_query_source_download,
+        )
+        benchmark = _select_video_query_cohort(
+            benchmark,
+            query_representation_bundle,
+        )
     upstream_benchmark = load_upstream_benchmark_metadata(input_stage_dir)
+    if query_representation_bundle is not None:
+        _validate_upstream_query_representation(
+            query_representation_bundle,
+            upstream_benchmark,
+        )
+        reranker_system = {
+            "model_name": model_name,
+            "revision": rerank_cfg.get("revision"),
+            "rerank_top_k": rerank_top_k,
+            "max_length": max_length,
+            "input_run_sha256": sha256_file(input_run_path),
+        }
+        expected_summary = {
+            **query_representation_bundle.summary,
+            "reranker_system": reranker_system,
+        }
+        _validate_representation_resume(
+            output_dir,
+            expected_summary,
+            resume=args.resume,
+        )
+        (
+            query_representation_summary,
+            query_representation_outputs,
+        ) = write_nfcorpus_video_query_artifacts(
+            query_representation_bundle,
+            output_dir / "query_representation",
+            summary_updates={"reranker_system": reranker_system},
+        )
     validate_trec_input_run(
         benchmark_spec,
         runs_topk,
         benchmark.queries,
         upstream_benchmark,
     )
+    corpus_data = load_benchmark_corpus(
+        benchmark_spec,
+        cache_dir=cache_dir,
+        load_corpus=False,
+    )
+    docs_store = corpus_data.docs_store
     sample_qrels = (
         benchmark.qrels
         if benchmark_spec.dataset_id != MSMARCO_DEV_SMALL
@@ -668,6 +890,23 @@ def main() -> None:
         )
     logger.info("%s (input) metrics: %s", input_label, input_metrics)
     logger.info("%s + CE rerank metrics: %s", input_label, rerank_metrics)
+    if query_representation_bundle is not None:
+        query_representation_summary["title_baseline_reproduction"] = (
+            validate_frozen_title_reranker_metrics(
+                query_representation_bundle,
+                input_metrics,
+                rerank_metrics,
+            )
+        )
+        summary_path = output_dir / "query_representation" / "summary.json"
+        with summary_path.open("w", encoding="utf-8", newline="\n") as handle:
+            json.dump(
+                query_representation_summary,
+                handle,
+                indent=2,
+                ensure_ascii=False,
+            )
+            handle.write("\n")
 
     # ---------------------------------------------------------------- #
     # 7. Qualitative examples (before vs after) — reads reranked from disk
@@ -734,6 +973,7 @@ def main() -> None:
                 if benchmark.graded_qrels
                 else 0.0
             ),
+            "query_representation": query_representation_summary,
         }
     )
 
@@ -788,6 +1028,7 @@ def main() -> None:
         },
         "peak_memory_mib": peak_mem_mb,
         "environment": (env_dict := capture_environment()),
+        "query_representation": query_representation_summary,
     }
     if benchmark_spec.has_graded_qrels:
         payload["evaluation"] = {
@@ -828,7 +1069,21 @@ def main() -> None:
             "dataset_id": benchmark_spec.dataset_id,
             "corpus_id": benchmark_spec.corpus_id,
         },
-        extra_files={"input_run": input_run_path},
+        extra_files={
+            "input_run": input_run_path,
+            **(
+                {
+                    "query_representation_contract": (
+                        query_representation_bundle.contract_path
+                    ),
+                    "query_representation_archive": (
+                        query_representation_bundle.archive_path
+                    ),
+                }
+                if query_representation_bundle is not None
+                else {}
+            ),
+        },
     )
     env_fingerprint = compute_env_fingerprint(env_dict)
 
@@ -837,7 +1092,12 @@ def main() -> None:
         output_dir=output_dir,
         command=sys.argv,
         config_path=args.config,
-        extra_outputs=[rerank_run_path, examples_path, resolved_config_path],
+        extra_outputs=[
+            rerank_run_path,
+            examples_path,
+            resolved_config_path,
+            *query_representation_outputs,
+        ],
         extra={
             "task": "reranking",
             "model_name": model_name,
@@ -866,6 +1126,7 @@ def main() -> None:
             "resolved_config_hash": resolved_config_hash,
             "data_fingerprint": data_fingerprint,
             "env_fingerprint": env_fingerprint,
+            "query_representation": query_representation_summary,
         },
         require_clean_tree=args.require_clean_tree,
         allow_incomplete=args.allow_incomplete_manifest,

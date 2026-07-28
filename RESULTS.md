@@ -163,6 +163,35 @@ recoverable from the exported page title alone. The case-level evidence,
 taxonomy contract, limitations, and exact reproduction command are in
 [`docs/nfcorpus_first_stage_taxonomy_review.md`](docs/nfcorpus_first_stage_taxonomy_review.md).
 
+### NFCorpus bounded query-representation experiment
+
+The predeclared follow-up holds the 102-query test/video cohort, corpus, qrels,
+BM25 index, retriever parameters, reranker, and architecture fixed while
+changing only the query text:
+
+| Representation | System | MRR@10 | nDCG@10 | Recall@100 | Recall@1000 |
+|---|---|---:|---:|---:|---:|
+| Title | BM25 | 0.4780 | 0.2493 | 0.2821 | 0.4919 |
+| Description | BM25 | 0.5308 | 0.2929 | 0.3272 | 0.6413 |
+| Title + description | BM25 | **0.6036** | **0.3457** | **0.3700** | **0.6723** |
+| Title | BM25 + CE | 0.5220 | 0.2980 | 0.2821 | n/a |
+| Description | BM25 + CE | 0.6357 | 0.3568 | 0.3272 | n/a |
+| Title + description | BM25 + CE | **0.6689** | **0.3853** | **0.3700** | n/a |
+
+For the primary Recall@100 comparison, description alone improves the point
+estimate by `+0.0451`, but its paired 95% interval crosses zero
+(`[-0.0024, +0.0943]`, `p = 0.0610`). Title plus description gives a
+`+0.0880` improvement with interval `[+0.0535, +0.1265]` and
+`p < 0.0002`. It reduces no-hit-at-100 queries from 11 to 4 and no-hit-at-1000
+queries from 8 to 0.
+
+All 306 reranker candidate-set checks pass, and independent `ir-measures`
+evaluation agrees with the project evaluator within `1e-12`. The result
+supports a source-context limitation on this official video subset, not a
+general architecture, cross-dataset, generation, or grounding claim. The
+complete paired results and interpretation boundary are in
+[`docs/reports/2026-07-28-nfcorpus-video-query-representation.md`](docs/reports/2026-07-28-nfcorpus-video-query-representation.md).
+
 ## Query-Type Slice
 
 Token-F1 lift by query type:
@@ -197,7 +226,7 @@ corpus retrieval.
 
 | Status | Boundary |
 |---|---|
-| Validated | The paired T5-small generation comparison on MS MARCO `dev/small`; full-corpus BM25 plus cross-encoder retrieval on TREC-DL 2019/2020; full-corpus BM25 plus fixed top-100 cross-encoder reranking on BEIR NFCorpus and SciFact. |
+| Validated | The paired T5-small generation comparison on MS MARCO `dev/small`; full-corpus BM25 plus cross-encoder retrieval on TREC-DL 2019/2020; full-corpus BM25 plus fixed top-100 cross-encoder reranking on BEIR NFCorpus and SciFact; the bounded query-representation comparison on the official 102-query NFCorpus test/video subset. |
 | Implemented but not yet evaluated | The T5-base generator-capacity sweep and configurable alternative-generator paths. Their existence is not an empirical result. |
 | Not supported by current evidence | Retrieval lift transfers to generation on TREC-DL or BEIR; a fair full-corpus dense-vs-BM25 conclusion; broad cross-domain RAG generalization beyond the two evaluated retrieval collections. |
 

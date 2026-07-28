@@ -168,8 +168,16 @@ class BM25Retriever:
         self,
         queries: Sequence[str],
         k: int = 1000,
+        *,
+        deterministic_ties: bool = False,
     ) -> tuple[np.ndarray, list[list[str]]]:
         """Retrieve top-k for a batch of queries.
+
+        ``deterministic_ties`` is intended for small-corpus controlled
+        experiments. It requests every corpus document, then orders equal-score
+        documents by ``doc_id`` before truncating to ``k``. The default remains
+        off because retrieving the full 8.8M-document MS MARCO corpus per query
+        would be infeasible.
 
         Returns
         -------
@@ -181,13 +189,28 @@ class BM25Retriever:
         import bm25s
 
         tokens = bm25s.tokenize(list(queries), stopwords=self.stopwords)
+        retrieve_k = len(self.doc_ids) if deterministic_ties else k
         results, scores = self._bm25.retrieve(
             tokens,
-            k=k,
+            k=retrieve_k,
             n_threads=self.n_threads,
             chunksize=self.chunksize,
             show_progress=True,
         )
+        if deterministic_ties:
+            stable_doc_ids: list[list[str]] = []
+            stable_scores: list[list[float]] = []
+            for result_row, score_row in zip(results, scores):
+                candidates = [
+                    (self.doc_ids[int(index)], float(score))
+                    for index, score in zip(result_row, score_row)
+                ]
+                candidates.sort(key=lambda item: (-item[1], item[0]))
+                selected = candidates[:k]
+                stable_doc_ids.append([doc_id for doc_id, _score in selected])
+                stable_scores.append([score for _doc_id, score in selected])
+            return np.asarray(stable_scores), stable_doc_ids
+
         # results: (n_queries, k) of doc indices into the original corpus order
         doc_ids_lists = [
             [self.doc_ids[int(i)] for i in row] for row in results

@@ -78,6 +78,7 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md) — query-level reranker lift analysis protocol.
 - [`docs/nfcorpus_first_stage_error_analysis.md`](docs/nfcorpus_first_stage_error_analysis.md) — fixed-output NFCorpus candidate-set coverage diagnosis.
 - [`docs/nfcorpus_first_stage_taxonomy_review.md`](docs/nfcorpus_first_stage_taxonomy_review.md) — complete 72-query review of NFCorpus source-context and first-stage failures.
+- [`docs/reports/2026-07-28-nfcorpus-video-query-representation.md`](docs/reports/2026-07-28-nfcorpus-video-query-representation.md) — controlled 102-query test of bounded NFCorpus source context.
 - [`docs/context_packing.md`](docs/context_packing.md) — prompt compression, provenance, and packed-vs-plain generation comparison.
 - [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md) — context relevance, groundedness, and answer relevance report protocol.
 - [`docs/input_validation.md`](docs/input_validation.md) — run-file, JSONL, prompt, and serving input validation contract.
@@ -653,6 +654,16 @@ retriever capacity rather than an architecture verdict. See
 [`docs/nfcorpus_first_stage_error_analysis.md`](docs/nfcorpus_first_stage_error_analysis.md)
 and the
 [`72-case taxonomy review`](docs/nfcorpus_first_stage_taxonomy_review.md).
+
+The predeclared follow-up changes only the query representation on the official
+102-query NFCorpus test/video subset. Combining the BEIR title with the bounded
+official description raises BM25 Recall@100 from 0.2821 to 0.3700
+(`+0.0880`, paired 95% CI `[+0.0535, +0.1265]`) and reduces no-hit-at-100
+queries from 11 to 4. Description alone has a positive point estimate, but its
+primary interval crosses zero. This is evidence of missing source context on
+the video subset, not an architecture or full-dataset generalization result.
+See the
+[`query-representation report`](docs/reports/2026-07-28-nfcorpus-video-query-representation.md).
 
 The four ranked runs are published as a checksummed, text-only
 [GitHub Release bundle](https://github.com/GioiaZheng/msmarco-genqa/releases/tag/v2.2-beir-cross-domain-baselines).
