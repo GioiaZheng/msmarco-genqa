@@ -134,6 +134,10 @@ title baseline is MRR@10 `0.47801898537192655`, nDCG@10
 `1e-12`. Published fixed-run deltas and positive-score Recall remain in the
 audit summary as diagnostics rather than cross-platform acceptance guards.
 
+On the same deterministic title candidate set, the frozen cross-encoder
+baseline is MRR@10 `0.5220121381886088`, nDCG@10
+`0.29800270457307226`, and Recall@100 `0.2820649478633883`.
+
 ## Execution
 
 Each condition uses an isolated output directory, the same cached NFCorpus

@@ -125,7 +125,11 @@
       "recall@100": 0.2820649478633883,
       "recall@1000": 0.4918916912361657
     },
-    "deterministic_tie_bm25_ce": null
+    "deterministic_tie_bm25_ce": {
+      "mrr@10": 0.5220121381886088,
+      "ndcg@10": 0.29800270457307226,
+      "recall@100": 0.2820649478633883
+    }
   },
   "acceptance_checks": [
     "The deterministic title condition reproduces every recorded metric within 1e-12.",
