@@ -4,6 +4,7 @@
 [![Secret scan](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/secret-scan.yml/badge.svg?branch=main)](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/secret-scan.yml?query=branch%3Amain)
 [![CodeQL](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/GioiaZheng/msmarco-genqa/actions/workflows/codeql.yml?query=branch%3Amain)
 [![Latest release](https://img.shields.io/github/v/release/GioiaZheng/msmarco-genqa?display_name=tag)](https://github.com/GioiaZheng/msmarco-genqa/releases/latest)
+[![Hugging Face dataset](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-benchmark%20runs-FFD21E)](https://huggingface.co/datasets/GioiaZheng/msmarco-genqa-benchmark-runs)
 [![Python](https://img.shields.io/badge/python-%E2%89%A53.10-3776AB?logo=python&logoColor=white)](https://github.com/GioiaZheng/msmarco-genqa/blob/main/pyproject.toml)
 [![License](https://img.shields.io/github/license/GioiaZheng/msmarco-genqa)](https://github.com/GioiaZheng/msmarco-genqa/blob/main/LICENSE)
 
@@ -31,6 +32,13 @@ is [`RESULTS.md`](RESULTS.md); reproducibility entry points are documented in
 [`report.html`](reports/repo_report/report.html) kept alongside it; the compact
 ACL-style findings write-up is
 [`reports/acl_findings/report.pdf`](reports/acl_findings/report.pdf).
+
+The 14 exact TREC-DL, BEIR cross-domain, and NFCorpus video-query ranked
+runs are also published as a
+[Hugging Face Dataset](https://huggingface.co/datasets/GioiaZheng/msmarco-genqa-benchmark-runs),
+with a normalized Parquet preview, raw TREC-format outputs, checksum
+manifests, and the original Release archives. It contains ranked identifiers,
+ranks, and scores only; benchmark text and qrels are not redistributed.
 
 ## Results at a glance
 
