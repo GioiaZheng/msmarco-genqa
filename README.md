@@ -665,7 +665,23 @@ the video subset, not an architecture or full-dataset generalization result.
 See the
 [`query-representation report`](docs/reports/2026-07-28-nfcorpus-video-query-representation.md).
 
-The four ranked runs are published as a checksummed, text-only
+The six exact runs behind this ablation (three query representations, before
+and after reranking) are published as a checksummed, text-only
+[GitHub Release bundle](https://github.com/GioiaZheng/msmarco-genqa/releases/tag/v2.3-nfcorpus-video-query-ablation).
+Download the asset, verify the archive and member hashes, recover the public
+qrels, and recompute all metrics and paired comparisons with:
+
+```bash
+make reproduce-nfcorpus-video-eval
+```
+
+The command follows
+[`artifacts/nfcorpus_video_query_representation_v1.json`](artifacts/nfcorpus_video_query_representation_v1.json).
+It does not rerun retrieval or the cross-encoder, and the bundle excludes query
+and document text, qrels mirrors, model weights, caches, and local manifests.
+
+Separately, the four cross-domain NFCorpus/SciFact ranked runs are published as
+a checksummed, text-only
 [GitHub Release bundle](https://github.com/GioiaZheng/msmarco-genqa/releases/tag/v2.2-beir-cross-domain-baselines).
 Recompute all four rows without rebuilding either corpus index or rerunning
 the cross-encoder:

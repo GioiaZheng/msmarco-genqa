@@ -17,3 +17,5 @@ Current records:
   TREC-DL 2019/2020 ranked runs.
 - `beir_cross_domain_v1.json` — text-only BM25 and BM25-plus-cross-encoder
   NFCorpus/SciFact ranked runs.
+- `nfcorpus_video_query_representation_v1.json` — six text-only NFCorpus
+  test/video query-representation runs plus the pinned evaluation contract.
