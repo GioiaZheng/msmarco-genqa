@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate and compare the three frozen NFCorpus video query representations."""
+"""Validate and compare the frozen NFCorpus video query representations."""
 
 from __future__ import annotations
 
@@ -32,13 +32,16 @@ from msmarco_genqa.reranking.io import read_run_tsv
 
 
 REPRESENTATIONS = ("title", "description", "title_plus_description")
-METRICS = ("mrr@10", "ndcg@10", "recall@100", "recall@1000")
-PER_QUERY_METRICS = ("rr@10", "ndcg@10", "recall@100", "recall@1000")
+BM25_METRICS = ("mrr@10", "ndcg@10", "recall@100", "recall@1000")
+RERANK_METRICS = ("mrr@10", "ndcg@10", "recall@100")
+BM25_PER_QUERY_METRICS = ("rr@10", "ndcg@10", "recall@100", "recall@1000")
+RERANK_PER_QUERY_METRICS = ("rr@10", "ndcg@10", "recall@100")
 
 
 @dataclass(frozen=True)
 class Condition:
     name: str
+    stage: str
     directory: Path
     run: dict[str, list[tuple[str, float]]]
     metrics_payload: dict[str, object]
@@ -74,10 +77,16 @@ def _read_json(path: Path) -> dict[str, object]:
     return payload
 
 
-def load_condition(input_root: Path, representation: str) -> Condition:
-    directory = input_root / representation / "bm25"
+def load_condition(
+    input_root: Path,
+    representation: str,
+    *,
+    stage: str,
+) -> Condition:
+    directory = input_root / representation / stage
     return Condition(
         name=representation,
+        stage=stage,
         directory=directory,
         run=read_run_tsv(directory / "run.tsv"),
         metrics_payload=_read_json(directory / "metrics.json"),
@@ -151,9 +160,111 @@ def validate_shared_contract(
     }
 
 
+def validate_rerank_contract(
+    bm25_conditions: Mapping[str, Condition],
+    rerank_conditions: Mapping[str, Condition],
+    *,
+    expected_queries: int = 102,
+    expected_depth: int = 100,
+) -> dict[str, object]:
+    if set(bm25_conditions) != set(REPRESENTATIONS):
+        raise ValueError(f"expected BM25 conditions {REPRESENTATIONS}")
+    if set(rerank_conditions) != set(REPRESENTATIONS):
+        raise ValueError(f"expected rerank conditions {REPRESENTATIONS}")
+
+    commits: set[str] = set()
+    model_names: set[str] = set()
+    model_revisions: set[str] = set()
+    candidate_checks = 0
+    for name in REPRESENTATIONS:
+        bm25 = bm25_conditions[name]
+        rerank = rerank_conditions[name]
+        if set(rerank.run) != set(bm25.run):
+            raise ValueError(f"{name}: rerank and BM25 qid sets differ")
+        if len(rerank.run) != expected_queries:
+            raise ValueError(
+                f"{name}: rerank has {len(rerank.run)} qids; "
+                f"expected {expected_queries}"
+            )
+        if any(len(rows) != expected_depth for rows in rerank.run.values()):
+            raise ValueError(
+                f"{name}: not every reranked block has depth {expected_depth}"
+            )
+        for qid in sorted(rerank.run):
+            bm25_candidates = {
+                doc_id for doc_id, _score in bm25.run[qid][:expected_depth]
+            }
+            rerank_candidates = {
+                doc_id for doc_id, _score in rerank.run[qid]
+            }
+            if rerank_candidates != bm25_candidates:
+                raise ValueError(
+                    f"{name}/{qid}: reranker candidate set differs from "
+                    f"BM25 top-{expected_depth}"
+                )
+            candidate_checks += 1
+
+        if rerank.query_summary.get("representation") != name:
+            raise ValueError(f"{name}: rerank query summary names another representation")
+        for field in (
+            "qid_sha256",
+            "official_query_records_sha256",
+            "effective_queries_sha256",
+        ):
+            if rerank.query_summary.get(field) != bm25.query_summary.get(field):
+                raise ValueError(
+                    f"{name}: rerank and BM25 query summaries differ on {field}"
+                )
+
+        git = rerank.manifest.get("git")
+        if not isinstance(git, dict) or git.get("dirty") is not False:
+            raise ValueError(f"{name}: rerank manifest must record a clean git tree")
+        commit = git.get("commit")
+        if not isinstance(commit, str) or not commit:
+            raise ValueError(f"{name}: rerank manifest git commit is missing")
+        commits.add(commit)
+
+        config = rerank.metrics_payload.get("config")
+        if not isinstance(config, dict):
+            raise ValueError(f"{name}: rerank metrics config is missing")
+        reranker = config.get("reranker")
+        if not isinstance(reranker, dict):
+            raise ValueError(f"{name}: reranker config is missing")
+        model_name = reranker.get("model_name")
+        revision = reranker.get("revision")
+        if not isinstance(model_name, str) or not model_name:
+            raise ValueError(f"{name}: reranker model name is missing")
+        if (
+            not isinstance(revision, str)
+            or len(revision) != 40
+            or any(character not in "0123456789abcdef" for character in revision)
+        ):
+            raise ValueError(f"{name}: reranker model revision is not pinned")
+        model_names.add(model_name)
+        model_revisions.add(revision)
+
+    if len(commits) != 1:
+        raise ValueError("rerank conditions were produced from different commits")
+    if len(model_names) != 1 or len(model_revisions) != 1:
+        raise ValueError("rerank conditions do not share one pinned model")
+
+    return {
+        "query_count": expected_queries,
+        "run_depth": expected_depth,
+        "git_commit": next(iter(commits)),
+        "model_name": next(iter(model_names)),
+        "model_revision": next(iter(model_revisions)),
+        "candidate_set_checks": candidate_checks,
+        "candidate_sets_match_bm25_top_100": True,
+        "run_structure_valid": True,
+    }
+
+
 def build_per_query_rows(
     runs: Mapping[str, dict[str, list[tuple[str, float]]]],
     graded_qrels: Mapping[str, dict[str, int]],
+    *,
+    include_recall_at_1000: bool = True,
 ) -> list[dict[str, object]]:
     qids = sorted(graded_qrels)
     if any(set(run) != set(qids) for run in runs.values()):
@@ -173,22 +284,24 @@ def build_per_query_rows(
         condition_metrics: dict[str, object] = {}
         for name, run in runs.items():
             ranked = [doc_id for doc_id, _score in run[qid]]
-            condition_metrics[name] = {
+            metrics: dict[str, object] = {
                 "rr@10": reciprocal_rank(ranked, relevant, 10),
                 "ndcg@10": graded_ndcg_at_k(ranked, judgments, k=10),
                 "recall@100": recall_at_k(ranked, relevant, 100),
-                "recall@1000": recall_at_k(ranked, relevant, 1000),
                 "first_relevant_rank@100": first_relevant_rank(
                     ranked,
                     relevant,
                     100,
                 ),
-                "first_relevant_rank@1000": first_relevant_rank(
+            }
+            if include_recall_at_1000:
+                metrics["recall@1000"] = recall_at_k(ranked, relevant, 1000)
+                metrics["first_relevant_rank@1000"] = first_relevant_rank(
                     ranked,
                     relevant,
                     1000,
-                ),
-            }
+                )
+            condition_metrics[name] = metrics
         row["conditions"] = condition_metrics
         rows.append(row)
     return rows
@@ -199,6 +312,8 @@ def build_paired_comparisons(
     *,
     n_resamples: int,
     seed: int,
+    metric_names: Sequence[str] = BM25_PER_QUERY_METRICS,
+    no_hit_cutoffs: Sequence[int] = (100, 1000),
 ) -> dict[str, object]:
     pairs = (
         ("description_vs_title", "title", "description"),
@@ -216,7 +331,7 @@ def build_paired_comparisons(
     comparisons: dict[str, object] = {}
     for label, baseline, treatment in pairs:
         metrics: dict[str, object] = {}
-        for metric in PER_QUERY_METRICS:
+        for metric in metric_names:
             baseline_scores = [
                 float(row["conditions"][baseline][metric])  # type: ignore[index]
                 for row in rows
@@ -244,7 +359,7 @@ def build_paired_comparisons(
             metrics[metric] = bootstrap
 
         no_hit: dict[str, object] = {}
-        for cutoff in (100, 1000):
+        for cutoff in no_hit_cutoffs:
             key = f"first_relevant_rank@{cutoff}"
             baseline_miss = [
                 row["conditions"][baseline][key] is None  # type: ignore[index]
@@ -279,6 +394,8 @@ def _condition_metrics(
     conditions: Mapping[str, Condition],
     graded_qrels: dict[str, dict[str, int]],
     *,
+    metric_names: tuple[str, ...],
+    reported_section: str | None,
     tolerance: float,
 ) -> tuple[dict[str, object], dict[str, object]]:
     aggregate: dict[str, object] = {}
@@ -288,13 +405,18 @@ def _condition_metrics(
             qid: [doc_id for doc_id, _score in rows]
             for qid, rows in condition.run.items()
         }
+        recall_cutoffs = tuple(
+            int(metric.split("@", maxsplit=1)[1])
+            for metric in metric_names
+            if metric.startswith("recall@")
+        )
         internal = evaluate_trec_retrieval(
             ranked,
             graded_qrels,
             rel_threshold=1,
             ks_mrr=(10,),
             ks_ndcg=(10,),
-            ks_recall=(100, 1000),
+            ks_recall=recall_cutoffs,
         )
         external = evaluate_ir_measures(
             condition.run,
@@ -305,20 +427,32 @@ def _condition_metrics(
             internal,
             external,
             tolerance=tolerance,
+            metric_names=metric_names,
         )
         reported = condition.metrics_payload.get("metrics")
         if not isinstance(reported, dict):
             raise ValueError(f"{name}: metrics.json is missing metrics")
+        if reported_section is not None:
+            reported = reported.get(reported_section)
+            if not isinstance(reported, dict):
+                raise ValueError(
+                    f"{name}: metrics.json is missing metrics.{reported_section}"
+                )
         report_deltas = compare_metric_sets(
             internal,
-            {metric: float(reported[metric]) for metric in METRICS},
+            {metric: float(reported[metric]) for metric in metric_names},
             tolerance=tolerance,
+            metric_names=metric_names,
         )
-        aggregate[name] = {metric: float(internal[metric]) for metric in METRICS}
+        aggregate[name] = {
+            metric: float(internal[metric]) for metric in metric_names
+        }
         cross_checks[name] = {
             "backend": "ir-measures",
             "status": "passed",
-            "external_metrics": external,
+            "external_metrics": {
+                metric: float(external[metric]) for metric in metric_names
+            },
             "external_absolute_deltas": deltas,
             "reported_absolute_deltas": report_deltas,
         }
@@ -330,56 +464,76 @@ def _format_p(value: float) -> str:
 
 
 def render_report(summary: Mapping[str, object]) -> str:
-    aggregate = summary["aggregate_metrics"]
-    comparisons = summary["paired_comparisons"]
+    aggregate_by_stage = summary["aggregate_metrics"]
+    comparisons_by_stage = summary["paired_comparisons"]
     lines = [
         "# NFCorpus Video Query-Representation Analysis",
         "",
-        "## Result",
-        "",
-        "| Representation | MRR@10 | nDCG@10 | Recall@100 | Recall@1000 |",
-        "|---|---:|---:|---:|---:|",
     ]
     labels = {
         "title": "Title",
         "description": "Description",
         "title_plus_description": "Title + description",
     }
-    for name in REPRESENTATIONS:
-        metrics = aggregate[name]
-        lines.append(
-            f"| {labels[name]} | {metrics['mrr@10']:.6f} | "
-            f"{metrics['ndcg@10']:.6f} | {metrics['recall@100']:.6f} | "
-            f"{metrics['recall@1000']:.6f} |"
-        )
-
-    lines.extend(
-        [
-            "",
-            "## Paired comparison against title",
-            "",
-            "| Treatment | Metric | Delta | 95% CI | p (two-sided) | W/T/L |",
-            "|---|---|---:|---:|---:|---:|",
-        ]
-    )
-    for comparison_name in (
-        "description_vs_title",
-        "title_plus_description_vs_title",
+    for stage, stage_label, metric_names in (
+        ("bm25", "BM25", BM25_METRICS),
+        ("cross_encoder_rerank", "BM25 + cross-encoder", RERANK_METRICS),
     ):
-        comparison = comparisons[comparison_name]
-        treatment = labels[comparison["treatment"]]
-        for metric in PER_QUERY_METRICS:
-            result = comparison["metrics"][metric]
+        aggregate = aggregate_by_stage[stage]
+        comparisons = comparisons_by_stage[stage]
+        lines.extend(
+            [
+                f"## {stage_label} result",
+                "",
+                "| Representation | MRR@10 | nDCG@10 | Recall@100"
+                + (" | Recall@1000 |" if "recall@1000" in metric_names else " |"),
+                "|---|---:|---:|---:"
+                + ("|---:|" if "recall@1000" in metric_names else "|"),
+            ]
+        )
+        for name in REPRESENTATIONS:
+            metrics = aggregate[name]
             lines.append(
-                f"| {treatment} | {metric} | {result['mean_delta']:+.6f} | "
-                f"[{result['ci_low']:+.6f}, {result['ci_high']:+.6f}] | "
-                f"{_format_p(result['p_two_sided'])} | "
-                f"{result['wins']}/{result['ties']}/{result['losses']} |"
+                f"| {labels[name]} | {metrics['mrr@10']:.6f} | "
+                f"{metrics['ndcg@10']:.6f} | {metrics['recall@100']:.6f}"
+                + (
+                    f" | {metrics['recall@1000']:.6f} |"
+                    if "recall@1000" in metric_names
+                    else " |"
+                )
             )
+        lines.extend(
+            [
+                "",
+                f"### {stage_label} paired comparison against title",
+                "",
+                "| Treatment | Metric | Delta | 95% CI | p (two-sided) | W/T/L |",
+                "|---|---|---:|---:|---:|---:|",
+            ]
+        )
+        paired_metrics = (
+            BM25_PER_QUERY_METRICS
+            if stage == "bm25"
+            else RERANK_PER_QUERY_METRICS
+        )
+        for comparison_name in (
+            "description_vs_title",
+            "title_plus_description_vs_title",
+        ):
+            comparison = comparisons[comparison_name]
+            treatment = labels[comparison["treatment"]]
+            for metric in paired_metrics:
+                result = comparison["metrics"][metric]
+                lines.append(
+                    f"| {treatment} | {metric} | {result['mean_delta']:+.6f} | "
+                    f"[{result['ci_low']:+.6f}, {result['ci_high']:+.6f}] | "
+                    f"{_format_p(result['p_two_sided'])} | "
+                    f"{result['wins']}/{result['ties']}/{result['losses']} |"
+                )
+        lines.append("")
 
     lines.extend(
         [
-            "",
             "## Interpretation boundary",
             "",
             "The comparison changes only the query representation on the official "
@@ -388,9 +542,12 @@ def render_report(summary: Mapping[str, object]) -> str:
             "descriptions are source-page context, not independently authored user "
             "queries.",
             "",
-            "All three runs use the same qids, qrels, corpus index, BM25 parameters, "
-            "deterministic tie rule, code commit, and clean-tree manifest. Aggregate "
-            "metrics were independently cross-checked with ir-measures.",
+            "All three BM25 runs use the same qids, qrels, corpus index, parameters, "
+            "deterministic tie rule, code commit, and clean-tree manifest. Each "
+            "reranked run contains exactly its corresponding BM25 top-100 candidate "
+            "set, and all reranked runs use the same pinned model and clean-tree "
+            "commit. Aggregate metrics were independently cross-checked with "
+            "ir-measures.",
             "",
         ]
     )
@@ -414,44 +571,99 @@ def main(argv: Sequence[str] | None = None) -> None:
         if args.output_dir.is_absolute()
         else PROJECT_ROOT / args.output_dir
     )
-    conditions = {
-        representation: load_condition(input_root, representation)
+    bm25_conditions = {
+        representation: load_condition(
+            input_root,
+            representation,
+            stage="bm25",
+        )
         for representation in REPRESENTATIONS
     }
-    contract = validate_shared_contract(conditions)
+    rerank_conditions = {
+        representation: load_condition(
+            input_root,
+            representation,
+            stage="cross_encoder_rerank",
+        )
+        for representation in REPRESENTATIONS
+    }
+    bm25_contract = validate_shared_contract(bm25_conditions)
+    rerank_contract = validate_rerank_contract(
+        bm25_conditions,
+        rerank_conditions,
+    )
 
     benchmark = load_benchmark_queries(
         "beir/nfcorpus/test",
         cache_dir=PROJECT_ROOT / "data/raw",
     )
-    qids = set(conditions["title"].run)
+    qids = set(bm25_conditions["title"].run)
     graded_qrels = {
         qid: dict(benchmark.graded_qrels[qid])
         for qid in sorted(qids)
     }
-    aggregate, cross_checks = _condition_metrics(
-        conditions,
+    bm25_aggregate, bm25_cross_checks = _condition_metrics(
+        bm25_conditions,
         graded_qrels,
+        metric_names=BM25_METRICS,
+        reported_section=None,
         tolerance=args.tolerance,
     )
-    rows = build_per_query_rows(
-        {name: condition.run for name, condition in conditions.items()},
+    rerank_aggregate, rerank_cross_checks = _condition_metrics(
+        rerank_conditions,
+        graded_qrels,
+        metric_names=RERANK_METRICS,
+        reported_section="rerank",
+        tolerance=args.tolerance,
+    )
+    bm25_rows = build_per_query_rows(
+        {
+            name: condition.run
+            for name, condition in bm25_conditions.items()
+        },
         graded_qrels,
     )
-    comparisons = build_paired_comparisons(
-        rows,
+    rerank_rows = build_per_query_rows(
+        {
+            name: condition.run
+            for name, condition in rerank_conditions.items()
+        },
+        graded_qrels,
+        include_recall_at_1000=False,
+    )
+    bm25_comparisons = build_paired_comparisons(
+        bm25_rows,
         n_resamples=args.bootstrap_resamples,
         seed=args.bootstrap_seed,
     )
+    rerank_comparisons = build_paired_comparisons(
+        rerank_rows,
+        n_resamples=args.bootstrap_resamples,
+        seed=args.bootstrap_seed,
+        metric_names=RERANK_PER_QUERY_METRICS,
+        no_hit_cutoffs=(100,),
+    )
 
     summary: dict[str, object] = {
-        "schema": "msmarco-genqa.nfcorpus-video-query-analysis.v1",
+        "schema": "msmarco-genqa.nfcorpus-video-query-analysis.v2",
         "dataset": "beir/nfcorpus/test",
         "subset": "official_test_video",
-        "contract": contract,
-        "aggregate_metrics": aggregate,
-        "independent_cross_checks": cross_checks,
-        "paired_comparisons": comparisons,
+        "contracts": {
+            "bm25": bm25_contract,
+            "cross_encoder_rerank": rerank_contract,
+        },
+        "aggregate_metrics": {
+            "bm25": bm25_aggregate,
+            "cross_encoder_rerank": rerank_aggregate,
+        },
+        "independent_cross_checks": {
+            "bm25": bm25_cross_checks,
+            "cross_encoder_rerank": rerank_cross_checks,
+        },
+        "paired_comparisons": {
+            "bm25": bm25_comparisons,
+            "cross_encoder_rerank": rerank_comparisons,
+        },
         "bootstrap": {
             "resamples": args.bootstrap_resamples,
             "seed": args.bootstrap_seed,
@@ -472,7 +684,17 @@ def main(argv: Sequence[str] | None = None) -> None:
         encoding="utf-8",
         newline="\n",
     ) as handle:
-        for row in rows:
+        for bm25_row, rerank_row in zip(bm25_rows, rerank_rows):
+            if bm25_row["query_id"] != rerank_row["query_id"]:
+                raise ValueError("BM25 and rerank per-query row order differs")
+            row = {
+                "query_id": bm25_row["query_id"],
+                "n_relevant": bm25_row["n_relevant"],
+                "stages": {
+                    "bm25": bm25_row["conditions"],
+                    "cross_encoder_rerank": rerank_row["conditions"],
+                },
+            }
             handle.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
     (output_dir / "report.md").write_text(
         render_report(summary),
@@ -481,14 +703,19 @@ def main(argv: Sequence[str] | None = None) -> None:
     )
 
     print("NFCorpus video query-representation analysis complete")
-    for name in REPRESENTATIONS:
-        metrics = aggregate[name]
-        print(
-            f"  {name:24s} "
-            f"MRR@10={metrics['mrr@10']:.6f} "
-            f"nDCG@10={metrics['ndcg@10']:.6f} "
-            f"Recall@100={metrics['recall@100']:.6f}"
-        )
+    for stage, aggregate in (
+        ("bm25", bm25_aggregate),
+        ("cross_encoder_rerank", rerank_aggregate),
+    ):
+        print(f"  {stage}")
+        for name in REPRESENTATIONS:
+            metrics = aggregate[name]
+            print(
+                f"    {name:24s} "
+                f"MRR@10={metrics['mrr@10']:.6f} "
+                f"nDCG@10={metrics['ndcg@10']:.6f} "
+                f"Recall@100={metrics['recall@100']:.6f}"
+            )
     print(f"outputs: {output_dir}")
 
 
