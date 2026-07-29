@@ -42,8 +42,8 @@
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[LE,LO]{\small\nouppercase{\leftmark}}
-\fancyhead[RE,RO]{\small\itshape MS~MARCO Generative QA --- Repository Report}
+\fancyhead[L]{\small\nouppercase{\leftmark}}
+\fancyhead[R]{\small\itshape MS~MARCO GenQA --- Repository Report}
 \fancyfoot[C]{\small\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
 \renewcommand{\footrulewidth}{0pt}
@@ -107,10 +107,12 @@
   pdftitle={MS MARCO Generative QA: A Reproducible Retrieve--Rerank--Generate
             Pipeline with Grounding and Triad Audits},
   pdfauthor={GioiaZheng},
-  pdfsubject={Repository report --- updated 2026-07-20;
+  pdfsubject={Repository report --- updated 2026-07-29;
               core experiment window 2026-03-06 to 2026-05-21;
               TREC-DL external validation 2026-07-18;
-              BEIR cross-domain retrieval validation 2026-07-20},
+              BEIR cross-domain retrieval validation 2026-07-20;
+              NFCorpus first-stage analysis and bounded query-representation
+              experiment 2026-07-28},
   pdfkeywords={MS MARCO; BM25; dense retrieval; cross-encoder reranking;
                retrieval-augmented generation; BERTScore; NLI;
                RAG triad; extractive QA; paired bootstrap}
@@ -160,7 +162,7 @@
   {\Large\itshape A Reproducible Retrieve--Rerank--Generate Pipeline\\[0.25em]
    with Grounding and Triad Audits\par}
   \vspace{0.35cm}
-  {\large Repository report --- updated 2026-07-20\par}
+   {\large Repository report --- updated 2026-07-29\par}
   \vspace{1.05cm}
   \rule{\linewidth}{1.2pt}\par
 
@@ -181,7 +183,8 @@
      \textbf{Core experiment period} & 2026-03-06\,--\,2026-05-21 \quad{\small(11 milestones completed; 12-stage plan)} \\
      \textbf{External validation}     & 2026-07-18 \quad{\small(TREC-DL 2019/2020)} \\
      \textbf{Cross-domain retrieval}  & 2026-07-20 \quad{\small(BEIR NFCorpus / SciFact)} \\
-     \textbf{Current update}          & 2026-07-20 \\
+     \textbf{First-stage analysis}    & 2026-07-28 \quad{\small(NFCorpus fixed-output diagnosis)} \\
+     \textbf{Current update}          & 2026-07-29 \\
      \textbf{Scope}                   & Batch evaluation, CPU-only; English passage retrieval + QA \\
      \bottomrule
    \end{tabular}\par}
@@ -189,9 +192,13 @@
   \vspace{1.4cm}
 
   % --- Repository footer ----------------------------------------------------
-  {\small\textsc{Project repository}\\[0.15em]
+  {\small\textsc{Project surfaces}\\[0.15em]
    \href{https://github.com/GioiaZheng/msmarco-genqa}%
-    {\texttt{github.com/GioiaZheng/msmarco-genqa}}\par}
+    {\texttt{github.com/GioiaZheng/msmarco-genqa}}\\[0.12em]
+   \href{https://huggingface.co/datasets/GioiaZheng/msmarco-genqa-benchmark-runs}%
+    {\texttt{huggingface.co/datasets/GioiaZheng/msmarco-genqa-benchmark-runs}}\\[0.12em]
+   \href{https://gioiazheng.github.io/projects/msmarco-genqa/}%
+    {\texttt{gioiazheng.github.io/projects/msmarco-genqa/}}\par}
 
   \vspace{0.6cm}
 \end{titlepage}
@@ -253,7 +260,7 @@ scaffolding (reproducibility manifests, paired-bootstrap confidence
 intervals, deterministic seeds) that lets every number in this
 document be regenerated from one command per stage.
 
-This 2026-07-20 update keeps the empirical claims anchored to the
+This 2026-07-29 update keeps the empirical claims anchored to the
 original experiment outputs while bringing the repository description
 up to date.  Since the experiment window closed, the project has
 gained an installable CLI surface, the \texttt{rag-eval} workflow
@@ -270,6 +277,19 @@ MRR@10 on the independent BEIR NFCorpus and SciFact collections by
 $+9.18\%$ and $+3.25\%$ relative, respectively.  The unchanged
 Recall@100 exposes a sharp first-stage ceiling on NFCorpus rather
 than a reranker failure.
+
+A fixed-output follow-up makes that NFCorpus ceiling more precise.
+Of the 323 test queries, 72 have no judged relevant document in the
+\bmtwofive{} top 100; 24 first recover a positive at ranks 101--1,000
+and 48 still miss at depth 1,000.  A complete single-reviewer census
+assigns 67 of the 72 failures to missing source-page context.  On the
+official 102-query video subset, a predeclared comparison that changes
+only the query representation raises \recallH{} from 0.2821 for the
+BEIR title to 0.3700 for title plus official description
+($\Delta=+0.0880$, 95\,\% paired-bootstrap CI
+$[+0.0535,+0.1265]$, $p<0.0002$).  This is bounded retrieval evidence:
+it neither covers the other 221 NFCorpus queries nor evaluates
+generation.
 
 \vspace{2em}
 \noindent\textit{Keywords.}~~MS~MARCO; passage retrieval; \bmtwofive{};
@@ -406,7 +426,7 @@ reproducibility scaffolding (\Cref{sec:reproducibility}), the full
 five-way bucket counts (\Cref{sec:appendix-buckets}), and a
 short glossary of cross-references (\Cref{sec:appendix-glossary}).
 
-\subsection{Repository status as of 2026-07-18}
+\subsection{Repository status as of 2026-07-29}
 
 The project has moved from a report-centred experiment bundle to a
 small research-engineering repository.  The headline metrics in this
@@ -461,6 +481,18 @@ has a clearer operating surface:
         both collections; \Cref{sec:beir-results} separates that
         transfer result from the unsupported claim of full RAG
         generalization.
+  \item \textbf{NFCorpus first-stage diagnosis.}  The public
+        \bmtwofive{} run is now covered by a pinned data-and-metric
+        contract, a complete 72-query no-hit review, and a bounded
+        102-query query-representation experiment.  The result
+        distinguishes omitted source context from reranker capacity
+        without changing the architecture.
+  \item \textbf{Public evidence layer.}  Fourteen exact ranked outputs
+        from TREC-DL, BEIR cross-domain, and the NFCorpus video-query
+        experiment are published as checksum-verified GitHub Release
+        archives and as a public Hugging Face Dataset.  The repository
+        report, dataset card, and personal project page cross-link the
+        same evidence boundaries.
   \item \textbf{Research backlog.}  Follow-up issues now separate
         learned sparse retrieval, stronger rerankers, chunking
         protocols, query transformation, offline/online indexing,
@@ -1257,7 +1289,8 @@ TREC-DL changes the judged queries but retains the MS~MARCO passage
 collection.  To test transfer beyond that corpus without changing the
 architecture, the same \bmtwofive{} configuration and frozen MiniLM
 cross-encoder were run on the BEIR NFCorpus medical test collection
-and the SciFact scientific-claim test collection.  Each run uses its
+and the SciFact scientific-claim test collection
+~\cite{thakur2021beir,boteva2016nfcorpus,wadden2020scifact}.  Each run uses its
 dataset's own full corpus and graded qrels; binary MRR and recall count
 labels $\geq 1$ as relevant, while \ndcg{} retains the graded labels.
 
@@ -1304,6 +1337,76 @@ recovers the public test qrels through \texttt{ir\_datasets}, and recomputes
 all four rows without rebuilding either corpus index or rerunning the
 cross-encoder.  The bundle excludes document and query text, qrels mirrors,
 model weights, caches, and machine-local manifests.
+
+\subsection{NFCorpus first-stage diagnosis and bounded query representation}
+\label{sec:nfcorpus-first-stage}
+
+The aggregate NFCorpus result above identifies a candidate ceiling but
+does not explain it.  A fixed-output diagnosis therefore reuses the
+published \bmtwofive{} top-1,000 run, its qrels, and the same
+\texttt{rel >= 1} rule without rebuilding an index, changing a model,
+or modifying the architecture.  The input contract covers all 323 test
+queries and reproduces \mrr{} $=0.5186$, \ndcg{} $=0.3064$,
+\recallH{} $=0.2378$, and \recallK{} $=0.4572$.
+
+Seventy-two queries have no positive qrel in the top 100.  Of these,
+24 first recover a positive at ranks 101--1,000 and 48 still have no
+positive at depth 1,000.  A complete, single-reviewer taxonomy assigns
+67/72 cases (93.1\,\%) to \texttt{source\_context\_dependency}, 4/72
+(5.6\,\%) to \texttt{vocabulary\_or\_form\_mismatch}, and 1/72
+(1.4\,\%) to \texttt{underspecified\_or\_ambiguous\_query}.  Topic
+pages account for 58 of the 72 no-hit-at-100 cases.  These labels are
+descriptive evidence, not causal model effects, and have not received
+independent second annotation.
+
+The lowest-risk follow-up holds the corpus, qrels, \bmtwofive{}
+parameters, index fingerprint, cross-encoder revision, candidate
+depths, and 102-query official video cohort fixed.  It changes only the
+query representation: the BEIR title, the official video description,
+or title plus description.
+
+\begin{table}[H]
+  \centering\small
+  \caption{First-stage \bmtwofive{} results on the fixed 102-query
+  NFCorpus video subset.  Each condition retrieves to depth 1,000.}
+  \label{tab:nfcorpus-video-bm25}
+  \input{../generated/tables/nfcorpus_video_query_representation_bm25.tex}
+\end{table}
+
+\begin{table}[H]
+  \centering\small
+  \caption{The same three query representations after the frozen
+  cross-encoder reorders each condition's \bmtwofive{} top 100.
+  Recall@100 is unchanged within a condition by construction.}
+  \label{tab:nfcorpus-video-ce}
+  \input{../generated/tables/nfcorpus_video_query_representation_bm25_ce.tex}
+\end{table}
+
+Title plus description raises \recallH{} from 0.2821 to 0.3700
+($\Delta=+0.0880$).  Across 10,000 paired-bootstrap resamples with
+seed 20260727, the 95\,\% interval is
+$[+0.0535,+0.1265]$ and the two-sided $p$-value is below 0.0002.
+The number of queries with no positive at depth 100 falls from 11 to
+four; all eight title-only misses at depth 1,000 are recovered.
+Description alone has a positive \recallH{} point estimate
+($\Delta=+0.0451$), but its interval crosses zero
+($[-0.0024,+0.0943]$, $p=0.0610$), so it is not treated as a robust
+primary improvement.
+
+The interpretation is deliberately narrow.  The video descriptions
+are bounded source-page context connected to NFCorpus construction,
+not independently authored user queries.  The comparison covers only
+102 of 323 test queries and evaluates retrieval only.  Even the best
+\recallH{} remains 0.3700, leaving a material first-stage ceiling.
+A hybrid or dense retriever is therefore a possible new experiment,
+not a conclusion folded into this result.
+
+All six exact ranked runs are pinned by
+\texttt{artifacts/nfcorpus\_video\_query\_representation\_v1.json}.
+\texttt{make reproduce-nfcorpus-video-eval} downloads the public
+Release asset, verifies the archive and every member hash, recovers
+qrels through \texttt{ir\_datasets}, and recomputes the aggregate and
+paired results without rerunning retrieval or the cross-encoder.
 
 \subsection{Headline: Generation $\times$ retrieval source}
 \label{sec:gen-x-retrieval}
@@ -2159,6 +2262,17 @@ collections and do not evaluate generation or grounded answers.  They
 therefore support transfer on these collections, not broad cross-domain
 RAG generalization.
 
+\paragraph{The NFCorpus query-representation result is subset-specific.}
+The comparison in \Cref{sec:nfcorpus-first-stage} uses the official
+102-query video subset because bounded source descriptions can be
+recovered and frozen for that cohort.  It does not cover the remaining
+221 test queries.  The descriptions are source-page context related to
+how NFCorpus judgments were constructed, not independent user queries;
+the observed gain therefore supports a benchmark-representation
+diagnosis, not general query-expansion effectiveness.  The 72-case
+taxonomy is also a single-reviewer descriptive census without
+inter-annotator agreement.
+
 \paragraph{\bmtwofive{} tokenizer mismatch with Anserini.}  The full-corpus
 \mrr{}~$=0.170$ versus reference $\approx 0.184$ is mostly
 attributable to tokenizer differences between \texttt{bm25s} default
@@ -2224,6 +2338,16 @@ shows both arms at the lexical ceiling), and that the rerank
 $\Delta$ is uniformly positive across metric families
 (\Cref{tab:w7-nli} shows the NLI proxy reversing sign).
 
+The external retrieval evidence adds a second, bounded conclusion.
+The unchanged cross-encoder improves early ranking on TREC-DL 2019/2020
+and on the BEIR NFCorpus and SciFact collections, while fixed
+Recall@100 shows that reranking cannot repair missing candidates.  The
+NFCorpus follow-up localises much of that ceiling to compact query
+representation: on the 102-query video subset, adding the bounded
+official description raises \recallH{} from 0.2821 to 0.3700 under the
+same \bmtwofive{} system.  This does not supersede the main generation
+result and does not establish cross-domain generation.
+
 The most informative follow-up experiment is a generator-capacity
 swap (T5-base or an instruction-tuned small model) on the same
 prompts and the same retrieval inputs.  Such an experiment
@@ -2250,10 +2374,13 @@ stage number:
          difference.
   \item \textbf{NFCorpus first-stage retrieval.}  The cross-domain
         benchmark in \Cref{sec:beir-results} shows that reranking helps
-        once candidates are present, but \recallH{} remains 0.2378.
-        Compare a domain-appropriate dense or learned-sparse retriever
-        against \bmtwofive{} under the same full-corpus qrels and fixed
-        depth before tuning the reranker further.
+        once candidates are present, while the bounded source-context
+        comparison in \Cref{sec:nfcorpus-first-stage} recovers part of
+        the video-subset ceiling without changing \bmtwofive{}.  The
+        remaining valid comparison is a separately predeclared hybrid,
+        dense, or learned-sparse first stage on a frozen cohort and
+        fixed depth; it should not be selected after inspecting the
+        same queries or presented as part of the completed ablation.
   \item \textbf{Retrieval fusion and retrieval measurement.}
         Extend the current reciprocal-rank-fusion runner and
         same-qid matrix report with learned sparse retrieval as a
@@ -2351,6 +2478,9 @@ records the canonical command family for each layer.
     TREC-DL reranking & mgq-rerank \mbox{--dataset} \seqsplit{msmarco-passage/trec-dl-2019/judged} \mbox{--resume} {\normalfont (repeat for 2020)} \\
     BEIR \bmtwofive{} & mgq-retrieve \mbox{--dataset} \seqsplit{beir/nfcorpus/test} \mbox{--resume} {\normalfont (repeat for SciFact)} \\
     BEIR reranking & mgq-rerank \mbox{--dataset} \seqsplit{beir/nfcorpus/test} \mbox{--resume} {\normalfont (repeat for SciFact)} \\
+    NFCorpus first-stage diagnosis & make analyze-nfcorpus-first-stage \\
+    NFCorpus failure review & make review-nfcorpus-first-stage \\
+    NFCorpus video exact-output reproduction & make reproduce-nfcorpus-video-eval \\
     Generation  & python experiments/run\_generation\_baseline.py \\
     Dense retrieval  & python experiments/run\_dense\_retrieval.py \\
     Reranking  & python experiments/run\_reranker.py \\
@@ -2421,7 +2551,27 @@ are gitignored.  The tracked artefacts are source code (under
 under \texttt{reports/}, and the figures required to render those
 reports.  Large regenerable artefacts (every \texttt{metrics.json},
 every \texttt{run.tsv}, every dataset cache, every model cache) stay
-outside git.
+outside git.  Exact public ranked outputs needed to reproduce the
+external benchmark tables are distributed separately as three
+checksum-verified GitHub Release archives.  The same 14 TREC-format
+runs, their manifests, checksums, and a normalized Parquet view are
+mirrored in the public Hugging Face Dataset
+\href{https://huggingface.co/datasets/GioiaZheng/msmarco-genqa-benchmark-runs}%
+{\texttt{GioiaZheng/msmarco-genqa-benchmark-runs}}.  Neither surface
+redistributes benchmark text, qrels, model weights, or local caches.
+
+\subsection{Public report and artifact surfaces}
+
+The repository remains the source of truth for code, contracts, and
+human-readable result interpretation.  The current PDF and HTML report
+are tracked under \texttt{reports/repo\_report/}.  Exact outputs are
+available from the versioned GitHub Releases and the Hugging Face
+Dataset above.  A concise project-facing summary is maintained at
+\href{https://gioiazheng.github.io/projects/msmarco-genqa/}%
+{\texttt{gioiazheng.github.io/projects/msmarco-genqa/}}.  These
+surfaces cross-link rather than duplicate authority: aggregate claims
+resolve to checked report artifacts, and exact-output claims resolve to
+immutable hashes.
 
 \subsection{Engineering scaffolding}
 
