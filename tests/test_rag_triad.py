@@ -123,5 +123,15 @@ def test_cli_writes_triad_outputs(tmp_path: Path):
     assert (output_dir / "low_score_cases.jsonl").exists()
     assert "RAG triad evaluation" in (output_dir / "report.md").read_text(encoding="utf-8")
     metrics = json.loads((output_dir / "metrics.json").read_text(encoding="utf-8"))
-    assert metrics["inputs"]["predictions"]["bm25"] == str(bm25_path)
-    assert metrics["inputs"]["qrels"] == str(qrels_path)
+    expected_bm25_path = (
+        bm25_path.relative_to(cli.PROJECT_ROOT).as_posix()
+        if bm25_path.is_relative_to(cli.PROJECT_ROOT)
+        else str(bm25_path)
+    )
+    expected_qrels_path = (
+        qrels_path.relative_to(cli.PROJECT_ROOT).as_posix()
+        if qrels_path.is_relative_to(cli.PROJECT_ROOT)
+        else str(qrels_path)
+    )
+    assert metrics["inputs"]["predictions"]["bm25"] == expected_bm25_path
+    assert metrics["inputs"]["qrels"] == expected_qrels_path
