@@ -26,6 +26,27 @@ needed.
 | Torch, Transformers, SentenceTransformers, tokenizer, or model revision | Above checks plus `scripts/smoke_model_stack.py`; rerun the affected headline experiment or open a linked follow-up before treating old and new results as comparable. |
 | Security remediation with forced transitive changes | Record the vulnerability and constrained package set, run the affected smoke/evaluation checks, and document any unavoidable reproduction boundary. |
 
+### Tooling refresh: 2026-08-03
+
+The current snapshot updates `ruff` from 0.15.20 to 0.16.0. This is a
+tooling-only dependency refresh for static analysis and does not change the
+runtime retrieval, reranking, generation, or evaluation stack.
+
+This refresh does not rebaseline any published metric. Historical results stay
+attached to the lockfile snapshots recorded by their artifact-registry entries;
+new experiment manifests record the environment used for new runs.
+
+At minimum, run:
+
+```bash
+python -m pip install --dry-run -r requirements-lock.txt
+python scripts/check_fixture_headline_metrics.py
+python scripts/check_artifact_registry.py
+python scripts/export_report_tables.py
+ruff check src tests experiments scripts
+pytest -q
+```
+
 ### Security refresh: 2026-07-21
 
 The current snapshot updates `torch` from 2.12.1 to 2.13.0 and `nltk` from
