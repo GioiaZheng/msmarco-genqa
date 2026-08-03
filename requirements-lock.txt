@@ -36,7 +36,7 @@ ir_datasets==0.6.1
 lxml==6.1.1
 
 # --- Lexical retrieval ---
-bm25s==0.3.9
+bm25s==0.3.10
 
 # --- Dense retrieval ---
 sentence-transformers==5.6.0
