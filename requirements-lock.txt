@@ -48,7 +48,7 @@ transformers==5.12.1
 # Keep tokenizers on the latest stable 0.22.x pin accepted by the
 # transformers stack; 0.23.0 has no stable release.
 tokenizers==0.22.2
-sentencepiece==0.2.1
+sentencepiece==0.2.2
 safetensors==0.8.0
 
 # --- Evaluation ---
