@@ -4,7 +4,7 @@
 # Python dependencies are installed (``pip install -r requirements.txt &&
 # pip install -e .``).
 
-.PHONY: help install test test-slow lint check-results check-fixture-metrics check-lockfile check-notebooks check-artifacts check-registry export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-small reproduce-baseline reproduce-trec-eval build-trec-release reproduce-beir-eval build-beir-release reproduce-nfcorpus-video-eval build-nfcorpus-video-release analyze-nfcorpus-first-stage analyze-scifact-first-stage review-nfcorpus-first-stage
+.PHONY: help install test test-slow lint check-results check-fixture-metrics check-lockfile check-notebooks check-artifacts check-registry export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-small reproduce-baseline reproduce-trec-eval build-trec-release reproduce-beir-eval build-beir-release reproduce-nfcorpus-video-eval build-nfcorpus-video-release analyze-nfcorpus-first-stage analyze-scifact-first-stage review-nfcorpus-first-stage analyze-cross-dataset-errors
 
 PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
@@ -39,6 +39,7 @@ help:
 	@echo "  make analyze-nfcorpus-first-stage -- reproduce inputs + diagnose BM25 coverage"
 	@echo "  make analyze-scifact-first-stage -- reproduce inputs + diagnose BM25 coverage"
 	@echo "  make review-nfcorpus-first-stage -- validate the 72-case taxonomy review"
+	@echo "  make analyze-cross-dataset-errors -- compare NFCorpus/SciFact failure regimes"
 
 # ----------------------------------------------------------------------------- #
 # Install
@@ -200,3 +201,9 @@ analyze-scifact-first-stage: reproduce-beir-eval
 # evidence guide and summary from the compact tracked annotations.
 review-nfcorpus-first-stage: analyze-nfcorpus-first-stage
 	$(PYTHON) scripts/export_nfcorpus_first_stage_review.py --annotations reports/annotations/nfcorpus_first_stage_review_v1.csv
+
+# Cross-dataset retrieval-only error analysis over the frozen BEIR evidence.
+# This compares the two first-stage diagnostics and the complete NFCorpus
+# failure-review census without rerunning retrieval, reranking, or generation.
+analyze-cross-dataset-errors: review-nfcorpus-first-stage analyze-scifact-first-stage
+	$(PYTHON) scripts/analyze_cross_dataset_errors.py

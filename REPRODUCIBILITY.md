@@ -176,11 +176,16 @@ qrels, then write query-level coverage reports under `outputs/analysis/`:
 ```bash
 make analyze-nfcorpus-first-stage
 make analyze-scifact-first-stage
+make analyze-cross-dataset-errors
 ```
 
 These targets do not change the retriever, reranker, or model configuration.
 They only separate top-100 candidate-set misses, depth-1000 recoverable cases,
-and complete relevant-document coverage for the published BM25 outputs.
+complete relevant-document coverage, and the NFCorpus/SciFact cross-dataset
+failure partition for the published BM25 outputs. The cross-dataset target
+also validates the compact NFCorpus manual taxonomy table before writing
+`outputs/analysis/cross_dataset_errors/summary.json` and
+`outputs/analysis/cross_dataset_errors/report.md`.
 
 ## Reproducing the NFCorpus Video Query Ablation
 

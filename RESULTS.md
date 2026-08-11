@@ -184,6 +184,29 @@ does not repeat at the same scale. The definitions, exact reconciliation,
 limitations, and reproduction command are in
 [`docs/scifact_first_stage_error_analysis.md`](docs/scifact_first_stage_error_analysis.md).
 
+### Cross-dataset first-stage error analysis
+
+The combined NFCorpus/SciFact error analysis separates candidate-set absence,
+ranking-depth misses, and query/dataset effects under the same fixed BM25
+top-100 reranker condition:
+
+| Partition | NFCorpus | SciFact | Interpretation |
+|---|---:|---:|---|
+| No relevant document in top 100 | 72 (22.3%) | 35 (11.7%) | The reranker is more often given no relevant candidate on NFCorpus. |
+| First relevant hit only at ranks 101-1000 | 24 (7.4%) | 24 (8.0%) | Both datasets have a comparable depth-recoverable query count. |
+| No relevant hit at depth 1000 | 48 (14.9%) | 11 (3.7%) | The residual lexical first-stage tail is larger on NFCorpus. |
+| Partial top-100 coverage | 232 (71.8%) | 6 (2.0%) | NFCorpus loses much more positive-qrel mass outside the candidate set. |
+| Complete top-100 coverage | 19 (5.9%) | 259 (86.3%) | SciFact usually gives the reranker a complete judged candidate set. |
+
+SciFact exceeds NFCorpus by `+0.6381` Recall@100 and by `+80.5` percentage
+points in complete top-100 coverage share. The complete NFCorpus manual review
+labels 67/72 no-hit-at-100 cases as `source_context_dependency`; SciFact has
+the matched quantitative diagnostic but not a matched manual taxonomy census.
+The evidence therefore supports keeping the pipeline frozen while separating
+dataset/query-form effects from retrieval-capacity changes. The machine-checked
+contract, reproduction command, and limitations are in
+[`docs/cross_dataset_error_analysis.md`](docs/cross_dataset_error_analysis.md).
+
 ### NFCorpus bounded query-representation experiment
 
 The predeclared follow-up holds the 102-query test/video cohort, corpus, qrels,
