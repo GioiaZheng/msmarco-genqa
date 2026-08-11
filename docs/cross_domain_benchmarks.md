@@ -116,8 +116,8 @@ full corpus:
 
 The reranker improves early ranking on both collections. Recall@100 is
 unchanged because it receives the same BM25 top-100 document set. The large
-difference in first-stage Recall@100 — 0.2378 on NFCorpus versus 0.8759 on
-SciFact — is the main diagnostic result: NFCorpus is primarily candidate-set
+difference in first-stage Recall@100 - 0.2378 on NFCorpus versus 0.8759 on
+SciFact - is the main diagnostic result: NFCorpus is primarily candidate-set
 limited, so a stronger first-stage retriever is a more plausible next change
 than further tuning the fixed-candidate reranker.
 
@@ -183,8 +183,15 @@ generalizes across domains, because neither dataset was run through generation
 or grounded-answer evaluation. They also do not establish state of the art or
 replace a broader benchmark suite.
 
-The follow-up first-stage analysis is now recorded in
-[`nfcorpus_first_stage_error_analysis.md`](nfcorpus_first_stage_error_analysis.md).
-It uses the published fixed BM25 output and finds that 72/323 queries have no
-relevant document in the top-100 candidate set; 24 of those first obtain a
-relevant hit at ranks 101-1000, while 48 remain misses at depth 1000.
+The follow-up first-stage analyses are recorded in
+[`nfcorpus_first_stage_error_analysis.md`](nfcorpus_first_stage_error_analysis.md)
+and
+[`scifact_first_stage_error_analysis.md`](scifact_first_stage_error_analysis.md).
+They use the published fixed BM25 outputs and public qrels without rebuilding
+indexes or rerunning retrieval. NFCorpus has 72/323 queries with no relevant
+document in the top-100 candidate set; 24 of those first obtain a relevant hit
+at ranks 101-1000, while 48 remain misses at depth 1000. SciFact has 35/300
+queries with no relevant document in the top-100 candidate set, 24 first hits
+at ranks 101-1000, and 11 misses at depth 1000. The comparison supports
+treating the large NFCorpus gap as dataset- and representation-sensitive
+rather than a general failure of the unchanged first stage.

@@ -157,11 +157,32 @@ fixed source-type slices, the unchanged cross-encoder improves early ranking
 for every group; on the 144 non-topic queries MRR@10 moves from 0.5073 to
 0.5827 and nDCG@10 from 0.2612 to 0.3224 with Recall@100 fixed at 0.2769.
 
-The defensible conclusion is therefore narrower than “BM25 fails on medical
-language”: many NFCorpus failures depend on link-derived relevance that is not
+The defensible conclusion is therefore narrower than "BM25 fails on medical
+language": many NFCorpus failures depend on link-derived relevance that is not
 recoverable from the exported page title alone. The case-level evidence,
 taxonomy contract, limitations, and exact reproduction command are in
 [`docs/nfcorpus_first_stage_taxonomy_review.md`](docs/nfcorpus_first_stage_taxonomy_review.md).
+
+### SciFact first-stage coverage diagnostic
+
+The matching SciFact analysis shows a different failure shape:
+
+| Diagnostic | Queries | Share |
+|---|---:|---:|
+| At least one relevant document in BM25 top 100 | 265 | 88.3% |
+| No relevant document in BM25 top 100 | 35 | 11.7% |
+| First relevant hit only at ranks 101-1000 | 24 | 8.0% |
+| No relevant hit at depth 1000 | 11 | 3.7% |
+| Complete relevant-document coverage at 100 | 259 | 86.3% |
+
+Extending the same BM25 output from depth 100 to 1000 increases macro Recall
+from 0.8759 to 0.9606 and finds 28 additional positive qrels across 28
+queries. It leaves 13 of 339 positive qrels unretrieved. Unlike NFCorpus,
+most SciFact queries already have complete relevant-document coverage inside
+the fixed top-100 candidate set, so the large NFCorpus candidate-set ceiling
+does not repeat at the same scale. The definitions, exact reconciliation,
+limitations, and reproduction command are in
+[`docs/scifact_first_stage_error_analysis.md`](docs/scifact_first_stage_error_analysis.md).
 
 ### NFCorpus bounded query-representation experiment
 

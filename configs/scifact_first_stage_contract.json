@@ -1,0 +1,83 @@
+{
+  "schema": "msmarco-genqa.retrieval-data-metric-contract.v1",
+  "dataset_id": "beir/scifact/test",
+  "analysis_base_commit": "898558a0d87c52debb2d8bf93cbee2158903003f",
+  "experiment_commit": "e276d80fb4da",
+  "release": {
+    "pointer_path": "artifacts/beir_cross_domain_v1.json",
+    "repository": "GioiaZheng/msmarco-genqa",
+    "tag": "v2.2-beir-cross-domain-baselines",
+    "asset": "beir-cross-domain-baselines-v1.zip"
+  },
+  "inputs": {
+    "release_asset": {
+      "path": "outputs/reproductions/beir_cross_domain_v1/beir-cross-domain-baselines-v1.zip",
+      "bytes": 6006875,
+      "sha256": "15e8e4ded1fe8d889e24a31f7794988ce0bbb6750c5f9b10e1d7dd4b38a5f633"
+    },
+    "source_archive": {
+      "path": "outputs/reproductions/beir_irds_cache/beir/scifact/source.zip",
+      "bytes": 2816079,
+      "sha256": "536e14446a0ba56ed1398ab1055f39fe852686ecad24a6306c80c490fa8e0165",
+      "query_member": "scifact/queries.jsonl",
+      "corpus_member": "scifact/corpus.jsonl"
+    },
+    "qrels": {
+      "path": "outputs/reproductions/beir_irds_cache/beir/scifact/test.qrels",
+      "bytes": 5389,
+      "sha256": "0864bb985e0ca2367ba217977e72004d549054b2b06666ed9d4825ac7c21284c"
+    },
+    "bm25_run": {
+      "path": "outputs/reproductions/beir_cross_domain_v1/bundle/runs/beir_scifact_bm25.tsv",
+      "bytes": 10413759,
+      "sha256": "ae5d1f01a950327df540e2490b03335852e88405fd35ce27b3490eb5642cce8c",
+      "query_count": 300,
+      "row_count": 300000,
+      "depth": 1000
+    },
+    "ce_run": {
+      "path": "outputs/reproductions/beir_cross_domain_v1/bundle/runs/beir_scifact_bm25_ce.tsv",
+      "bytes": 1437037,
+      "sha256": "dec4f2ba1d0b19936d38e21a3f3ccdeaed96ba7ebbe429fb6755778d693ebe82",
+      "query_count": 300,
+      "row_count": 30000,
+      "depth": 100
+    }
+  },
+  "expected_counts": {
+    "source_queries": 1109,
+    "corpus_documents": 5183,
+    "test_queries": 300,
+    "qrels_judgments": 339
+  },
+  "qrels_format": "three-column",
+  "binary_relevance_threshold": 1,
+  "expected_bm25_metrics": {
+    "mrr@10": 0.6312301587301588,
+    "ndcg@10": 0.6616913885341652,
+    "recall@100": 0.8758888888888888,
+    "recall@1000": 0.9605555555555556
+  },
+  "expected_first_stage_diagnostics": {
+    "n_queries": 300,
+    "n_positive_qrels": 339,
+    "first_hit_bucket_counts": {
+      "top_10": 239,
+      "ranks_11_100": 26,
+      "ranks_101_1000": 24,
+      "miss_top_1000": 11
+    },
+    "coverage_at_100_bucket_counts": {
+      "none": 35,
+      "partial_lt_25pct": 0,
+      "partial_25_to_lt_50pct": 0,
+      "partial_50_to_lt_100pct": 6,
+      "complete": 259
+    },
+    "positive_qrels_in_top_100": 298,
+    "positive_qrels_in_top_1000": 326,
+    "queries_gaining_relevant_documents_101_1000": 28,
+    "positive_qrels_missing_at_1000": 13
+  },
+  "metric_tolerance": 1e-12
+}

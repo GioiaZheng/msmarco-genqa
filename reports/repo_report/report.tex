@@ -104,14 +104,15 @@
 
 % --- PDF metadata -----------------------------------------------------------
 \hypersetup{
-  pdftitle={MS MARCO Generative QA: A Reproducible Retrieve--Rerank--Generate
+  pdftitle={MS MARCO Generative QA: A Reproducible Retrieve-Rerank-Generate
             Pipeline with Grounding and Triad Audits},
   pdfauthor={GioiaZheng},
-  pdfsubject={Repository report --- updated 2026-07-29;
+  pdfsubject={Repository report - updated 2026-08-11;
               core experiment window 2026-03-06 to 2026-05-21;
               TREC-DL external validation 2026-07-18;
               BEIR cross-domain retrieval validation 2026-07-20;
-              NFCorpus first-stage analysis and bounded query-representation
+              NFCorpus and SciFact first-stage analyses;
+              NFCorpus bounded query-representation
               experiment 2026-07-28},
   pdfkeywords={MS MARCO; BM25; dense retrieval; cross-encoder reranking;
                retrieval-augmented generation; BERTScore; NLI;
@@ -159,10 +160,10 @@
   \vspace{1.05cm}
   {\Huge\bfseries MS\,MARCO Generative QA\par}
   \vspace{0.55cm}
-  {\Large\itshape A Reproducible Retrieve--Rerank--Generate Pipeline\\[0.25em]
+  {\Large\itshape A Reproducible Retrieve-Rerank-Generate Pipeline\\[0.25em]
    with Grounding and Triad Audits\par}
   \vspace{0.35cm}
-   {\large Repository report --- updated 2026-07-29\par}
+   {\large Repository report - updated 2026-08-11\par}
   \vspace{1.05cm}
   \rule{\linewidth}{1.2pt}\par
 
@@ -487,6 +488,12 @@ has a clearer operating surface:
         102-query query-representation experiment.  The result
         distinguishes omitted source context from reranker capacity
         without changing the architecture.
+  \item \textbf{SciFact first-stage diagnosis.}  The matching
+        fixed-output check shows a different shape: 265/300 SciFact
+        queries already have a relevant top-100 candidate and 259/300
+        have complete relevant-document coverage at depth 100.  This
+        keeps the NFCorpus ceiling from being overgeneralised across
+        all BEIR evidence.
   \item \textbf{Public evidence layer.}  Fourteen exact ranked outputs
         from TREC-DL, BEIR cross-domain, and the NFCorpus video-query
         experiment are published as checksum-verified GitHub Release
@@ -1337,6 +1344,45 @@ recovers the public test qrels through \texttt{ir\_datasets}, and recomputes
 all four rows without rebuilding either corpus index or rerunning the
 cross-encoder.  The bundle excludes document and query text, qrels mirrors,
 model weights, caches, and machine-local manifests.
+
+\subsection{SciFact first-stage diagnosis}
+\label{sec:scifact-first-stage}
+
+The SciFact aggregate result above is not just a smaller reranking
+gain; it reflects a different first-stage coverage shape.  A
+fixed-output diagnosis reuses the published SciFact \bmtwofive{}
+top-1,000 run, public qrels, and the same \texttt{rel >= 1} rule.  It
+does not rebuild the index, rerun retrieval, invoke the cross-encoder,
+or change any model setting.  The contract reproduces \mrr{} $=0.6312$,
+\ndcg{} $=0.6617$, \recallH{} $=0.8759$, and \recallK{} $=0.9606$.
+
+\begin{table}[H]
+  \centering\small
+  \caption{Fixed-output SciFact first-stage coverage diagnostic.}
+  \label{tab:scifact-first-stage}
+  \begin{tabularx}{\linewidth}{Xrr}
+    \toprule
+    Diagnostic & Queries & Share \\
+    \midrule
+    At least one relevant document in \bmtwofive{} top 100 & 265 & 88.3\% \\
+    No relevant document in \bmtwofive{} top 100 & 35 & 11.7\% \\
+    First relevant hit only at ranks 101--1,000 & 24 & 8.0\% \\
+    No relevant hit at depth 1,000 & 11 & 3.7\% \\
+    Complete relevant-document coverage at 100 & 259 & 86.3\% \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Depth 101--1,000 adds 28 positive qrels across 28 queries, raising
+macro recall by $+0.0847$.  Only 13 of 339 positive qrels remain
+unretrieved at depth 1,000.  This contrasts with NFCorpus, where only
+19/323 queries have complete relevant-document coverage at 100 and
+6,753 positive qrels remain unretrieved even at depth 1,000.  The
+practical conclusion is that SciFact has residual first-stage misses,
+but it does not reproduce the severe NFCorpus candidate-set ceiling at
+the same scale.  The next step for SciFact is therefore a bounded
+qualitative review of the 24 depth-recoverable and 11 top-1,000-miss
+queries, not an immediate retrieval architecture change.
 
 \subsection{NFCorpus first-stage diagnosis and bounded query representation}
 \label{sec:nfcorpus-first-stage}
@@ -2262,6 +2308,14 @@ collections and do not evaluate generation or grounded answers.  They
 therefore support transfer on these collections, not broad cross-domain
 RAG generalization.
 
+\paragraph{The SciFact first-stage diagnosis is quantitative only.}
+\Cref{sec:scifact-first-stage} shows that the SciFact top-100
+candidate set is much less restrictive than NFCorpus under the frozen
+\bmtwofive{} run, but it does not explain every residual miss.  The
+24 depth-recoverable and 11 top-1,000-miss queries still require
+case-level inspection before attributing them to vocabulary mismatch,
+claim wording, qrels coverage, or model capacity.
+
 \paragraph{The NFCorpus query-representation result is subset-specific.}
 The comparison in \Cref{sec:nfcorpus-first-stage} uses the official
 102-query video subset because bounded source descriptions can be
@@ -2346,7 +2400,11 @@ NFCorpus follow-up localises much of that ceiling to compact query
 representation: on the 102-query video subset, adding the bounded
 official description raises \recallH{} from 0.2821 to 0.3700 under the
 same \bmtwofive{} system.  This does not supersede the main generation
-result and does not establish cross-domain generation.
+result and does not establish cross-domain generation.  The matching
+SciFact first-stage diagnosis is milder: most queries already have
+complete relevant-document coverage at depth 100, so the large
+NFCorpus ceiling should be treated as dataset- and representation-
+sensitive rather than a general failure of the unchanged first stage.
 
 The most informative follow-up experiment is a generator-capacity
 swap (T5-base or an instruction-tuned small model) on the same
@@ -2479,6 +2537,7 @@ records the canonical command family for each layer.
     BEIR \bmtwofive{} & mgq-retrieve \mbox{--dataset} \seqsplit{beir/nfcorpus/test} \mbox{--resume} {\normalfont (repeat for SciFact)} \\
     BEIR reranking & mgq-rerank \mbox{--dataset} \seqsplit{beir/nfcorpus/test} \mbox{--resume} {\normalfont (repeat for SciFact)} \\
     NFCorpus first-stage diagnosis & make analyze-nfcorpus-first-stage \\
+    SciFact first-stage diagnosis & make analyze-scifact-first-stage \\
     NFCorpus failure review & make review-nfcorpus-first-stage \\
     NFCorpus video exact-output reproduction & make reproduce-nfcorpus-video-eval \\
     Generation  & python experiments/run\_generation\_baseline.py \\

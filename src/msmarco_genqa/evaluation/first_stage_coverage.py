@@ -99,7 +99,7 @@ def analyze_first_stage_query(
     """Build an auditable coverage record for one query."""
     if cutoffs != DEFAULT_CUTOFFS:
         raise FirstStageCoverageError(
-            "NFCorpus first-stage analysis requires cutoffs (10, 100, 1000)"
+            "first-stage coverage analysis requires cutoffs (10, 100, 1000)"
         )
     relevant = _positive_doc_ids(judgments, rel_threshold=rel_threshold)
     if not relevant:
@@ -420,6 +420,18 @@ def assert_first_stage_diagnostic_fingerprint(
         )
 
 
+def _dataset_display_name(dataset_id: str) -> str:
+    dataset_key = dataset_id.strip("/").split("/")[-2:]
+    if len(dataset_key) >= 2 and dataset_key[-1] == "test":
+        name = dataset_key[-2]
+    else:
+        name = dataset_id.strip("/").split("/")[-1]
+    return {
+        "nfcorpus": "NFCorpus",
+        "scifact": "SciFact",
+    }.get(name.lower(), dataset_id)
+
+
 def render_first_stage_coverage_markdown(
     report: Mapping[str, Any],
     *,
@@ -433,8 +445,9 @@ def render_first_stage_coverage_markdown(
     candidate = report["candidate_set_diagnostic"]
     depth = report["depth_100_to_1000_diagnostic"]
     settings = report["settings"]
+    dataset_name = _dataset_display_name(dataset_id)
     lines = [
-        "# NFCorpus First-Stage Coverage Analysis",
+        f"# {dataset_name} First-Stage Coverage Analysis",
         "",
         "## Result",
         "",

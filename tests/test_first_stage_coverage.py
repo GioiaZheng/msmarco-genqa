@@ -185,6 +185,23 @@ def test_markdown_states_definitions_and_interpretation_boundary():
     )
 
     assert "`ranks_101_1000`" in markdown
+    assert markdown.startswith("# NFCorpus First-Stage Coverage Analysis")
     assert "Macro (headline definition)" in markdown
     assert "Micro qrels coverage (diagnostic only)" in markdown
     assert "Interpretation Boundary" in markdown
+
+
+def test_markdown_title_uses_dataset_name():
+    report = _synthetic_analysis()
+    samples = deterministic_bucket_samples(report["per_query"], per_bucket=1)
+    report = {key: value for key, value in report.items() if key != "per_query"}
+
+    markdown = render_first_stage_coverage_markdown(
+        report,
+        dataset_id="beir/scifact/test",
+        contract_path="configs/contract.json",
+        release_tag="v1",
+        samples=samples,
+    )
+
+    assert markdown.startswith("# SciFact First-Stage Coverage Analysis")
