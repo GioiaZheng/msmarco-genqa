@@ -170,6 +170,18 @@ document/query text, qrels mirror, model weights, caches, or machine-local
 manifests. This validates the published evidence without rebuilding the
 NFCorpus/SciFact indexes or rerunning the cross-encoder.
 
+The fixed-output first-stage diagnostics reuse the same release and public
+qrels, then write query-level coverage reports under `outputs/analysis/`:
+
+```bash
+make analyze-nfcorpus-first-stage
+make analyze-scifact-first-stage
+```
+
+These targets do not change the retriever, reranker, or model configuration.
+They only separate top-100 candidate-set misses, depth-1000 recoverable cases,
+and complete relevant-document coverage for the published BM25 outputs.
+
 ## Reproducing the NFCorpus Video Query Ablation
 
 The six fixed runs from the 102-query query-representation experiment can be

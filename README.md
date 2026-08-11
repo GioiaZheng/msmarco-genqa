@@ -87,6 +87,7 @@ The repository includes runnable code plus written analysis artifacts:
 - [`docs/retrieval_lift_analysis.md`](docs/retrieval_lift_analysis.md) — query-level reranker lift analysis protocol.
 - [`docs/nfcorpus_first_stage_error_analysis.md`](docs/nfcorpus_first_stage_error_analysis.md) — fixed-output NFCorpus candidate-set coverage diagnosis.
 - [`docs/nfcorpus_first_stage_taxonomy_review.md`](docs/nfcorpus_first_stage_taxonomy_review.md) — complete 72-query review of NFCorpus source-context and first-stage failures.
+- [`docs/scifact_first_stage_error_analysis.md`](docs/scifact_first_stage_error_analysis.md) — fixed-output SciFact candidate-set coverage diagnosis and NFCorpus comparison.
 - [`docs/reports/2026-07-28-nfcorpus-video-query-representation.md`](docs/reports/2026-07-28-nfcorpus-video-query-representation.md) — controlled 102-query test of bounded NFCorpus source context.
 - [`docs/context_packing.md`](docs/context_packing.md) — prompt compression, provenance, and packed-vs-plain generation comparison.
 - [`docs/rag_triad_evaluation.md`](docs/rag_triad_evaluation.md) — context relevance, groundedness, and answer relevance report protocol.
@@ -659,9 +660,17 @@ source-page context missing from the exported title; 62/72 contain only
 level-1 qrels and 58/72 come from topic pages. On the 144 non-topic queries,
 MRR@10 moves from 0.5073 to 0.5827 after reranking while Recall@100 remains
 0.2769. This makes benchmark representation a competing explanation to
-retriever capacity rather than an architecture verdict. See
-[`docs/nfcorpus_first_stage_error_analysis.md`](docs/nfcorpus_first_stage_error_analysis.md)
-and the
+retriever capacity rather than an architecture verdict.
+
+The matching SciFact first-stage diagnostic shows a different failure shape:
+BM25 retrieves at least one relevant top-100 candidate for 265/300 queries,
+259/300 queries already have complete relevant-document coverage at depth 100,
+and only 11 queries remain misses at depth 1000. This supports treating the
+large NFCorpus gap as dataset- and representation-sensitive rather than a
+general failure of the unchanged first stage. See the
+[`NFCorpus first-stage diagnostic`](docs/nfcorpus_first_stage_error_analysis.md),
+[`SciFact first-stage diagnostic`](docs/scifact_first_stage_error_analysis.md),
+and
 [`72-case taxonomy review`](docs/nfcorpus_first_stage_taxonomy_review.md).
 
 The predeclared follow-up changes only the query representation on the official

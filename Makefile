@@ -4,7 +4,7 @@
 # Python dependencies are installed (``pip install -r requirements.txt &&
 # pip install -e .``).
 
-.PHONY: help install test test-slow lint check-results check-fixture-metrics check-lockfile check-notebooks check-artifacts check-registry export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-small reproduce-baseline reproduce-trec-eval build-trec-release reproduce-beir-eval build-beir-release reproduce-nfcorpus-video-eval build-nfcorpus-video-release analyze-nfcorpus-first-stage review-nfcorpus-first-stage
+.PHONY: help install test test-slow lint check-results check-fixture-metrics check-lockfile check-notebooks check-artifacts check-registry export-report-tables check-report-tables pipeline-dry-run rag-eval-dry-run model-stack-smoke serve-dev clean-pycache reproduce-small reproduce-baseline reproduce-trec-eval build-trec-release reproduce-beir-eval build-beir-release reproduce-nfcorpus-video-eval build-nfcorpus-video-release analyze-nfcorpus-first-stage analyze-scifact-first-stage review-nfcorpus-first-stage
 
 PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
@@ -37,6 +37,7 @@ help:
 	@echo "  make reproduce-nfcorpus-video-eval -- verify + evaluate six query-ablation runs"
 	@echo "  make build-nfcorpus-video-release -- build the maintainer query-ablation ZIP"
 	@echo "  make analyze-nfcorpus-first-stage -- reproduce inputs + diagnose BM25 coverage"
+	@echo "  make analyze-scifact-first-stage -- reproduce inputs + diagnose BM25 coverage"
 	@echo "  make review-nfcorpus-first-stage -- validate the 72-case taxonomy review"
 
 # ----------------------------------------------------------------------------- #
@@ -186,7 +187,14 @@ build-nfcorpus-video-release:
 # materializes and verifies the public release, qrels, and source archive; this
 # target does not rebuild the index, rerun retrieval, or invoke the reranker.
 analyze-nfcorpus-first-stage: reproduce-beir-eval
-	$(PYTHON) scripts/analyze_nfcorpus_first_stage.py
+	$(PYTHON) scripts/analyze_first_stage_coverage.py
+
+# Query-level diagnosis over the immutable SciFact BM25 run. This mirrors the
+# NFCorpus diagnostic and does not rebuild the index, rerun retrieval, or invoke
+# the reranker.
+analyze-scifact-first-stage: reproduce-beir-eval
+	$(PYTHON) scripts/check_first_stage_contract.py --contract configs/scifact_first_stage_contract.json --output outputs/analysis/scifact_first_stage/data_metric_contract.json --label SciFact
+	$(PYTHON) scripts/analyze_first_stage_coverage.py --contract configs/scifact_first_stage_contract.json --output-dir outputs/analysis/scifact_first_stage --sample-seed scifact-first-stage-errors-v1 --label SciFact
 
 # Validate the complete 24+48 NFCorpus review census and regenerate the ignored
 # evidence guide and summary from the compact tracked annotations.
