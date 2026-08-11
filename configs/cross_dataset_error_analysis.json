@@ -1,0 +1,37 @@
+{
+  "schema": "msmarco-genqa.cross-dataset-error-analysis-contract.v1",
+  "source_summaries": [
+    "outputs/analysis/nfcorpus_first_stage/summary.json",
+    "outputs/analysis/scifact_first_stage/summary.json"
+  ],
+  "taxonomy_source": "reports/annotations/nfcorpus_first_stage_review_v1.csv",
+  "expected_fingerprint": {
+    "NFCorpus": {
+      "bm25_recall_at_100": 0.2377557592,
+      "bm25_recall_at_1000": 0.4572325664,
+      "first_relevant_only_at_101_1000": 24,
+      "n_positive_qrels": 12334,
+      "n_queries": 323,
+      "queries_still_missing_at_1000": 48,
+      "queries_with_complete_coverage_top_100": 19,
+      "queries_with_no_relevant_top_100": 72
+    },
+    "SciFact": {
+      "bm25_recall_at_100": 0.8758888889,
+      "bm25_recall_at_1000": 0.9605555556,
+      "first_relevant_only_at_101_1000": 24,
+      "n_positive_qrels": 339,
+      "n_queries": 300,
+      "queries_still_missing_at_1000": 11,
+      "queries_with_complete_coverage_top_100": 259,
+      "queries_with_no_relevant_top_100": 35
+    }
+  },
+  "boundary": {
+    "analysis_type": "retrieval-only fixed-output comparison",
+    "reranker_candidate_depth": 100,
+    "bm25_depth": 1000,
+    "generation_evaluated": false,
+    "retrieval_or_reranking_rerun": false
+  }
+}

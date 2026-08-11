@@ -118,8 +118,9 @@ The reranker improves early ranking on both collections. Recall@100 is
 unchanged because it receives the same BM25 top-100 document set. The large
 difference in first-stage Recall@100 - 0.2378 on NFCorpus versus 0.8759 on
 SciFact - is the main diagnostic result: NFCorpus is primarily candidate-set
-limited, so a stronger first-stage retriever is a more plausible next change
-than further tuning the fixed-candidate reranker.
+limited. This makes first-stage and query-representation analysis more useful
+than further tuning the fixed-candidate reranker before selecting any
+retrieval-side change.
 
 ## Provenance and Audit
 
@@ -195,3 +196,5 @@ queries with no relevant document in the top-100 candidate set, 24 first hits
 at ranks 101-1000, and 11 misses at depth 1000. The comparison supports
 treating the large NFCorpus gap as dataset- and representation-sensitive
 rather than a general failure of the unchanged first stage.
+The combined retrieval-only comparison is in
+[`cross_dataset_error_analysis.md`](cross_dataset_error_analysis.md).
