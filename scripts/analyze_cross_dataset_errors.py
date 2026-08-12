@@ -31,6 +31,14 @@ DEFAULT_TAXONOMY = (
     / "annotations"
     / "nfcorpus_first_stage_review_v1.csv"
 )
+DEFAULT_SCIFACT_REVIEW = (
+    PROJECT_ROOT
+    / "outputs"
+    / "analysis"
+    / "scifact_first_stage"
+    / "review"
+    / "review_summary.json"
+)
 DEFAULT_CONTRACT = PROJECT_ROOT / "configs" / "cross_dataset_error_analysis.json"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "outputs" / "analysis" / "cross_dataset_errors"
 
@@ -63,6 +71,12 @@ def _load_taxonomy(path: Path) -> dict[str, Any]:
         ) from exc
 
 
+def _load_optional_json_object(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    return _load_json_object(path)
+
+
 def _write_json(path: Path, value: Any) -> None:
     path.write_text(
         json.dumps(value, indent=2, sort_keys=True) + "\n",
@@ -76,6 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--nfcorpus-summary", type=Path, default=DEFAULT_NFCORPUS_SUMMARY)
     parser.add_argument("--scifact-summary", type=Path, default=DEFAULT_SCIFACT_SUMMARY)
     parser.add_argument("--nfcorpus-taxonomy", type=Path, default=DEFAULT_TAXONOMY)
+    parser.add_argument("--scifact-review", type=Path, default=DEFAULT_SCIFACT_REVIEW)
     parser.add_argument("--contract", type=Path, default=DEFAULT_CONTRACT)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args(argv)
@@ -84,12 +99,14 @@ def main(argv: list[str] | None = None) -> int:
         nfcorpus_summary = _load_json_object(_resolve(args.nfcorpus_summary))
         scifact_summary = _load_json_object(_resolve(args.scifact_summary))
         taxonomy = _load_taxonomy(_resolve(args.nfcorpus_taxonomy))
+        scifact_review = _load_optional_json_object(_resolve(args.scifact_review))
         report = build_cross_dataset_error_analysis(
             {
                 "NFCorpus": nfcorpus_summary,
                 "SciFact": scifact_summary,
             },
             nfcorpus_taxonomy=taxonomy,
+            scifact_residual_review=scifact_review,
         )
         contract = _load_json_object(_resolve(args.contract))
         assert_cross_dataset_fingerprint(
@@ -114,6 +131,7 @@ def main(argv: list[str] | None = None) -> int:
         report,
         nfcorpus_doc="docs/nfcorpus_first_stage_error_analysis.md",
         scifact_doc="docs/scifact_first_stage_error_analysis.md",
+        scifact_review_doc="docs/scifact_failure_review.md",
     )
     (output_dir / "report.md").write_text(
         markdown,

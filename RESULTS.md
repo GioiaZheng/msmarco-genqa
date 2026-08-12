@@ -184,6 +184,30 @@ does not repeat at the same scale. The definitions, exact reconciliation,
 limitations, and reproduction command are in
 [`docs/scifact_first_stage_error_analysis.md`](docs/scifact_first_stage_error_analysis.md).
 
+### SciFact residual first-stage failure review
+
+The bounded review of the 35 SciFact queries with no judged relevant document
+in BM25 top 100 shows a narrower failure mode than NFCorpus:
+
+| Primary label | Queries | Share |
+|---|---:|---:|
+| `terminology_or_evidence_form_mismatch` | 28 | 80.0% |
+| `lexical_competition_at_depth_cutoff` | 4 | 11.4% |
+| `short_or_broad_claim` | 3 | 8.6% |
+
+All 35 residual cases show `top_lexical_competition`: the strongest BM25
+candidates match more claim tokens than the judged positive evidence. In
+31/35 cases, the judged positive evidence covers at most 25% of the claim
+content tokens; 13/35 contain negation, direction, activation, inhibition, or
+comparative cues; and 10 queries share one of five judged-positive evidence
+documents with another residual claim.
+
+This review supports keeping the pipeline frozen for the report. The remaining
+SciFact misses point to scientific claim/evidence formulation and candidate
+depth limits, not to a reranker or generator change. The case-level output,
+drift contract, limitations, and reproduction command are in
+[`docs/scifact_failure_review.md`](docs/scifact_failure_review.md).
+
 ### Cross-dataset first-stage error analysis
 
 The combined NFCorpus/SciFact error analysis separates candidate-set absence,
@@ -200,11 +224,12 @@ top-100 reranker condition:
 
 SciFact exceeds NFCorpus by `+0.6381` Recall@100 and by `+80.5` percentage
 points in complete top-100 coverage share. The complete NFCorpus manual review
-labels 67/72 no-hit-at-100 cases as `source_context_dependency`; SciFact has
-the matched quantitative diagnostic but not a matched manual taxonomy census.
-The evidence therefore supports keeping the pipeline frozen while separating
-dataset/query-form effects from retrieval-capacity changes. The machine-checked
-contract, reproduction command, and limitations are in
+labels 67/72 no-hit-at-100 cases as `source_context_dependency`; the SciFact
+residual review instead labels 28/35 misses as
+`terminology_or_evidence_form_mismatch`. The evidence therefore supports
+keeping the pipeline frozen while separating dataset/query-form effects from
+retrieval-capacity changes. The machine-checked contract, reproduction command,
+and limitations are in
 [`docs/cross_dataset_error_analysis.md`](docs/cross_dataset_error_analysis.md).
 
 ### NFCorpus bounded query-representation experiment
@@ -270,7 +295,7 @@ corpus retrieval.
 
 | Status | Boundary |
 |---|---|
-| Validated | The paired T5-small generation comparison on MS MARCO `dev/small`; full-corpus BM25 plus cross-encoder retrieval on TREC-DL 2019/2020; full-corpus BM25 plus fixed top-100 cross-encoder reranking on BEIR NFCorpus and SciFact; the bounded query-representation comparison on the official 102-query NFCorpus test/video subset. |
+| Validated | The paired T5-small generation comparison on MS MARCO `dev/small`; full-corpus BM25 plus cross-encoder retrieval on TREC-DL 2019/2020; full-corpus BM25 plus fixed top-100 cross-encoder reranking on BEIR NFCorpus and SciFact; the NFCorpus/SciFact first-stage diagnostics and bounded SciFact residual review; the bounded query-representation comparison on the official 102-query NFCorpus test/video subset. |
 | Implemented but not yet evaluated | The T5-base generator-capacity sweep and configurable alternative-generator paths. Their existence is not an empirical result. |
 | Not supported by current evidence | Retrieval lift transfers to generation on TREC-DL or BEIR; a fair full-corpus dense-vs-BM25 conclusion; broad cross-domain RAG generalization beyond the two evaluated retrieval collections. |
 

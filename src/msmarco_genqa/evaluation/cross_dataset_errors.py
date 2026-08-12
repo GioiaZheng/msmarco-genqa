@@ -183,6 +183,7 @@ def build_cross_dataset_error_analysis(
     datasets: Mapping[str, Mapping[str, Any]],
     *,
     nfcorpus_taxonomy: Mapping[str, Any] | None = None,
+    scifact_residual_review: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Compare fixed first-stage diagnostics across named datasets."""
     required = {"NFCorpus", "SciFact"}
@@ -237,11 +238,17 @@ def build_cross_dataset_error_analysis(
             "changes."
         ),
     }
-    if nfcorpus_taxonomy:
+    if nfcorpus_taxonomy and scifact_residual_review:
+        interpretation["qualitative_boundary"] = (
+            "NFCorpus has a complete no-hit-at-100 taxonomy; SciFact has a "
+            "bounded residual no-hit-at-100 review. The labels are "
+            "dataset-specific descriptions, not causal ground truth."
+        )
+    elif nfcorpus_taxonomy:
         interpretation["qualitative_boundary"] = (
             "Manual taxonomy evidence is currently complete for the NFCorpus "
-            "no-hit-at-100 census only; SciFact has a quantitative first-stage "
-            "diagnostic but not a matched manual taxonomy census."
+            "no-hit-at-100 census; a SciFact residual review summary is not "
+            "attached to this cross-dataset output."
         )
 
     report = {
@@ -260,6 +267,8 @@ def build_cross_dataset_error_analysis(
     }
     if nfcorpus_taxonomy:
         report["nfcorpus_manual_taxonomy"] = dict(nfcorpus_taxonomy)
+    if scifact_residual_review:
+        report["scifact_residual_review"] = dict(scifact_residual_review)
     return report
 
 
@@ -272,6 +281,7 @@ def render_cross_dataset_error_markdown(
     *,
     nfcorpus_doc: str,
     scifact_doc: str,
+    scifact_review_doc: str | None = None,
 ) -> str:
     """Render the cross-dataset comparison as a compact Markdown report."""
     datasets = {
@@ -290,6 +300,7 @@ def render_cross_dataset_error_markdown(
         label="comparison",
     )
     taxonomy = report.get("nfcorpus_manual_taxonomy")
+    scifact_review = report.get("scifact_residual_review")
 
     lines = [
         "# Cross-Dataset First-Stage Error Analysis",
@@ -421,19 +432,59 @@ def render_cross_dataset_error_markdown(
         lines.extend(
             [
                 (
-                    "The only complete manual taxonomy currently covers the 72 "
-                    "NFCorpus queries with no relevant document in BM25 top 100. "
-                    f"It labels {source_context}/{reviewed} cases as "
+                    "The complete NFCorpus review covers all queries with no "
+                    "relevant document in BM25 top 100. It labels "
+                    f"{source_context}/{reviewed} cases as "
                     "`source_context_dependency`, which supports a compact-query "
                     "representation explanation for that dataset."
                 ),
-                "",
-                "SciFact has the matched quantitative first-stage diagnostic, but "
-                "not a separate manual failure taxonomy census. The comparison "
-                "therefore supports a retrieval-reachability conclusion, not a "
-                "claim that SciFact has the same semantic failure causes.",
             ]
         )
+        if isinstance(scifact_review, Mapping):
+            scifact_counts = _require_mapping(
+                scifact_review.get("primary_label_counts"),
+                label="scifact_residual_review.primary_label_counts",
+            )
+            n_cases = int(scifact_review.get("n_cases", 0))
+            formulation = int(
+                scifact_counts.get("terminology_or_evidence_form_mismatch", 0)
+            )
+            competition = int(
+                scifact_counts.get("lexical_competition_at_depth_cutoff", 0)
+            )
+            short_or_broad = int(scifact_counts.get("short_or_broad_claim", 0))
+            lines.extend(
+                [
+                    "",
+                    (
+                        "The bounded SciFact residual review covers all "
+                        f"{n_cases} no-hit-at-100 cases. It labels "
+                        f"{formulation}/{n_cases} as "
+                        "`terminology_or_evidence_form_mismatch`, "
+                        f"{competition}/{n_cases} as "
+                        "`lexical_competition_at_depth_cutoff`, and "
+                        f"{short_or_broad}/{n_cases} as `short_or_broad_claim`."
+                    ),
+                    "",
+                    (
+                        "This does not reproduce the NFCorpus source-context "
+                        "pattern. The comparison therefore supports a "
+                        "retrieval-reachability conclusion plus dataset-specific "
+                        "failure descriptions, not a claim that both datasets "
+                        "share the same semantic failure causes."
+                    ),
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "",
+                    "A SciFact residual review summary is not attached to this "
+                    "output. The comparison "
+                    "therefore supports a retrieval-reachability conclusion, not a "
+                    "claim that SciFact has the same semantic failure causes.",
+                ]
+            )
     else:
         lines.append(
             "No manual taxonomy table is attached to this cross-dataset report."
@@ -474,6 +525,11 @@ def render_cross_dataset_error_markdown(
             "",
             f"- [{nfcorpus_doc}]({nfcorpus_doc})",
             f"- [{scifact_doc}]({scifact_doc})",
+            *(
+                [f"- [{scifact_review_doc}]({scifact_review_doc})"]
+                if scifact_review_doc
+                else []
+            ),
             "",
             "## Limitations",
             "",
@@ -483,6 +539,8 @@ def render_cross_dataset_error_markdown(
             "does not infer relevance for unjudged documents.",
             "- The comparison uses the frozen BM25 and cross-encoder outputs from "
             "the released BEIR bundle; it does not measure a new retriever.",
+            "- The SciFact residual review is bounded to no-hit-at-100 cases; it "
+            "is not a manual taxonomy over all SciFact queries.",
             "- NFCorpus and SciFact have very different qrels densities, so macro "
             "recall, query-count failures, and positive-qrel mass are reported "
             "separately.",

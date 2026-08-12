@@ -262,7 +262,7 @@ scaffolding (reproducibility manifests, paired-bootstrap confidence
 intervals, deterministic seeds) that lets every number in this
 document be regenerated from one command per stage.
 
-This 2026-07-29 update keeps the empirical claims anchored to the
+This 2026-08-11 update keeps the empirical claims anchored to the
 original experiment outputs while bringing the repository description
 up to date.  Since the experiment window closed, the project has
 gained an installable CLI surface, the \texttt{rag-eval} workflow
@@ -300,9 +300,13 @@ and 259/300 SciFact queries have complete relevant-document coverage at
 depth 100, compared with 19/323 on NFCorpus.  NFCorpus still has the
 larger residual lexical tail (48 no-hit-at-1,000 queries versus 11 on
 SciFact), while both datasets have 24 queries whose first positive hit
-appears only at ranks 101--1,000.  The evidence separates candidate
-absence, depth recoverability, and dataset/query representation
-effects; it does not by itself justify a new retrieval architecture.
+appears only at ranks 101--1,000.  A bounded review of the 35 residual
+SciFact no-hit-at-100 cases shows a different pattern from NFCorpus:
+28/35 are best described as scientific claim/evidence formulation
+mismatches, 4/35 as lexical competition at the depth cutoff, and 3/35
+as short or broad claims.  The evidence separates candidate absence,
+depth recoverability, and dataset/query representation effects; it
+does not by itself justify a new retrieval architecture.
 
 \vspace{2em}
 \noindent\textit{Keywords.}~~MS~MARCO; passage retrieval; \bmtwofive{};
@@ -503,9 +507,11 @@ has a clearer operating surface:
   \item \textbf{SciFact first-stage diagnosis.}  The matching
         fixed-output check shows a different shape: 265/300 SciFact
         queries already have a relevant top-100 candidate and 259/300
-        have complete relevant-document coverage at depth 100.  This
-        keeps the NFCorpus ceiling from being overgeneralised across
-        all BEIR evidence.
+        have complete relevant-document coverage at depth 100.  The
+        residual 35-query review points mostly to scientific
+        claim/evidence formulation mismatches, keeping the NFCorpus
+        source-context ceiling from being overgeneralised across all
+        BEIR evidence.
   \item \textbf{Cross-dataset first-stage error analysis.}  The
         combined NFCorpus/SciFact diagnosis separates candidate-set
         absence, depth-recoverable misses, residual top-1,000 misses,
@@ -1399,9 +1405,52 @@ unretrieved at depth 1,000.  This contrasts with NFCorpus, where only
 6,753 positive qrels remain unretrieved even at depth 1,000.  The
 practical conclusion is that SciFact has residual first-stage misses,
 but it does not reproduce the severe NFCorpus candidate-set ceiling at
-the same scale.  The next step for SciFact is therefore a bounded
-qualitative review of the 24 depth-recoverable and 11 top-1,000-miss
-queries, not an immediate retrieval architecture change.
+the same scale.  The follow-up question is therefore not whether to
+change the reranker, but why the remaining 35 fixed-candidate misses
+occur.
+
+\subsection{SciFact residual first-stage failure review}
+\label{sec:scifact-residual-review}
+
+The residual review covers exactly those 35 SciFact queries with no
+judged relevant document in the \bmtwofive{} top 100: 24 whose first
+positive appears only at ranks 101--1,000 and 11 with no positive even
+at depth 1,000.  It reuses the frozen \bmtwofive{} depth-1,000 run,
+public qrels, SciFact claims, and corpus abstracts.  No retrieval,
+reranking, or generation is rerun.
+
+\begin{table}[H]
+  \centering\small
+  \caption{Bounded review of the 35 residual SciFact no-hit-at-100 cases.}
+  \label{tab:scifact-residual-review}
+  \begin{tabularx}{\linewidth}{Xrr}
+    \toprule
+    Primary description & Queries & Share \\
+    \midrule
+    Terminology/evidence-form mismatch & 28 & 80.0\% \\
+    Lexical competition at the depth cutoff & 4 & 11.4\% \\
+    Short or broad claim & 3 & 8.6\% \\
+    Other unclear & 0 & 0.0\% \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+The cross-cutting signals are consistent with this interpretation.  In
+all 35 cases, the strongest \bmtwofive{} candidates match more claim
+tokens than the judged positive evidence.  In 31/35 cases, the judged
+positive evidence covers at most 25\,\% of the claim content tokens;
+13/35 contain negation, direction, activation, inhibition, or
+comparative cues; and 10 queries share one of five judged-positive
+evidence documents with another residual claim.
+
+This does not reproduce the NFCorpus source-context pattern.  The
+SciFact residual tail is better described as scientific claim/evidence
+formulation under exact lexical matching and a fixed top-100 reranker
+cutoff.  The pipeline therefore remains frozen for the report.  A
+future change should be predeclared and retrieval-side only if it
+targets this observed failure mode, for example candidate-depth
+sensitivity, scientific-claim query rewriting, or hybrid lexical/dense
+retrieval.
 
 \subsection{Cross-dataset first-stage error analysis}
 \label{sec:cross-dataset-errors}
@@ -1439,14 +1488,16 @@ positive qrels remain outside the candidate set.  SciFact, in contrast,
 usually gives the cross-encoder all judged positive evidence within the
 fixed candidate pool.
 
-The only complete manual taxonomy currently covers the 72 NFCorpus
-no-hit-at-100 cases; 67 of them are labelled
-\texttt{source\_context\_dependency}.  SciFact has the matched
-quantitative diagnostic but not a matched manual taxonomy census.  The
-defensible conclusion is therefore narrow: NFCorpus has a severe
-candidate-set and compact-query problem, SciFact generalizes better at
-the first stage, and the cross-encoder cannot recover evidence missing
-from the fixed \bmtwofive{} candidate set.  The command
+The complete NFCorpus no-hit-at-100 census labels 67/72 cases as
+\texttt{source\_context\_dependency}.  The bounded SciFact residual
+review instead labels 28/35 cases as terminology/evidence-form
+mismatches, 4/35 as lexical competition at the depth cutoff, and 3/35
+as short or broad claims.  The defensible conclusion is therefore
+narrow: NFCorpus has a severe candidate-set and compact-query problem,
+SciFact generalizes better at the first stage, the residual SciFact
+misses have a different formulation-driven shape, and the
+cross-encoder cannot recover evidence missing from the fixed
+\bmtwofive{} candidate set.  The command
 \texttt{make analyze-cross-dataset-errors} verifies the two source
 summaries against \texttt{configs/cross\_dataset\_error\_analysis.json}
 and writes a machine-readable comparison under
@@ -2376,15 +2427,16 @@ collections and do not evaluate generation or grounded answers.  They
 therefore support transfer on these collections, not broad cross-domain
 RAG generalization.
 
-\paragraph{The cross-dataset first-stage analysis is still quantitative.}
+\paragraph{The cross-dataset first-stage analysis remains bounded.}
 \Cref{sec:scifact-first-stage} shows that the SciFact top-100
 candidate set is much less restrictive than NFCorpus under the frozen
 \bmtwofive{} run, and \Cref{sec:cross-dataset-errors} compares the
-two failure partitions directly.  This does not explain every residual
-miss.  The 24 SciFact depth-recoverable and 11 top-1,000-miss queries
-still require case-level inspection before attributing them to
-vocabulary mismatch, claim wording, qrels coverage, or model capacity.
-Only the NFCorpus no-hit-at-100 census has a complete manual taxonomy.
+two failure partitions directly.  \Cref{sec:scifact-residual-review}
+adds a bounded review of the 35 SciFact no-hit-at-100 cases, but the
+labels are descriptive and token-overlap aided rather than causal
+ground truth.  They cover the residual miss set only, not all 300
+SciFact queries, and they do not evaluate generated answers or
+groundedness on SciFact.
 
 \paragraph{The NFCorpus query-representation result is subset-specific.}
 The comparison in \Cref{sec:nfcorpus-first-stage} uses the official
@@ -2475,9 +2527,12 @@ SciFact first-stage diagnosis is milder: most queries already have
 complete relevant-document coverage at depth 100.  The combined
 cross-dataset partition shows the sharper contrast: SciFact exceeds
 NFCorpus by $+0.6381$ \recallH{} and by $+80.5$ percentage points in
-complete top-100 coverage share.  The large NFCorpus ceiling should
-therefore be treated as dataset- and representation-sensitive rather
-than a general failure of the unchanged first stage.
+complete top-100 coverage share.  The residual SciFact review further
+shows that the remaining 35 no-hit-at-100 cases are mostly
+claim/evidence formulation mismatches rather than NFCorpus-style
+source-context failures.  The large NFCorpus ceiling should therefore
+be treated as dataset- and representation-sensitive rather than a
+general failure of the unchanged first stage.
 
 The most informative follow-up experiment is a generator-capacity
 swap (T5-base or an instruction-tuned small model) on the same
@@ -2612,6 +2667,7 @@ records the canonical command family for each layer.
     NFCorpus first-stage diagnosis & make analyze-nfcorpus-first-stage \\
     SciFact first-stage diagnosis & make analyze-scifact-first-stage \\
     NFCorpus failure review & make review-nfcorpus-first-stage \\
+    SciFact residual review & make review-scifact-first-stage \\
     Cross-dataset error analysis & make analyze-cross-dataset-errors \\
     NFCorpus video exact-output reproduction & make reproduce-nfcorpus-video-eval \\
     Generation  & python experiments/run\_generation\_baseline.py \\

@@ -38,15 +38,18 @@ ceiling; SciFact has a smaller residual coverage tail.
 
 ## Qualitative Boundary
 
-The only complete manual taxonomy currently covers the 72 NFCorpus queries with
-no relevant document in BM25 top 100. It labels 67/72 cases as
-`source_context_dependency`, which supports a compact-query representation
-explanation for that dataset.
+The complete NFCorpus review covers all 72 queries with no relevant document in
+BM25 top 100. It labels 67/72 cases as `source_context_dependency`, which
+supports a compact-query representation explanation for that dataset.
 
-SciFact has the matched quantitative first-stage diagnostic, but not a
-separate manual failure taxonomy census. The comparison therefore supports a
-retrieval-reachability conclusion, not a claim that SciFact has the same
-semantic failure causes.
+The bounded SciFact residual review covers all 35 queries with no relevant
+document in BM25 top 100. It labels 28/35 as
+`terminology_or_evidence_form_mismatch`, 4/35 as
+`lexical_competition_at_depth_cutoff`, and 3/35 as `short_or_broad_claim`.
+This does not reproduce the NFCorpus source-context pattern. The comparison
+therefore supports a retrieval-reachability conclusion plus dataset-specific
+failure descriptions, not a claim that both datasets share the same semantic
+failure causes.
 
 ## Decision
 
@@ -85,6 +88,7 @@ Source diagnostics:
 - [`docs/nfcorpus_first_stage_error_analysis.md`](nfcorpus_first_stage_error_analysis.md)
 - [`docs/scifact_first_stage_error_analysis.md`](scifact_first_stage_error_analysis.md)
 - [`docs/nfcorpus_first_stage_taxonomy_review.md`](nfcorpus_first_stage_taxonomy_review.md)
+- [`docs/scifact_failure_review.md`](scifact_failure_review.md)
 
 ## Limitations
 
@@ -94,5 +98,7 @@ Source diagnostics:
   infer relevance for unjudged documents.
 - The comparison uses the frozen BM25 and cross-encoder outputs from the
   released BEIR bundle; it does not measure a new retriever.
+- The SciFact review is a bounded residual no-hit@100 review, not a manual
+  taxonomy over all 300 SciFact queries.
 - NFCorpus and SciFact have very different qrels densities, so macro recall,
   query-count failures, and positive-qrel mass are reported separately.

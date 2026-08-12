@@ -1,0 +1,34 @@
+{
+  "schema": "msmarco-genqa.scifact-failure-review-contract.v1",
+  "source_summary": "outputs/analysis/scifact_first_stage/summary.json",
+  "source_contract": "configs/scifact_first_stage_contract.json",
+  "review_population": "all SciFact queries with BM25 Recall@100 equal to 0",
+  "boundary": {
+    "analysis_type": "retrieval-only fixed-output residual review",
+    "reranker_candidate_depth": 100,
+    "bm25_depth": 1000,
+    "generation_evaluated": false,
+    "retrieval_or_reranking_rerun": false
+  },
+  "expected_fingerprint": {
+    "n_cases": 35,
+    "cohort_counts": {
+      "depth_recoverable_101_1000": 24,
+      "miss_top_1000": 11
+    },
+    "primary_label_counts": {
+      "lexical_competition_at_depth_cutoff": 4,
+      "short_or_broad_claim": 3,
+      "terminology_or_evidence_form_mismatch": 28
+    },
+    "diagnostic_flag_counts": {
+      "low_positive_surface_overlap": 31,
+      "polarity_or_directional_claim": 13,
+      "shared_positive_evidence_doc": 10,
+      "short_or_broad_claim": 3,
+      "top_lexical_competition": 35
+    },
+    "n_shared_positive_evidence_doc_groups": 5,
+    "n_queries_in_shared_positive_evidence_doc_groups": 10
+  }
+}

@@ -87,6 +87,14 @@ def _analysis():
             },
         ]
     )
+    scifact_review = {
+        "n_cases": 2,
+        "primary_label_counts": {
+            "terminology_or_evidence_form_mismatch": 1,
+            "lexical_competition_at_depth_cutoff": 1,
+            "short_or_broad_claim": 0,
+        },
+    }
     return build_cross_dataset_error_analysis(
         {
             "NFCorpus": _summary(
@@ -115,6 +123,7 @@ def _analysis():
             ),
         },
         nfcorpus_taxonomy=taxonomy,
+        scifact_residual_review=scifact_review,
     )
 
 
@@ -195,3 +204,4 @@ def test_cross_dataset_markdown_states_decision_boundary():
     assert "Do not change the pipeline yet" in markdown
     assert "retrieval-only evidence" in markdown
     assert "source_context_dependency" in markdown
+    assert "terminology_or_evidence_form_mismatch" in markdown

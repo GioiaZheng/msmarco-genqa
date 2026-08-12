@@ -136,16 +136,17 @@ each bucket rather than chosen manually.
   or a need for dense retrieval.
 - No generation claim follows from this retrieval-only analysis.
 
-## Recommended next step
+## Follow-up review
 
-Do not change the retrieval pipeline based on SciFact alone. The first-stage
-coverage result is already strong enough that the next useful step is a
-bounded qualitative review of the residual misses:
+The residual 35-query review is now recorded in
+[`docs/scifact_failure_review.md`](scifact_failure_review.md). It covers the
+24 queries whose first relevant hit appears at ranks 101-1000 and the 11
+queries with no relevant hit at depth 1000.
 
-1. the 24 queries whose first relevant hit appears at ranks 101-1000; and
-2. the 11 queries with no relevant hit at depth 1000.
-
-If the residual SciFact misses share the same pattern as NFCorpus, a small
-retrieval-side experiment may be justified. If they are mostly
-dataset-specific or isolated lexical cases, the stronger conclusion is to
-document them as limitations while keeping the current pipeline frozen.
+The review does not reproduce the NFCorpus source-context failure pattern.
+Most residual SciFact misses are better described as scientific claim/evidence
+formulation mismatches under exact lexical first-stage retrieval. The current
+decision is therefore to keep the retrieval pipeline frozen for the report and
+only consider a predeclared retrieval-side intervention, such as candidate
+depth sensitivity, scientific-claim query rewriting, or hybrid lexical/dense
+retrieval, if the next experiment explicitly targets this failure mode.
