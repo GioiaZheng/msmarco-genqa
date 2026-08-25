@@ -26,6 +26,39 @@ needed.
 | Torch, Transformers, SentenceTransformers, tokenizer, or model revision | Above checks plus `scripts/smoke_model_stack.py`; rerun the affected headline experiment or open a linked follow-up before treating old and new results as comparable. |
 | Security remediation with forced transitive changes | Record the vulnerability and constrained package set, run the affected smoke/evaluation checks, and document any unavoidable reproduction boundary. |
 
+### Dependency refresh: 2026-08-25
+
+The current snapshot refreshes five pinned direct dependencies:
+
+- `ir_datasets` from 0.6.1 to 0.6.3;
+- `bm25s` from 0.3.9 to 0.3.10;
+- `transformers` from 5.12.1 to 5.14.1;
+- `sentencepiece` from 0.2.1 to 0.2.2;
+- `ruff` from 0.16.0 to 0.16.1.
+
+The refresh folds together the lockfile-only updates tracked in Dependabot
+PRs #149, #173, #174, #175, and #176. It does not rebaseline any published
+retrieval, reranking, or generation metric. Historical results stay attached
+to the lockfile snapshots recorded by their artifact-registry entries; new
+experiment manifests record the environment used for new runs.
+
+Because the refresh touches lexical retrieval, dataset loading, tokenizer, and
+Transformers pins, treat old and new model-stack results as comparable only
+after the model-stack smoke check and any affected benchmark rerun have been
+reviewed.
+
+At minimum, run:
+
+```bash
+python -m pip install --dry-run -r requirements-lock.txt
+python scripts/check_fixture_headline_metrics.py
+python scripts/check_artifact_registry.py
+python scripts/export_report_tables.py
+python scripts/smoke_model_stack.py
+ruff check src tests experiments scripts
+pytest -q
+```
+
 ### Tooling refresh: 2026-08-03
 
 The current snapshot updates `ruff` from 0.15.20 to 0.16.0. This is a
