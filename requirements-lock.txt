@@ -39,7 +39,7 @@ lxml==6.1.1
 bm25s==0.3.10
 
 # --- Dense retrieval ---
-sentence-transformers==5.6.0
+sentence-transformers==6.0.0
 faiss-cpu==1.14.3
 
 # --- Generation / reranking (transformers stack) ---
