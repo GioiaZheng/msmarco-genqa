@@ -26,6 +26,29 @@ needed.
 | Torch, Transformers, SentenceTransformers, tokenizer, or model revision | Above checks plus `scripts/smoke_model_stack.py`; rerun the affected headline experiment or open a linked follow-up before treating old and new results as comparable. |
 | Security remediation with forced transitive changes | Record the vulnerability and constrained package set, run the affected smoke/evaluation checks, and document any unavoidable reproduction boundary. |
 
+### Security refresh: 2026-09-07
+
+The current snapshot updates `nltk` from 3.10.0 to 3.10.3 for the
+Dependabot security refresh tracked in PR #197.
+
+NLTK is used here through `nltk.translate.bleu_score`, so this update is
+treated as an evaluation-adjacent security fix rather than a model-stack
+change. It does not rebaseline any published retrieval, reranking, or
+generation metric. Historical results stay attached to the lockfile snapshots
+recorded by their artifact-registry entries; new experiment manifests record
+the environment used for new runs.
+
+At minimum, run:
+
+```bash
+python -m pip install --dry-run -r requirements-lock.txt
+python scripts/check_fixture_headline_metrics.py
+python scripts/check_artifact_registry.py
+python scripts/export_report_tables.py
+ruff check src tests experiments scripts
+pytest -q
+```
+
 ### Dependency refresh: 2026-08-25
 
 The current snapshot refreshes five pinned direct dependencies:
