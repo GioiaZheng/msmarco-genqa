@@ -26,6 +26,30 @@ needed.
 | Torch, Transformers, SentenceTransformers, tokenizer, or model revision | Above checks plus `scripts/smoke_model_stack.py`; rerun the affected headline experiment or open a linked follow-up before treating old and new results as comparable. |
 | Security remediation with forced transitive changes | Record the vulnerability and constrained package set, run the affected smoke/evaluation checks, and document any unavoidable reproduction boundary. |
 
+### Parser dependency refresh: 2026-09-09
+
+The current snapshot updates `lxml` from 6.1.1 to 6.1.3 for the
+Dependabot refresh tracked in PR #196. The update includes the 6.1.3
+parser-default fix that prevents external parameter entities from being parsed
+when internal-only entity resolution is requested.
+
+`lxml` is part of the dataset and XML/HTML parsing surface, not the retrieval,
+reranking, generation, or evaluation metric implementation. This refresh does
+not rebaseline any published metric. Historical results stay attached to the
+lockfile snapshots recorded by their artifact-registry entries; new experiment
+manifests record the environment used for new runs.
+
+At minimum, run:
+
+```bash
+python -m pip install --dry-run -r requirements-lock.txt
+python scripts/check_fixture_headline_metrics.py
+python scripts/check_artifact_registry.py
+python scripts/export_report_tables.py
+ruff check src tests experiments scripts
+pytest -q
+```
+
 ### Security refresh: 2026-09-07
 
 The current snapshot updates `nltk` from 3.10.0 to 3.10.3 for the
