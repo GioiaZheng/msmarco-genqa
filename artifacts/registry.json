@@ -4,8 +4,8 @@
   "hash_convention": "sha256_lf normalizes CRLF and CR text newlines to LF before hashing",
   "current_lockfile": {
     "path": "requirements-lock.txt",
-    "sha256_lf": "bf295f91c385897e5d27350d4cf1ba4f09ae108c5cbb06f51b58f8b9ec7d9b05",
-    "last_dependency_change_commit": "7a683c498b87fd8158648fe6cc23fe4d61ef33f4",
+    "sha256_lf": "2971df6c9d1fb9cf3592c657a56d39e67cf4912a8bc8639d2bf6cde04e184204",
+    "last_dependency_change_commit": "82c619c3d7ad097fa7307cf3410536b38a900520",
     "reproduction_note": "docs/lockfile_reproduction.md",
     "validation": [
       "python -m pip install --dry-run -r requirements-lock.txt",
