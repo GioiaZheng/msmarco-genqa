@@ -8,8 +8,8 @@ authors:
 repository-code: "https://github.com/GioiaZheng/msmarco-genqa"
 url: "https://github.com/GioiaZheng/msmarco-genqa"
 license: MIT
-version: "v2.0-reproducibility-protocol"
-date-released: "2026-05-27"
+version: "v2.3-nfcorpus-video-query-ablation"
+date-released: "2026-07-28"
 abstract: >-
   A reproducible research-engineering implementation of an MS MARCO
   retrieval-augmented question answering pipeline, covering lexical retrieval,
