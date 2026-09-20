@@ -26,6 +26,23 @@ needed.
 | Torch, Transformers, SentenceTransformers, tokenizer, or model revision | Above checks plus `scripts/smoke_model_stack.py`; rerun the affected headline experiment or open a linked follow-up before treating old and new results as comparable. |
 | Security remediation with forced transitive changes | Record the vulnerability and constrained package set, run the affected smoke/evaluation checks, and document any unavoidable reproduction boundary. |
 
+### Tooling dependency refresh: 2026-09-20
+
+PR #206 updates `ruff` from 0.16.1 to 0.16.7. Ruff is a lint tool;
+this update does not change model, retrieval, or evaluation dependencies.
+Published metrics and historical experiment snapshots remain unchanged.
+The current registry hash and dependency-change commit identify the updated
+lockfile, while historical entries retain their original snapshots.
+
+Required validation:
+
+```bash
+python -m pip install --dry-run -r requirements-lock.txt
+python scripts/check_artifact_registry.py
+ruff check src tests experiments scripts
+pytest -q
+```
+
 ### Parser dependency refresh: 2026-09-09
 
 The current snapshot updates `lxml` from 6.1.1 to 6.1.3 for the
