@@ -31,7 +31,7 @@ matplotlib==3.10.9
 PyYAML==6.0.3
 
 # --- Datasets and IO ---
-datasets==5.0.0
+datasets==5.0.1
 ir_datasets==0.6.3
 lxml==6.1.3
 
