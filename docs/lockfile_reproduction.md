@@ -26,6 +26,37 @@ needed.
 | Torch, Transformers, SentenceTransformers, tokenizer, or model revision | Above checks plus `scripts/smoke_model_stack.py`; rerun the affected headline experiment or open a linked follow-up before treating old and new results as comparable. |
 | Security remediation with forced transitive changes | Record the vulnerability and constrained package set, run the affected smoke/evaluation checks, and document any unavoidable reproduction boundary. |
 
+### Dataset loader security refresh: 2026-10-17
+
+The current snapshot updates `datasets` from 5.0.0 to 5.0.1 for
+CVE-2026-66007 / GHSA-379c-qx7v-6h59. The patched release prevents folder-based
+builders from using crafted `file_name` metadata to read local files outside
+the intended metadata or dataset directory.
+
+This is a direct patch-level security update. It does not change the pinned
+retrieval, reranking, generation, tokenizer, or evaluation libraries, and it
+does not rebaseline any published metric. Historical results remain attached
+to the lockfile snapshots recorded by their artifact-registry entries; new
+experiment manifests record the environment used for future runs.
+
+The upstream 5.0.1 package metadata also widens the supported `fsspec` ceiling
+from 2026.4.0 to 2026.6.0. Because this repository records a pinned direct
+dependency snapshot rather than every transitive wheel, the 2026-10-17
+resolver dry run selecting `fsspec==2026.6.0` is an explicit reproduction
+boundary, not a metric rebaseline.
+
+Required validation:
+
+```bash
+python -m pip install --dry-run -r requirements-lock.txt
+python -c "import datasets; assert datasets.__version__ == '5.0.1'"
+python scripts/check_fixture_headline_metrics.py
+python scripts/check_artifact_registry.py
+python scripts/export_report_tables.py
+ruff check src tests experiments scripts
+pytest -q
+```
+
 ### Tooling dependency refresh: 2026-09-20
 
 PR #206 updates `ruff` from 0.16.1 to 0.16.7. Ruff is a lint tool;
