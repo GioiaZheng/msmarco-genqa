@@ -26,6 +26,39 @@ needed.
 | Torch, Transformers, SentenceTransformers, tokenizer, or model revision | Above checks plus `scripts/smoke_model_stack.py`; rerun the affected headline experiment or open a linked follow-up before treating old and new results as comparable. |
 | Security remediation with forced transitive changes | Record the vulnerability and constrained package set, run the affected smoke/evaluation checks, and document any unavoidable reproduction boundary. |
 
+### NLTK security refresh: 2026-11-08
+
+PR #213 updates `nltk` from 3.10.3 to 3.10.4 to address
+GHSA-j456-xh4h-cpf2 (WekaClassifier model-path containment) and
+GHSA-8mgp-746c-j5xp (model-artifact APIs accessing files outside allowed
+roots). Both advisories identify 3.10.4 as a patched version.
+
+The inspected project code uses NLTK's `sentence_bleu` with smoothing method
+1 in the paired-bootstrap scoring path. This is an evaluation-library
+security refresh, so affected BLEU/bootstrap tests and fixture metric
+goldens must pass in addition to the normal registry, resolver, and CI
+checks. The pinned NLTK version must be verified when running those tests;
+installation from the supported dependency ranges alone does not establish
+which version was tested.
+
+Only the NLTK pin changes. Published metrics and historical environment
+snapshots remain unchanged; passing fixture checks does not re-establish
+the original generation environment or rebaseline historical results.
+
+Required validation:
+
+```bash
+python -m pip install --dry-run -r requirements-lock.txt
+python -c "import nltk; assert nltk.__version__ == '3.10.4'"
+pytest -q tests/test_bootstrap.py tests/test_fixture_headline_metrics.py
+python scripts/check_fixture_headline_metrics.py
+python scripts/check_artifact_registry.py
+python scripts/export_report_tables.py
+git diff --exit-code reports/generated/tables
+ruff check src tests experiments scripts
+pytest -q
+```
+
 ### Dataset loader security refresh: 2026-10-17
 
 The current snapshot updates `datasets` from 5.0.0 to 5.0.1 for
