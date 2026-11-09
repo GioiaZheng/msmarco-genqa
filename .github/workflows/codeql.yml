@@ -34,6 +34,6 @@ jobs:
           languages: python
 
       - name: Analyze
-        uses: github/codeql-action/analyze@eec0bff2f6c15bf3f1e8a0152f94d17664a06a06 # v4
+        uses: github/codeql-action/analyze@0911ee96d2d6c8def97122c36c5cadd93829a4b4 # v4
         with:
           category: "/language:python"
